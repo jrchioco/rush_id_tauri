@@ -16,6 +16,7 @@ config.json
 temp_print.pdf
 picture.png
 input/*.png
+HANDOFF.md
 
 # Editor directories and files
 .vscode/*

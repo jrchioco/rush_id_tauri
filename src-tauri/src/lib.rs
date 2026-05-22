@@ -10,6 +10,7 @@ struct Config {
     input_folder_path: String,
     output_folder_path: String,
     api_keys: Vec<String>,
+    #[allow(dead_code)]
     printer_name: String,
     inkscape_path: String,
     svg_files: std::collections::HashMap<String, String>,
@@ -66,15 +67,8 @@ fn get_svg_templates(app_handle: tauri::AppHandle) -> Result<Vec<SvgTemplate>, S
     Ok(templates)
 }
 
-#[derive(Debug, Serialize)]
-struct RemoveBgResult {
-    success: bool,
-    output_path: String,
-    message: String,
-}
-
 #[tauri::command]
-async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result<RemoveBgResult, String> {
+async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result<String, String> {
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(&image_base64)
         .map_err(|e| format!("Base64 decode error: {}", e))?;
@@ -112,11 +106,7 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
                 let data = resp.bytes().await.map_err(|e| format!("Read response error: {}", e))?;
                 fs::write(&output_path, &data)
                     .map_err(|e| format!("Failed to write output: {}", e))?;
-                return Ok(RemoveBgResult {
-                    success: true,
-                    output_path: output_path.to_string_lossy().to_string(),
-                    message: "Background removed successfully!".to_string(),
-                });
+                return Ok(output_path.to_string_lossy().to_string());
             }
             Ok(resp) => {
                 let status = resp.status();
