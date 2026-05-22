@@ -35,6 +35,7 @@ export default function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Crop state
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -42,6 +43,7 @@ export default function App() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   const log = useCallback((text: string) => {
     setLogs((prev) => [...prev, { time: fmt(), text }]);
@@ -56,7 +58,7 @@ export default function App() {
       .catch((e) => setError(String(e)));
   }, []);
 
-  function handleFile(file: File) {
+  const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
       setError("Please select an image file");
       return;
@@ -71,13 +73,75 @@ export default function App() {
       log(`Loaded: ${file.name}`);
     };
     reader.readAsDataURL(file);
-  }
+  }, [log]);
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }
+  useEffect(() => {
+    function handlePaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile() ?? e.clipboardData?.files?.[0];
+          if (file) { handleFile(file); break; }
+        }
+      }
+    }
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [handleFile]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen("tauri://drag-drop", (event: any) => {
+        const paths: string[] = event.payload.paths;
+        if (!paths?.length) return;
+        const filePath = paths[0];
+        const ext = filePath.split(".").pop()?.toLowerCase();
+        const validExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
+        if (!validExts.includes(ext ?? "")) {
+          setError("Please drop an image file");
+          return;
+        }
+        import("@tauri-apps/plugin-fs").then(({ readFile }) => {
+          readFile(filePath).then((bytes) => {
+            const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+            let binary = "";
+            const chunkSize = 8192;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+            }
+            const base64 = btoa(binary);
+            const dataUrl = `data:${mimeType};base64,${base64}`;
+            setOriginalImage(dataUrl);
+            setStep("crop");
+            setCrop({ x: 0, y: 0 });
+            setZoom(1);
+            setError(null);
+            log(`Loaded: ${filePath.split("/").pop() ?? filePath}`);
+          }).catch((e) => {
+            setError(`Failed to read file: ${e}`);
+            log(`Error reading file: ${e}`);
+          });
+        });
+      }).then((fn) => { unlisten = fn; });
+    });
+    return () => { unlisten?.(); };
+  }, [log]);
+
+  useEffect(() => {
+    let unlistenEnter: (() => void) | null = null;
+    let unlistenLeave: (() => void) | null = null;
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen("tauri://drag-enter", () => setIsDragging(true)).then((fn) => { unlistenEnter = fn; });
+      listen("tauri://drag-leave", () => setIsDragging(false)).then((fn) => { unlistenLeave = fn; });
+      listen("tauri://drag-drop", () => setIsDragging(false));
+    });
+    return () => {
+      unlistenEnter?.();
+      unlistenLeave?.();
+    };
+  }, []);
 
   function handleCropComplete(_: Area, pixels: Area) {
     setCroppedAreaPixels(pixels);
@@ -235,13 +299,19 @@ export default function App() {
 
           {step === "select" && (
             <div
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
+              ref={dropRef}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 rounded-xl p-16 text-center cursor-pointer hover:border-blue-400 transition-colors bg-white"
+              className={cn(
+                "border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-200 bg-white",
+                isDragging
+                  ? "border-blue-500 bg-blue-50 scale-[1.01]"
+                  : "border-gray-300 hover:border-blue-400"
+              )}
             >
-              <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-lg font-medium text-gray-600 mb-1">Drop an image here</p>
+              <Upload className={cn("w-12 h-12 mx-auto mb-4", isDragging ? "text-blue-500" : "text-gray-400")} />
+              <p className={cn("text-lg font-medium mb-1", isDragging ? "text-blue-600" : "text-gray-600")}>
+                {isDragging ? "Release to upload" : "Drop an image here"}
+              </p>
               <p className="text-sm text-gray-400">or click to browse</p>
               <input
                 ref={fileInputRef}

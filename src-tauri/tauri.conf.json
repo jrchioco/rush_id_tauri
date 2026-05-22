@@ -15,7 +15,8 @@
         "title": "Rush ID — J3FF PRINTING SERVICES",
         "width": 1200,
         "height": 800,
-        "resizable": true
+        "resizable": true,
+        "dragDropEnabled": true
       }
     ],
     "security": {
