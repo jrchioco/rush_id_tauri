@@ -10,8 +10,6 @@ struct Config {
     input_folder_path: String,
     output_folder_path: String,
     api_keys: Vec<String>,
-    #[allow(dead_code)]
-    printer_name: String,
     inkscape_path: String,
     svg_files: std::collections::HashMap<String, String>,
 }
@@ -137,6 +135,17 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
 }
 
 #[tauri::command]
+fn write_picture(app_handle: tauri::AppHandle, image_base64: String) -> Result<String, String> {
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&image_base64)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+    let output_path = resource_dir(&app_handle).join("picture.png");
+    fs::write(&output_path, &bytes)
+        .map_err(|e| format!("Failed to write picture.png: {}", e))?;
+    Ok("ok".into())
+}
+
+#[tauri::command]
 fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String) -> Result<String, String> {
     let config = load_config(&app_handle)?;
     let mut pdf_path = PathBuf::from(&save_path);
@@ -200,6 +209,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_svg_templates,
             remove_bg,
+            write_picture,
             export_pdf,
             print_file,
         ])

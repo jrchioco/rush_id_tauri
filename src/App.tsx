@@ -16,10 +16,20 @@ function fmt() {
   return new Date().toLocaleTimeString();
 }
 
+const COLORS = [
+  { label: "White", value: "#ffffff" },
+  { label: "Blue", value: "#2563eb" },
+  { label: "Red", value: "#dc2626" },
+  { label: "Yellow", value: "#eab308" },
+  { label: "Gray", value: "#6b7280" },
+];
+
 export default function App() {
   const [step, setStep] = useState<Step>("select");
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [resultPath, setResultPath] = useState<string | null>(null);
+  const [rawBase64, setRawBase64] = useState<string | null>(null);
+  const [bgColor, setBgColor] = useState("#ffffff");
   const [templates, setTemplates] = useState<SvgTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -73,6 +83,43 @@ export default function App() {
     setCroppedAreaPixels(pixels);
   }
 
+  function compositeOnColor(base64: string, color: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          if (!blob) { reject(new Error("Canvas toBlob failed")); return; }
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        }, "image/png");
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = "data:image/png;base64," + base64;
+    });
+  }
+
+  async function handleColorChange(color: string) {
+    if (!rawBase64) return;
+    if (color === bgColor) return;
+    setBgColor(color);
+    log(`Applying background: ${color}`);
+    try {
+      const dataUrl = await compositeOnColor(rawBase64, color);
+      setResultPath(dataUrl);
+      await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
+    } catch (e) {
+      log(`Error: ${e}`);
+    }
+  }
+
   async function handleProcess() {
     if (!originalImage || !croppedAreaPixels) return;
     setLoading(true);
@@ -111,7 +158,11 @@ export default function App() {
       log("Removing background...");
       const b64 = await invoke<string>("remove_bg", { imageBase64: base64 });
 
-      setResultPath("data:image/png;base64," + b64);
+      setRawBase64(b64);
+      setBgColor("#ffffff");
+      const dataUrl = await compositeOnColor(b64, "#ffffff");
+      setResultPath(dataUrl);
+      await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
       setStep("done");
       log("✓ Background removed");
     } catch (e) {
@@ -157,6 +208,8 @@ export default function App() {
     setStep("select");
     setOriginalImage(null);
     setResultPath(null);
+    setRawBase64(null);
+    setBgColor("#ffffff");
     setError(null);
   }
 
@@ -253,6 +306,33 @@ export default function App() {
               <h2 className="text-lg font-semibold">Result</h2>
               <div className="bg-gray-100 rounded-lg flex items-center justify-center p-4">
                 <img src={resultPath} alt="Result" className="max-h-[400px] object-contain rounded" />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Background Color:</label>
+                <div className="flex items-center gap-2">
+                  {COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      onClick={() => handleColorChange(c.value)}
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 transition-all",
+                        bgColor === c.value
+                          ? "border-blue-500 ring-2 ring-blue-200 scale-110"
+                          : "border-gray-300 hover:scale-110"
+                      )}
+                      style={{ backgroundColor: c.value }}
+                      title={c.label}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => handleColorChange(e.target.value)}
+                    className="w-8 h-8 rounded-full border-2 border-gray-300 overflow-hidden cursor-pointer"
+                    title="Custom"
+                  />
+                </div>
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg space-y-3">

@@ -19,10 +19,7 @@
       }
     ],
     "security": {
-      "csp": null,
-      "assetProtocol": {
-        "scope": ["$RESOURCE/**"]
-      }
+      "csp": null
     }
   },
   "bundle": {
@@ -30,8 +27,7 @@
     "targets": "all",
     "resources": {
       "SVGs/*": "SVGs/",
-      "config.json": ".",
-      "input/": "input/"
+      "config.json": "."
     },
     "icon": [
       "icons/32x32.png",
