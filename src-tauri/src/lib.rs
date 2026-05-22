@@ -1,7 +1,7 @@
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 use std::process::Command;
 use tauri::Manager;
 
@@ -30,13 +30,26 @@ fn load_config(app: &tauri::AppHandle) -> Result<Config, String> {
     serde_json::from_str(&content).map_err(|e| format!("Invalid config.json: {}", e))
 }
 
+fn normalize_path(path: &PathBuf) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => continue,
+            Component::ParentDir => { normalized.pop(); },
+            other => normalized.push(other),
+        }
+    }
+    normalized
+}
+
 fn resolve(app: &tauri::AppHandle, path: &str) -> PathBuf {
     let p = PathBuf::from(path);
-    if p.is_absolute() {
+    let resolved = if p.is_absolute() {
         p
     } else {
         resource_dir(app).join(&p)
-    }
+    };
+    normalize_path(&resolved)
 }
 
 #[derive(Debug, Serialize)]
@@ -106,7 +119,8 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
                 let data = resp.bytes().await.map_err(|e| format!("Read response error: {}", e))?;
                 fs::write(&output_path, &data)
                     .map_err(|e| format!("Failed to write output: {}", e))?;
-                return Ok(output_path.to_string_lossy().to_string());
+                let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+                return Ok(b64);
             }
             Ok(resp) => {
                 let status = resp.status();

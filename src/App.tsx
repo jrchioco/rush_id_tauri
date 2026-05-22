@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, X } from "lucide-react";
 import type { SvgTemplate } from "./types";
@@ -110,9 +109,9 @@ export default function App() {
       });
 
       log("Removing background...");
-      const result = await invoke<string>("remove_bg", { imageBase64: base64 });
+      const b64 = await invoke<string>("remove_bg", { imageBase64: base64 });
 
-      setResultPath(result);
+      setResultPath("data:image/png;base64," + b64);
       setStep("done");
       log("✓ Background removed");
     } catch (e) {
@@ -160,8 +159,6 @@ export default function App() {
     setResultPath(null);
     setError(null);
   }
-
-  const resultUrl = resultPath ? convertFileSrc(resultPath) : null;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -251,11 +248,11 @@ export default function App() {
             </div>
           )}
 
-          {step === "done" && resultUrl && (
+          {step === "done" && resultPath && (
             <div className="bg-white rounded-xl p-6 space-y-4">
               <h2 className="text-lg font-semibold">Result</h2>
               <div className="bg-gray-100 rounded-lg flex items-center justify-center p-4">
-                <img src={resultUrl} alt="Result" className="max-h-[400px] object-contain rounded" />
+                <img src={resultPath} alt="Result" className="max-h-[400px] object-contain rounded" />
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg space-y-3">
