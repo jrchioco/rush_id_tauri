@@ -25,6 +25,11 @@ const COLORS = [
 ];
 
 export default function App() {
+  const [configReady, setConfigReady] = useState<boolean | null>(null);
+  const [setupKeys, setSetupKeys] = useState([""]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
   const [step, setStep] = useState<Step>("select");
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [resultPath, setResultPath] = useState<string | null>(null);
@@ -37,7 +42,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Crop state
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -50,13 +54,39 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    invoke<SvgTemplate[]>("get_svg_templates")
-      .then((t) => {
-        setTemplates(t);
-        if (t.length > 0) setSelectedTemplate(t[0].path);
-      })
-      .catch((e) => setError(String(e)));
+    invoke<boolean>("check_config").then((ready) => {
+      setConfigReady(ready);
+      if (ready) {
+        invoke<SvgTemplate[]>("get_svg_templates")
+          .then((t) => {
+            setTemplates(t);
+            if (t.length > 0) setSelectedTemplate(t[0].path);
+          })
+          .catch((e) => setError(String(e)));
+      }
+    });
   }, []);
+
+  useEffect(() => {
+    import("@tauri-apps/plugin-updater").then(({ check }) => {
+      check().then((update) => {
+        if (update) setUpdateAvailable(true);
+      }).catch(() => {});
+    }).catch(() => {});
+  }, []);
+
+  async function handleSaveConfig() {
+    setSaveError(null);
+    try {
+      await invoke("save_config", { apiKeys: setupKeys.filter((k) => k.trim()) });
+      setConfigReady(true);
+      const t = await invoke<SvgTemplate[]>("get_svg_templates");
+      setTemplates(t);
+      if (t.length > 0) setSelectedTemplate(t[0].path);
+    } catch (e) {
+      setSaveError(String(e));
+    }
+  }
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -277,8 +307,96 @@ export default function App() {
     setError(null);
   }
 
+  if (configReady === null) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <p className="text-gray-400">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!configReady) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full mx-4">
+          <img src="/comlogo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4 object-contain" />
+          <h1 className="text-xl font-bold text-center text-gray-900 mb-2">Welcome to Rush ID</h1>
+          <p className="text-sm text-gray-500 text-center mb-6">
+            J3FF PRINTING SERVICES — Automated Image Processing & Printing
+          </p>
+
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-700">remove.bg API Keys</label>
+            <p className="text-xs text-gray-400">
+              The app uses multiple keys and iterates when one runs out of credits.
+            </p>
+            {setupKeys.map((key, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  type="text"
+                  value={key}
+                  onChange={(e) => {
+                    const next = [...setupKeys];
+                    next[i] = e.target.value;
+                    setSetupKeys(next);
+                  }}
+                  placeholder="Paste API key..."
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+                {setupKeys.length > 1 && (
+                  <button
+                    onClick={() => setSetupKeys(setupKeys.filter((_, j) => j !== i))}
+                    className="text-red-500 hover:text-red-700 p-2"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => setSetupKeys([...setupKeys, ""])}
+              className="text-sm text-blue-600 hover:text-blue-700"
+            >
+              + Add another key
+            </button>
+          </div>
+
+          {saveError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm mt-4 flex items-center gap-2">
+              <X className="w-4 h-4" /> {saveError}
+            </div>
+          )}
+
+          <button
+            onClick={handleSaveConfig}
+            disabled={setupKeys.length === 0 || setupKeys.some((k) => !k.trim())}
+            className="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Save & Launch
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
+      {updateAvailable && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-2 text-yellow-700 text-sm flex items-center justify-center gap-2">
+          <span>A new version is available.</span>
+          <button
+              onClick={() => {
+                import("@tauri-apps/plugin-updater").then(({ check }) => {
+                  check().then((update) => update?.downloadAndInstall()).catch(() => {});
+                }).catch(() => {});
+              }}
+            className="underline font-medium hover:text-yellow-800"
+          >
+            Update now
+          </button>
+        </div>
+      )}
+
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
           <img src="/comlogo.png" alt="Logo" className="w-12 h-12 object-contain" />

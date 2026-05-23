@@ -27,8 +27,7 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "SVGs/*": "SVGs/",
-      "config.json": "."
+      "SVGs/*": "SVGs/"
     },
     "icon": [
       "icons/32x32.png",
@@ -37,5 +36,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhDQUZFRDFBNDJFNDEyODQKUldTRUV1UkNHdTJ2ak9ZS08zRkl3VEF4WmJ4TFVvaHhMOElqNElYTm1rd2NuODRubmU1Y2sreFgK",
+      "endpoints": [
+        "https://github.com/jrchioco/rush_id_tauri/releases/latest/download/updates.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

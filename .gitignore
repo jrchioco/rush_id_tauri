@@ -28,3 +28,7 @@ HANDOFF.md
 *.njsproj
 *.sln
 *.sw?
+
+# Updater signing keys
+tauri-updater-key.json
+tauri-updater-key.json.pub
