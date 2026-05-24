@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
-import { Upload, Printer, FileDown, Scissors, RotateCw, X } from "lucide-react";
+import { Upload, Printer, FileDown, Scissors, RotateCw, X, ChevronDown } from "lucide-react";
 import type { SvgTemplate } from "./types";
 import { cn } from "./lib/utils";
 
@@ -41,6 +41,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [activeKeyIndex, setActiveKeyIndex] = useState<number>(0);
+  const [keyCount, setKeyCount] = useState<number>(0);
+  const [templateOpen, setTemplateOpen] = useState(false);
 
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -48,6 +51,7 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const log = useCallback((text: string) => {
     setLogs((prev) => [...prev, { time: fmt(), text }]);
@@ -63,6 +67,9 @@ export default function App() {
             if (t.length > 0) setSelectedTemplate(t[0].path);
           })
           .catch((e) => setError(String(e)));
+        invoke<number>("get_key_count")
+          .then(setKeyCount)
+          .catch(() => {});
       }
     });
   }, []);
@@ -83,6 +90,8 @@ export default function App() {
       const t = await invoke<SvgTemplate[]>("get_svg_templates");
       setTemplates(t);
       if (t.length > 0) setSelectedTemplate(t[0].path);
+      const count = await invoke<number>("get_key_count");
+      setKeyCount(count);
     } catch (e) {
       setSaveError(String(e));
     }
@@ -171,6 +180,25 @@ export default function App() {
       unlistenEnter?.();
       unlistenLeave?.();
     };
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen<number>("key_used", (e) => setActiveKeyIndex(e.payload))
+        .then((fn) => { unlisten = fn; });
+    });
+    return () => { unlisten?.(); };
+  }, []);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setTemplateOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   function handleCropComplete(_: Area, pixels: Area) {
@@ -309,27 +337,32 @@ export default function App() {
 
   if (configReady === null) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <div className="min-h-screen bg-[#111110] flex items-center justify-center">
+        <p className="text-[#555] font-mono text-sm tracking-widest">initializing...</p>
       </div>
     );
   }
 
   if (!configReady) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full mx-4">
-          <img src="/comlogo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4 object-contain" />
-          <h1 className="text-xl font-bold text-center text-gray-900 mb-2">Welcome to Rush ID</h1>
-          <p className="text-sm text-gray-500 text-center mb-6">
-            J3FF PRINTING SERVICES — Automated Image Processing & Printing
+      <div className="min-h-screen bg-[#111110] flex items-center justify-center">
+        <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-8 max-w-md w-full mx-4">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-[#c8881a] rounded flex items-center justify-center">
+              <img src="/comlogo.png" alt="Logo" className="w-8 h-8 object-contain" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-[#e8e4da] tracking-wide">RUSH ID</h1>
+              <p className="text-xs text-[#555] font-mono">J3FF PRINTING SERVICES</p>
+            </div>
+          </div>
+
+          <h2 className="text-sm font-semibold text-[#e8e4da] mb-1">Setup API Keys</h2>
+          <p className="text-xs text-[#555] font-mono mb-4">
+            Multiple keys supported — app iterates when one runs out of credits.
           </p>
 
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-gray-700">remove.bg API Keys</label>
-            <p className="text-xs text-gray-400">
-              The app uses multiple keys and iterates when one runs out of credits.
-            </p>
+          <div className="space-y-2">
             {setupKeys.map((key, i) => (
               <div key={i} className="flex gap-2">
                 <input
@@ -341,12 +374,12 @@ export default function App() {
                     setSetupKeys(next);
                   }}
                   placeholder="Paste API key..."
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] placeholder-[#444] font-mono focus:outline-none focus:border-[#c8881a]"
                 />
                 {setupKeys.length > 1 && (
                   <button
                     onClick={() => setSetupKeys(setupKeys.filter((_, j) => j !== i))}
-                    className="text-red-500 hover:text-red-700 p-2"
+                    className="text-[#555] hover:text-red-400 p-2 transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -355,22 +388,22 @@ export default function App() {
             ))}
             <button
               onClick={() => setSetupKeys([...setupKeys, ""])}
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-xs text-[#c8881a] hover:text-[#e8a030] font-mono transition-colors"
             >
-              + Add another key
+              + add another key
             </button>
           </div>
 
           {saveError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm mt-4 flex items-center gap-2">
-              <X className="w-4 h-4" /> {saveError}
+            <div className="bg-red-950 border border-red-800 rounded-lg p-3 text-red-400 text-xs mt-4 flex items-center gap-2 font-mono">
+              <X className="w-3 h-3 flex-shrink-0" /> {saveError}
             </div>
           )}
 
           <button
             onClick={handleSaveConfig}
             disabled={setupKeys.length === 0 || setupKeys.some((k) => !k.trim())}
-            className="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="w-full mt-6 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] disabled:cursor-not-allowed"
           >
             Save & Launch
           </button>
@@ -380,9 +413,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-[#111110]">
       {updateAvailable && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-2 text-yellow-700 text-sm flex items-center justify-center gap-2">
+        <div className="bg-[#1a1508] border-b border-[#c8881a]/30 px-6 py-2 text-[#c8881a] text-xs flex items-center justify-center gap-2 font-mono">
           <span>A new version is available.</span>
           <button
               onClick={() => {
@@ -390,28 +423,30 @@ export default function App() {
                   check().then((update) => update?.downloadAndInstall()).catch(() => {});
                 }).catch(() => {});
               }}
-            className="underline font-medium hover:text-yellow-800"
+            className="underline font-medium hover:text-[#e8a030] transition-colors"
           >
             Update now
           </button>
         </div>
       )}
 
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <img src="/comlogo.png" alt="Logo" className="w-12 h-12 object-contain" />
+      <header className="bg-[#0c0c0b] border-b border-[#2a2a28]">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-3">
+          <div className="w-9 h-9 bg-[#c8881a] rounded flex items-center justify-center flex-shrink-0">
+            <img src="/comlogo.png" alt="Logo" className="w-7 h-7 object-contain" />
+          </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">J3FF PRINTING SERVICES</h1>
-            <p className="text-sm text-gray-500">Image Background Removal & SVG Printer</p>
+            <h1 className="text-sm font-bold text-[#e8e4da] tracking-wider">J3FF PRINTING SERVICES</h1>
+            <p className="text-xs text-[#555] font-mono">Image Background Removal & SVG Printer</p>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_320px] gap-6">
+      <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">
         <div className="space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm flex items-center gap-2">
-              <X className="w-4 h-4" /> {error}
+            <div className="bg-red-950 border border-red-800 rounded-lg p-3 text-red-400 text-xs flex items-center gap-2 font-mono">
+              <X className="w-3 h-3 flex-shrink-0" /> {error}
             </div>
           )}
 
@@ -420,17 +455,17 @@ export default function App() {
               ref={dropRef}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                "border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-200 bg-white",
+                "border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-200 bg-[#1a1a18]",
                 isDragging
-                  ? "border-blue-500 bg-blue-50 scale-[1.01]"
-                  : "border-gray-300 hover:border-blue-400"
+                  ? "border-[#c8881a] bg-[#1a1508] scale-[1.01]"
+                  : "border-[#2a2a28] hover:border-[#c8881a]/50"
               )}
             >
-              <Upload className={cn("w-12 h-12 mx-auto mb-4", isDragging ? "text-blue-500" : "text-gray-400")} />
-              <p className={cn("text-lg font-medium mb-1", isDragging ? "text-blue-600" : "text-gray-600")}>
+              <Upload className={cn("w-10 h-10 mx-auto mb-4", isDragging ? "text-[#c8881a]" : "text-[#444]")} />
+              <p className={cn("text-base font-semibold mb-1 tracking-wide", isDragging ? "text-[#c8881a]" : "text-[#888]")}>
                 {isDragging ? "Release to upload" : "Drop an image here"}
               </p>
-              <p className="text-sm text-gray-400">or click to browse</p>
+              <p className="text-xs text-[#444] font-mono">or click to browse · paste works too</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -442,8 +477,8 @@ export default function App() {
           )}
 
           {step === "crop" && originalImage && (
-            <div className="bg-white rounded-xl overflow-hidden">
-              <div className="relative h-[500px] bg-gray-900">
+            <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
+              <div className="relative h-[500px] bg-[#0c0c0b]">
                 <Cropper
                   image={originalImage}
                   crop={crop}
@@ -454,8 +489,8 @@ export default function App() {
                   onCropComplete={handleCropComplete}
                 />
               </div>
-              <div className="p-4 flex items-center gap-4">
-                <label className="text-sm text-gray-500">Zoom:</label>
+              <div className="p-4 flex items-center gap-4 border-t border-[#2a2a28]">
+                <label className="text-xs text-[#555] font-mono">Zoom</label>
                 <input
                   type="range"
                   min={1}
@@ -463,16 +498,16 @@ export default function App() {
                   step={0.1}
                   value={zoom}
                   onChange={(e) => setZoom(Number(e.target.value))}
-                  className="flex-1"
+                  className="flex-1 accent-[#c8881a]"
                 />
                 <button
                   onClick={handleProcess}
                   disabled={loading}
                   className={cn(
-                    "px-6 py-2 rounded-lg font-medium text-white flex items-center gap-2",
+                    "px-5 py-2 rounded-lg font-semibold text-sm flex items-center gap-2 tracking-wide transition-colors",
                     loading
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700"
+                      ? "bg-[#2a2a28] text-[#555] cursor-not-allowed"
+                      : "bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030]"
                   )}
                 >
                   {loading ? (
@@ -480,9 +515,9 @@ export default function App() {
                   ) : (
                     <Scissors className="w-4 h-4" />
                   )}
-                  {loading ? "Processing..." : "Crop & Remove Background"}
+                  {loading ? "Processing..." : "Crop & Remove BG"}
                 </button>
-                <button onClick={handleReset} className="px-4 py-2 text-gray-500 hover:text-gray-700">
+                <button onClick={handleReset} className="px-3 py-2 text-[#555] hover:text-[#888] text-sm font-mono transition-colors">
                   Cancel
                 </button>
               </div>
@@ -490,24 +525,34 @@ export default function App() {
           )}
 
           {step === "done" && resultPath && (
-            <div className="bg-white rounded-xl p-6 space-y-4">
-              <h2 className="text-lg font-semibold">Result</h2>
-              <div className="bg-gray-100 rounded-lg flex items-center justify-center p-4">
-                <img src={resultPath} alt="Result" className="max-h-[400px] object-contain rounded" />
+            <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold text-[#888] font-mono tracking-widest uppercase">Result</h2>
+                <span className="text-xs bg-[#0a1f12] text-[#4caf78] font-mono px-2 py-0.5 rounded border border-[#4caf78]/20">✓ BG Removed</span>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Background Color:</label>
-                <div className="flex items-center gap-2">
+              <div
+                className="rounded-lg flex items-center justify-center p-6 min-h-[300px]"
+                style={{
+                  backgroundImage: 'repeating-conic-gradient(#1e1e1c 0% 25%, #161614 0% 50%)',
+                  backgroundSize: '16px 16px',
+                }}
+              >
+                <img src={resultPath} alt="Result" className="max-h-[360px] object-contain rounded shadow-2xl" />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-[#555] font-mono tracking-widest uppercase">Background Color</label>
+                <div className="flex items-center gap-2 mt-2">
                   {COLORS.map((c) => (
                     <button
                       key={c.value}
                       onClick={() => handleColorChange(c.value)}
                       className={cn(
-                        "w-8 h-8 rounded-full border-2 transition-all",
+                        "w-7 h-7 rounded-full transition-all duration-150",
                         bgColor === c.value
-                          ? "border-blue-500 ring-2 ring-blue-200 scale-110"
-                          : "border-gray-300 hover:scale-110"
+                          ? "ring-2 ring-[#c8881a] ring-offset-2 ring-offset-[#0c0c0b] scale-110"
+                          : "hover:scale-110 opacity-80 hover:opacity-100"
                       )}
                       style={{ backgroundColor: c.value }}
                       title={c.label}
@@ -517,35 +562,51 @@ export default function App() {
                     type="color"
                     value={bgColor}
                     onChange={(e) => handleColorChange(e.target.value)}
-                    className="w-8 h-8 rounded-full border-2 border-gray-300 overflow-hidden cursor-pointer"
-                    title="Custom"
+                    className="w-7 h-7 rounded-full border border-[#2a2a28] overflow-hidden cursor-pointer bg-transparent"
+                    title="Custom color"
                   />
                 </div>
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-lg space-y-3">
-                <label className="text-sm font-medium text-gray-700">Choose SVG template:</label>
-                <select
-                  value={selectedTemplate}
-                  onChange={(e) => setSelectedTemplate(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 border px-3 py-2 text-sm"
-                >
-                  {templates.map((t) => (
-                    <option key={t.key} value={t.path}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="border border-[#2a2a28] rounded-lg p-4 space-y-3 bg-[#111110]">
+                <div className="relative" ref={dropdownRef}>
+                  <label className="text-xs text-[#555] font-mono tracking-widest uppercase">SVG Template</label>
+                  <button
+                    onClick={() => setTemplateOpen(!templateOpen)}
+                    className="w-full mt-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] font-mono flex items-center justify-between focus:outline-none focus:border-[#c8881a]"
+                  >
+                    <span>{templates.find(t => t.path === selectedTemplate)?.name ?? "Select"}</span>
+                    <ChevronDown className={cn("w-4 h-4 text-[#555] transition-transform", templateOpen && "rotate-180")} />
+                  </button>
+                  {templateOpen && (
+                    <div className="absolute z-10 mt-1 w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg overflow-hidden shadow-xl">
+                      {templates.map((t) => (
+                        <button
+                          key={t.key}
+                          onClick={() => { setSelectedTemplate(t.path); setTemplateOpen(false); }}
+                          className={cn(
+                            "w-full text-left px-3 py-2 text-sm font-mono transition-colors",
+                            t.path === selectedTemplate
+                              ? "text-[#c8881a] bg-[#1a1508]"
+                              : "text-[#e8e4da] hover:bg-[#2a2a28]"
+                          )}
+                        >
+                          {t.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-3">
                   <button
                     onClick={handlePrint}
-                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors flex items-center justify-center gap-2"
                   >
                     <Printer className="w-4 h-4" /> Print
                   </button>
                   <button
                     onClick={handleSavePdf}
-                    className="flex-1 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 font-medium flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2.5 bg-transparent text-[#c8881a] border border-[#c8881a] rounded-lg font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 transition-colors flex items-center justify-center gap-2"
                   >
                     <FileDown className="w-4 h-4" /> Save PDF
                   </button>
@@ -554,7 +615,7 @@ export default function App() {
 
               <button
                 onClick={handleReset}
-                className="px-4 py-2 text-gray-500 hover:text-gray-700 text-sm"
+                className="text-[#555] hover:text-[#888] text-xs font-mono transition-colors flex items-center gap-1"
               >
                 ← Start Over
               </button>
@@ -562,20 +623,47 @@ export default function App() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl border shadow-sm h-fit">
-          <div className="p-4 border-b">
-            <h3 className="font-semibold text-sm text-gray-700">Status & Logs</h3>
+        <div className="bg-[#0c0c0b] rounded-xl border border-[#2a2a28] h-fit">
+          <div className="p-3 border-b border-[#2a2a28] flex items-center gap-2">
+            <div className={cn(
+              "w-1.5 h-1.5 rounded-full",
+              logs.length > 0 ? "bg-[#4caf78]" : "bg-[#333]"
+            )} />
+            <h3 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">Status & Logs</h3>
           </div>
-          <div className="h-[400px] overflow-y-auto p-4 space-y-1 font-mono text-xs">
+          <div className="h-[420px] overflow-y-auto p-3 space-y-1.5 font-mono text-xs">
             {logs.length === 0 && (
-              <p className="text-gray-400 italic">No activity yet</p>
+              <p className="text-[#333] italic">No activity yet</p>
             )}
             {logs.map((entry, i) => (
-              <div key={i} className="text-gray-600">
-                <span className="text-gray-400">[{entry.time}]</span> {entry.text}
+              <div key={i} className="flex gap-2 leading-relaxed">
+                <span className="text-[#444] flex-shrink-0">[{entry.time}]</span>
+                <span className={cn(
+                  entry.text.startsWith("✓") ? "text-[#4caf78]" :
+                  entry.text.toLowerCase().startsWith("error") ? "text-red-400" :
+                  entry.text.endsWith("...") ? "text-[#c8881a]" :
+                  "text-[#888]"
+                )}>
+                  {entry.text}
+                </span>
               </div>
             ))}
           </div>
+          {keyCount > 0 && (
+            <div className="border-t border-[#2a2a28] p-3 grid grid-cols-2 gap-2">
+              {[
+                { label: "API KEY", value: `Key ${activeKeyIndex + 1}/${keyCount}`, accent: true },
+                { label: "TEMPLATE", value: templates.find(t => t.path === selectedTemplate)?.name ?? "—", accent: false },
+                { label: "SIZE", value: "2×2 in", accent: false },
+                { label: "DPI", value: "300", accent: false },
+              ].map(({ label, value, accent }) => (
+                <div key={label} className="bg-[#111110] border border-[#2a2a28] rounded-md p-2">
+                  <div className="text-[9px] text-[#444] font-mono tracking-widest uppercase mb-1">{label}</div>
+                  <div className={cn("text-sm font-mono font-semibold", accent ? "text-[#4caf78]" : "text-[#e8e4da]")}>{value}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

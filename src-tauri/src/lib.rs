@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Component, PathBuf};
 use std::process::Command;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Config {
@@ -153,7 +153,7 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
     let output_path = output_dir.join("picture.png");
 
     let client = reqwest::Client::new();
-    for api_key in &config.api_keys {
+    for (i, api_key) in config.api_keys.iter().enumerate() {
         let file_part = reqwest::multipart::Part::bytes(bytes.clone())
             .file_name("image.png")
             .mime_str("image/png")
@@ -173,6 +173,7 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
             Ok(resp) if resp.status() == 200 => {
                 let data = resp.bytes().await.map_err(|e| format!("Read response error: {}", e))?;
                 fs::write(&output_path, &data).map_err(|e| format!("Failed to write output: {}", e))?;
+                app_handle.emit("key_used", i).ok();
                 return Ok(base64::engine::general_purpose::STANDARD.encode(&data));
             }
             Ok(resp) => {
@@ -235,6 +236,12 @@ fn cleanup_temp_pdfs() {
 }
 
 #[tauri::command]
+fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
+    let config = load_config(&app_handle)?;
+    Ok(config.api_keys.len())
+}
+
+#[tauri::command]
 fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, String> {
     let config = load_config(&app_handle)?;
     let patched_svg = patch_svg_path(&app_handle, &svg_path)?;
@@ -288,6 +295,7 @@ pub fn run() {
             write_picture,
             export_pdf,
             print_file,
+            get_key_count,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
