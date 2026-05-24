@@ -221,11 +221,29 @@ fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String)
     }
 }
 
+fn cleanup_temp_pdfs() {
+    let temp_dir = std::env::temp_dir();
+    if let Ok(entries) = std::fs::read_dir(&temp_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("rush_id_print_") && name_str.ends_with(".pdf") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+}
+
 #[tauri::command]
 fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, String> {
     let config = load_config(&app_handle)?;
     let patched_svg = patch_svg_path(&app_handle, &svg_path)?;
-    let temp_pdf = data_dir(&app_handle).join("temp_print.pdf");
+
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let temp_pdf = std::env::temp_dir().join(format!("rush_id_print_{}.pdf", ts));
 
     let output = Command::new(&config.inkscape_path)
         .arg("--export-filename")
@@ -241,21 +259,22 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, 
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
-            .args(["/C", "start", "", &temp_pdf.to_string_lossy()])
-            .output()
-            .map_err(|e| format!("Failed to print: {}", e))?;
+            .args(["/C", "start", "", &temp_pdf.to_string_lossy().to_string()])
+            .spawn()
+            .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     } else {
-        Command::new("lpr")
+        Command::new("xdg-open")
             .arg(&temp_pdf)
-            .output()
-            .map_err(|e| format!("Failed to run lpr: {}", e))?;
+            .spawn()
+            .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
-    Ok("Print job sent successfully!".to_string())
+    Ok("PDF opened in viewer. Press Ctrl+P to print.".to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    cleanup_temp_pdfs();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())

@@ -270,7 +270,7 @@ export default function App() {
   async function handlePrint() {
     if (!selectedTemplate) return;
     try {
-      log("Sending to printer...");
+      log("Opening print dialog...");
       const msg = await invoke<string>("print_file", { svgPath: selectedTemplate });
       log(`✓ ${msg}`);
     } catch (e) {
