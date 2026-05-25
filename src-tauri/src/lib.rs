@@ -240,6 +240,22 @@ fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
 }
 
 #[tauri::command]
+fn open_file(path: String) -> Result<(), String> {
+    if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    } else {
+        Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, String> {
     let config = load_config(&app_handle)?;
     let patched_svg = patch_svg_path(&app_handle, &svg_path)?;
@@ -294,6 +310,7 @@ pub fn run() {
             export_pdf,
             print_file,
             get_key_count,
+            open_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

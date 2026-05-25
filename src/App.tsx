@@ -316,10 +316,9 @@ export default function App() {
       });
       if (!savePath) return;
       log("Exporting PDF...");
-      await invoke("export_pdf", { svgPath: selectedTemplate, savePath });
-      const { openPath } = await import("@tauri-apps/plugin-opener");
-      await openPath(savePath);
-      log("✓ PDF saved");
+      const pdfPath = await invoke<string>("export_pdf", { svgPath: selectedTemplate, savePath });
+      await invoke("open_file", { path: pdfPath });
+      log("✓ PDF saved — press Ctrl+P to print");
     } catch (e) {
       setError(String(e));
       log(`Error: ${e}`);
