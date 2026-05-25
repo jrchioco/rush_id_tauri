@@ -84,7 +84,7 @@ fn check_config(app_handle: tauri::AppHandle) -> bool {
 }
 
 #[tauri::command]
-fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<(), String> {
+fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>, inkscape_path: Option<String>) -> Result<(), String> {
     let res = resource_dir(&app_handle);
     let mut svg_files = HashMap::new();
 
@@ -109,7 +109,7 @@ fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<()
         input_folder_path: "input".into(),
         output_folder_path: ".".into(),
         api_keys,
-        inkscape_path: "inkscape".into(),
+        inkscape_path: inkscape_path.filter(|p| !p.trim().is_empty()).unwrap_or_else(|| "inkscape".into()),
         svg_files,
     };
 
@@ -234,6 +234,21 @@ fn cleanup_temp_pdfs() {
 }
 
 #[tauri::command]
+fn check_inkscape_default() -> bool {
+    PathBuf::from("C:\\Program Files\\Inkscape\\bin\\inkscape.exe").exists()
+}
+
+#[tauri::command]
+fn save_inkscape_path(app_handle: tauri::AppHandle, inkscape_path: String) -> Result<(), String> {
+    let mut config = load_config(&app_handle)?;
+    config.inkscape_path = inkscape_path;
+    let d = data_dir(&app_handle);
+    let json = serde_json::to_string_pretty(&config).map_err(|e| format!("Serialize error: {}", e))?;
+    fs::write(d.join("config.json"), &json).map_err(|e| format!("Failed to write config: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
 fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
     let config = load_config(&app_handle)?;
     Ok(config.api_keys.len())
@@ -311,6 +326,8 @@ pub fn run() {
             print_file,
             get_key_count,
             open_file,
+            check_inkscape_default,
+            save_inkscape_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

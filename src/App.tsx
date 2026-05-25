@@ -28,6 +28,8 @@ export default function App() {
   const [configReady, setConfigReady] = useState<boolean | null>(null);
   const [setupKeys, setSetupKeys] = useState([""]);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [setupInkscapePath, setSetupInkscapePath] = useState<string>("");
+  const [inkscapeDefaultMissing, setInkscapeDefaultMissing] = useState<boolean>(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
 
   const [step, setStep] = useState<Step>("select");
@@ -85,7 +87,10 @@ export default function App() {
   async function handleSaveConfig() {
     setSaveError(null);
     try {
-      await invoke("save_config", { apiKeys: setupKeys.filter((k) => k.trim()) });
+      await invoke("save_config", {
+        apiKeys: setupKeys.filter((k) => k.trim()),
+        inkscapePath: setupInkscapePath.trim() || null,
+      });
       setConfigReady(true);
       const t = await invoke<SvgTemplate[]>("get_svg_templates");
       setTemplates(t);
@@ -94,6 +99,21 @@ export default function App() {
       setKeyCount(count);
     } catch (e) {
       setSaveError(String(e));
+    }
+  }
+
+  async function handleBrowseInkscape(onSelect: (path: string) => void) {
+    const defaultExists = await invoke<boolean>("check_inkscape_default");
+    if (!defaultExists) setInkscapeDefaultMissing(true);
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const selected = await open({
+      title: "Find inkscape.exe",
+      defaultPath: defaultExists ? "C:\\Program Files\\Inkscape\\bin" : undefined,
+      filters: [{ name: "Executable", extensions: ["exe"] }],
+    });
+    if (selected) {
+      setInkscapeDefaultMissing(false);
+      onSelect(selected as string);
     }
   }
 
@@ -399,6 +419,31 @@ export default function App() {
             </div>
           )}
 
+          <div className="border-t border-[#2a2a28] mt-5 pt-5">
+            <h2 className="text-sm font-semibold text-[#e8e4da] mb-1">Inkscape Path <span className="text-[#555] font-normal">(optional)</span></h2>
+            <p className="text-xs text-[#555] font-mono mb-3">Skip if Inkscape is already in PATH. Required for Print & Save PDF.</p>
+            {inkscapeDefaultMissing && (
+              <div className="bg-[#1a1508] border border-[#c8881a]/30 rounded-lg px-3 py-2 text-[#c8881a] text-xs font-mono mb-2">
+                ⚠ Inkscape not found in default directory. Browse to your installation.
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={setupInkscapePath}
+                onChange={(e) => setSetupInkscapePath(e.target.value)}
+                placeholder="C:\Program Files\Inkscape\bin\inkscape.exe"
+                className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-xs text-[#e8e4da] placeholder-[#444] font-mono focus:outline-none focus:border-[#c8881a]"
+              />
+              <button
+                onClick={() => handleBrowseInkscape(setSetupInkscapePath)}
+                className="px-3 py-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg text-xs text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a] font-mono transition-colors"
+              >
+                Browse
+              </button>
+            </div>
+          </div>
+
           <button
             onClick={handleSaveConfig}
             disabled={setupKeys.length === 0 || setupKeys.some((k) => !k.trim())}
@@ -445,7 +490,21 @@ export default function App() {
         <div className="space-y-4">
           {error && (
             <div className="bg-red-950 border border-red-800 rounded-lg p-3 text-red-400 text-xs flex items-center gap-2 font-mono">
-              <X className="w-3 h-3 flex-shrink-0" /> {error}
+              <X className="w-3 h-3 flex-shrink-0" />
+              <span className="flex-1">{error}</span>
+              {error.toLowerCase().includes("inkscape") && (
+                <button
+                  onClick={async () => {
+                    await handleBrowseInkscape(async (path) => {
+                      await invoke("save_inkscape_path", { inkscapePath: path });
+                      setError(null);
+                    });
+                  }}
+                  className="flex-shrink-0 px-2 py-1 bg-[#2a1a0a] border border-[#c8881a]/40 rounded text-[#c8881a] hover:border-[#c8881a] transition-colors"
+                >
+                  Browse for Inkscape
+                </button>
+              )}
             </div>
           )}
 

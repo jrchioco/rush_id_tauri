@@ -7,46 +7,32 @@ Built with **Tauri v2 + React 19 + TypeScript + Tailwind CSS**.
 ## Features
 
 - Drag-and-drop or file picker for image input
+- Paste from clipboard (Ctrl+V)
 - 1:1 crop with `react-easy-crop`
 - Background removal via RemoveBG API (with key rotation)
 - Background color picker (White, Blue, Red, Yellow, Gray, or custom hex)
 - SVG template selection for ID photo layouts
-- Direct printing via CUPS (Linux) or open PDF (Windows)
+- Print via OS dialog (opens PDF, user presses Ctrl+P)
 - PDF export via Inkscape CLI
 
 ## Prerequisites
 
-- [Inkscape](https://inkscape.org/) installed and in PATH
-- CUPS with a configured printer (for Linux printing)
+- Windows 10 or later (WebView2 pre-installed)
+- [Inkscape](https://inkscape.org/) installed (for PDF export and printing). If not in PATH, you can browse for it in the setup screen.
 - A RemoveBG API key
 
-## Setup
+## Installation
+
+Download the latest `.exe` installer from the [Releases](https://github.com/jrchioco/rush_id_tauri/releases) page.
+
+On first launch, you'll be prompted to enter your RemoveBG API key(s). Everything else is auto-configured.
+
+## Development
 
 ```bash
 git clone https://github.com/jrchioco/rush_id_tauri.git
 cd rush_id_tauri
 npm install
-```
-
-Create `src-tauri/config.json`:
-
-```json
-{
-  "input_folder_path": "input",
-  "output_folder_path": ".",
-  "api_keys": ["your-removebg-api-key"],
-  "inkscape_path": "inkscape",
-  "svg_files": {
-    "1": "SVGs/1x1.svg",
-    "2": "SVGs/2x2.svg",
-    "3": "SVGs/Mixed.svg"
-  }
-}
-```
-
-## Development
-
-```bash
 npm run tauri dev
 ```
 
@@ -56,7 +42,26 @@ npm run tauri dev
 npm run tauri build
 ```
 
-Produces a binary in `src-tauri/target/release/` and `.deb`/`.rpm` packages.
+Produces MSI and NSIS installers in `src-tauri/target/release/bundle/`.
+
+For signed builds (required for auto-updater), set the signing env vars:
+
+```bash
+TAURI_SIGNING_PRIVATE_KEY_PATH=./tauri-updater-key.json \
+TAURI_SIGNING_PASSWORD=rushid-updater-key \
+npm run tauri build
+```
+
+## Release
+
+Tag a version to trigger the CI/CD pipeline:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This builds, signs, creates a GitHub Release, and uploads the installers + update manifest.
 
 ## Tech Stack
 
@@ -67,5 +72,4 @@ Produces a binary in `src-tauri/target/release/` and `.deb`/`.rpm` packages.
 | Crop | react-easy-crop |
 | Icons | lucide-react |
 | API | RemoveBG (multipart POST) |
-| PDF | Inkscape CLI |
-| Printing | CUPS (lpr) / Windows `start` |
+| PDF / Print | Inkscape CLI |
