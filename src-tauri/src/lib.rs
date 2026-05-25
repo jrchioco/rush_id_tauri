@@ -49,14 +49,11 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
 fn patch_svg_path(app: &tauri::AppHandle, svg_path: &str) -> Result<PathBuf, String> {
     let content = fs::read_to_string(svg_path)
         .map_err(|e| format!("Failed to read SVG: {}", e))?;
-    let picture_path = data_dir(app).join("picture.png");
-    let picture_path_str = picture_path.to_string_lossy().replace('\\', "/");
-    let patched = content.replace("../picture.png", &picture_path_str);
 
     let temp_svg = data_dir(app).join("tmp").join("template.svg");
     fs::create_dir_all(temp_svg.parent().unwrap())
         .map_err(|e| format!("Failed to create tmp dir: {}", e))?;
-    fs::write(&temp_svg, &patched)
+    fs::write(&temp_svg, &content)
         .map_err(|e| format!("Failed to write patched SVG: {}", e))?;
 
     Ok(temp_svg)
