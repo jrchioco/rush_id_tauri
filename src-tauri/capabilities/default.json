@@ -7,8 +7,14 @@
     "core:default",
     "opener:default",
     "opener:allow-open-path",
+    "opener:allow-open-url",
     "dialog:default",
+    "dialog:allow-save",
+    "dialog:allow-open",
     "fs:default",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
     {
       "identifier": "fs:allow-read",
       "allow": [{ "path": "**" }]
