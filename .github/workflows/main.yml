@@ -39,6 +39,14 @@ jobs:
           prerelease: false
           includeDebug: false
 
+      - name: Debug sig files
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          Write-Host "Working dir: $(Get-Location)"
+          Write-Host "=== NSIS bundle ==="
+          Get-ChildItem "src-tauri/target/release/bundle/nsis/" | ForEach-Object { Write-Host $_.FullName }
+
       - name: Upload updater JSON
         if: github.event_name == 'push'
         shell: pwsh
@@ -46,7 +54,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version = "${{ github.ref_name }}" -replace "^v", ""
-          $sigFile = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.sig" | Select-Object -First 1
+          $sigFile = Get-ChildItem "src-tauri/target/release/bundle/nsis/" -Filter "*.sig" | Select-Object -First 1
+          Write-Host "Sig file found: $($sigFile.FullName)"
           if ($sigFile) {
             $sig = (Get-Content $sigFile.FullName -Raw).Trim()
             $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Rush%20ID_${version}_x64-setup.exe"
