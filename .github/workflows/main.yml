@@ -39,6 +39,36 @@ jobs:
           prerelease: false
           includeDebug: false
 
+      - name: Upload updater JSON
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ github.ref_name }}" -replace "^v", ""
+          $sigFile = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.sig" | Select-Object -First 1
+          if ($sigFile) {
+            $sig = (Get-Content $sigFile.FullName -Raw).Trim()
+            $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Rush%20ID_${version}_x64-setup.exe"
+            $pubDate = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+            $json = @{
+              version = "v$version"
+              notes = "See the release notes for details."
+              pub_date = $pubDate
+              platforms = @{
+                "windows-x86_64" = @{
+                  signature = $sig
+                  url = $url
+                }
+              }
+            } | ConvertTo-Json -Depth 10
+            $json | Set-Content "latest.json"
+            gh release upload "${{ github.ref_name }}" latest.json --clobber
+            Write-Host "latest.json uploaded successfully"
+          } else {
+            Write-Host "No .sig file found — skipping latest.json"
+          }
+
       - name: Upload artifacts (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4.6.2
