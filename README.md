@@ -46,13 +46,7 @@ npm run tauri build
 
 Produces MSI and NSIS installers in `src-tauri/target/release/bundle/`.
 
-For signed builds (required for auto-updater), set the signing env vars:
-
-```bash
-TAURI_SIGNING_PRIVATE_KEY_PATH=./tauri-updater-key.json \
-TAURI_SIGNING_PASSWORD=rushid-updater-key \
-npm run tauri build
-```
+For signed builds (required for auto-updater), set the signing key and password as env vars before building (ask the team for the password).
 
 ## Release
 

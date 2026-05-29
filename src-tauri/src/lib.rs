@@ -16,9 +16,21 @@ struct Config {
 }
 
 fn resource_dir(app: &tauri::AppHandle) -> PathBuf {
-    app.path().resource_dir().unwrap_or_else(|_| {
+    let dir = app.path().resource_dir().unwrap_or_else(|_| {
         std::env::current_dir().unwrap_or_default()
-    })
+    });
+
+    if cfg!(debug_assertions) {
+        let mut candidate = dir.clone();
+        for _ in 0..3 {
+            candidate.pop();
+            if candidate.join("tauri.conf.json").exists() {
+                return candidate;
+            }
+        }
+    }
+
+    dir
 }
 
 fn data_dir(app: &tauri::AppHandle) -> PathBuf {
@@ -44,6 +56,18 @@ fn normalize_path(path: &PathBuf) -> PathBuf {
         }
     }
     normalized
+}
+
+fn parse_svg_height(svg: &str) -> f64 {
+    if let Some(start) = svg.find("height=\"") {
+        let rest = &svg[start + 8..];
+        if let Some(end) = rest.find("mm") {
+            if let Ok(h) = rest[..end].trim().parse::<f64>() {
+                return h.max(1.0);
+            }
+        }
+    }
+    297.0
 }
 
 fn patch_svg_path(app: &tauri::AppHandle, svg_path: &str) -> Result<PathBuf, String> {
@@ -367,12 +391,12 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         let slot_with_y = format!("{} y=\"{:.1}mm\"{}", &slot[..insert_at], y_mm, &slot[insert_at..]);
 
         inner.push_str(&slot_with_y);
-        y_mm += 297.0;
+        y_mm += parse_svg_height(&raw);
     }
 
     let composite = format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="210mm" height="891mm">{}</svg>"#,
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="210mm" height="{:.1}mm">{}</svg>"#, y_mm,
         inner
     );
 
@@ -430,7 +454,6 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
 pub fn run() {
     cleanup_temp_pdfs();
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

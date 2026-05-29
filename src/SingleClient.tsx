@@ -2,27 +2,10 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, X, ChevronDown } from "lucide-react";
-import type { SvgTemplate } from "./types";
-import { cn } from "./lib/utils";
+import type { SvgTemplate, LogEntry } from "./types";
+import { cn, COLORS, fmt, compositeOnColor } from "./lib/utils";
 
 type Step = "select" | "crop" | "done";
-
-interface LogEntry {
-  time: string;
-  text: string;
-}
-
-function fmt() {
-  return new Date().toLocaleTimeString();
-}
-
-const COLORS = [
-  { label: "White", value: "#ffffff" },
-  { label: "Blue", value: "#2563eb" },
-  { label: "Red", value: "#dc2626" },
-  { label: "Yellow", value: "#eab308" },
-  { label: "Gray", value: "#6b7280" },
-];
 
 export default function SingleClient() {
   const [step, setStep] = useState<Step>("select");
@@ -45,7 +28,6 @@ export default function SingleClient() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const log = useCallback((text: string) => {
@@ -162,29 +144,6 @@ export default function SingleClient() {
 
   function handleCropComplete(_: Area, pixels: Area) {
     setCroppedAreaPixels(pixels);
-  }
-
-  function compositeOnColor(base64: string, color: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext("2d")!;
-        ctx.fillStyle = color;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-        canvas.toBlob((blob) => {
-          if (!blob) { reject(new Error("Canvas toBlob failed")); return; }
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        }, "image/png");
-      };
-      img.onerror = () => reject(new Error("Failed to load image"));
-      img.src = "data:image/png;base64," + base64;
-    });
   }
 
   async function handleColorChange(color: string) {
@@ -321,7 +280,6 @@ export default function SingleClient() {
 
         {step === "select" && (
           <div
-            ref={dropRef}
             onClick={() => fileInputRef.current?.click()}
             className={cn(
               "border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-200 bg-[#1a1a18]",

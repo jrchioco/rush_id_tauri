@@ -2,25 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X } from "lucide-react";
-import type { SvgTemplate } from "./types";
-import { cn } from "./lib/utils";
-
-const COLORS = [
-  { label: "White", value: "#ffffff" },
-  { label: "Blue", value: "#2563eb" },
-  { label: "Red", value: "#dc2626" },
-  { label: "Yellow", value: "#eab308" },
-  { label: "Gray", value: "#6b7280" },
-];
-
-interface LogEntry {
-  time: string;
-  text: string;
-}
-
-function fmt() {
-  return new Date().toLocaleTimeString();
-}
+import type { SvgTemplate, LogEntry } from "./types";
+import { cn, COLORS, fmt, compositeOnColor } from "./lib/utils";
 
 interface SlotData {
   step: "empty" | "crop" | "done";
@@ -75,34 +58,13 @@ function cropImage(imgSrc: string, area: Area): Promise<string> {
   });
 }
 
-function compositeOnColor(base64: string, color: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = color;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob((b) => {
-        if (!b) { reject(new Error("toBlob failed")); return; }
-        const r = new FileReader();
-        r.onload = () => resolve(r.result as string);
-        r.readAsDataURL(b);
-      }, "image/png");
-    };
-    img.onerror = () => reject(new Error("Failed to load image"));
-    img.src = "data:image/png;base64," + base64;
-  });
-}
-
 export default function MultiClient() {
   const [slots, setSlots] = useState<SlotData[]>(() =>
     Array.from({ length: 3 }, (_, i) => freshSlot(i))
   );
   const [templates, setTemplates] = useState<SvgTemplate[]>([]);
+  const multiTemplates = templates.filter((t) => t.key.startsWith("multi_"));
+  const displayTemplates = multiTemplates.length > 0 ? multiTemplates : templates;
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [activeKeyIndex, setActiveKeyIndex] = useState(0);
   const [keyCount, setKeyCount] = useState(0);
@@ -124,11 +86,13 @@ export default function MultiClient() {
   useEffect(() => {
     invoke<SvgTemplate[]>("get_svg_templates").then((t) => {
       setTemplates(t);
-      if (t.length > 0) {
+      const multi = t.filter((x) => x.key.startsWith("multi_"));
+      const fallback = multi.length > 0 ? multi[0] : t[0];
+      if (fallback) {
         setSlots((prev) =>
           prev.map((s) => ({
             ...s,
-            selectedTemplate: s.selectedTemplate || t[0].path,
+            selectedTemplate: s.selectedTemplate || fallback.path,
           }))
         );
       }
@@ -232,8 +196,10 @@ export default function MultiClient() {
   }
 
   async function handleComposite(savePath?: string) {
-    const done = slots.filter((s) => s.step === "done");
+    const done = slotsRef.current.filter((s) => s.step === "done");
     if (done.length === 0) return;
+    const missing = done.find((s) => !s.selectedTemplate);
+    if (missing) { log("✗ No template selected for one or more slots"); setBusy(false); return; }
     setBusy(true);
     log("Compositing multi-client PDF...");
     try {
@@ -262,7 +228,7 @@ export default function MultiClient() {
   }
 
   function handleSlotColorChange(i: number, color: string) {
-    const slot = slots[i];
+    const slot = slotsRef.current[i];
     if (!slot.rawBase64) return;
     if (color === slot.bgColor) return;
     updateSlot(i, { bgColor: color });
@@ -443,7 +409,7 @@ export default function MultiClient() {
                     onChange={(e) => updateSlot(i, { selectedTemplate: e.target.value })}
                     className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1 text-xs text-[#e8e4da] font-mono focus:outline-none focus:border-[#c8881a]"
                   >
-                    {templates.map((t) => (
+                    {displayTemplates.map((t) => (
                       <option key={t.key} value={t.path}>{t.name}</option>
                     ))}
                   </select>

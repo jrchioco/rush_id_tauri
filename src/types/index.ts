@@ -3,3 +3,8 @@ export interface SvgTemplate {
   path: string;
   name: string;
 }
+
+export interface LogEntry {
+  time: string;
+  text: string;
+}
