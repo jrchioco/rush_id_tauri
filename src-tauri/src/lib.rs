@@ -372,7 +372,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
 
     let composite = format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-{}"#,
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="210mm" height="891mm">{}</svg>"#,
         inner
     );
 
