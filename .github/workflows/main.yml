@@ -12,10 +12,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v4
         with:
           node-version: lts/*
 
@@ -25,37 +25,19 @@ jobs:
       - name: Install frontend deps
         run: npm install
 
-      - name: Build & Release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build + sign app
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PASSWORD }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Rush ID ${{ github.ref_name }}"
-          releaseBody: "See the assets below to download the installer."
-          releaseDraft: false
-          prerelease: false
-          includeDebug: false
+        run: npm run tauri build
 
-      - name: Debug sig files
+      - name: Generate latest.json
         if: github.event_name == 'push'
         shell: pwsh
-        run: |
-          Write-Host "Working dir: $(Get-Location)"
-          Write-Host "=== NSIS bundle ==="
-          Get-ChildItem "src-tauri/target/release/bundle/nsis/" | ForEach-Object { Write-Host $_.FullName }
-
-      - name: Upload updater JSON
-        if: github.event_name == 'push'
-        shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version = "${{ github.ref_name }}" -replace "^v", ""
           $sigFile = Get-ChildItem "src-tauri/target/release/bundle/nsis/" -Filter "*.sig" | Select-Object -First 1
-          Write-Host "Sig file found: $($sigFile.FullName)"
           if ($sigFile) {
             $sig = (Get-Content $sigFile.FullName -Raw).Trim()
             $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Rush%20ID_${version}_x64-setup.exe"
@@ -72,15 +54,29 @@ jobs:
               }
             } | ConvertTo-Json -Depth 10
             $json | Set-Content "latest.json"
-            gh release upload "${{ github.ref_name }}" latest.json --clobber
-            Write-Host "latest.json uploaded successfully"
+            Write-Host "latest.json generated"
           } else {
-            Write-Host "No .sig file found — skipping latest.json"
+            Write-Host "No .sig file found"
           }
+
+      - name: Create release & upload assets (tag push)
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" `
+            --title "Rush ID ${{ github.ref_name }}" `
+            --notes "See the assets below to download the installer."
+
+          gh release upload "${{ github.ref_name }}" `
+            src-tauri/target/release/bundle/msi/*.msi `
+            src-tauri/target/release/bundle/nsis/*.exe `
+            latest.json
 
       - name: Upload artifacts (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         with:
           name: rush-id-windows
           path: |
