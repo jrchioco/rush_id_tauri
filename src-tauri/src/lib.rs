@@ -308,6 +308,124 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, 
     Ok("PDF opened in viewer. Press Ctrl+P to print.".to_string())
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ClientSlot {
+    image_base64: String,
+    svg_path: String,
+}
+
+#[tauri::command]
+fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, save_path: Option<String>) -> Result<String, String> {
+    let config = load_config(&app_handle)?;
+    let d = data_dir(&app_handle);
+    let tmp_dir = d.join("tmp");
+    fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
+
+    for (i, client) in clients.iter().enumerate() {
+        let pic_name = format!("client_{}.png", i);
+        let pic_path = d.join(&pic_name);
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(&client.image_base64)
+            .map_err(|e| format!("Base64 decode error for client {}: {}", i, e))?;
+        fs::write(&pic_path, &bytes).map_err(|e| format!("Failed to write {}: {}", pic_name, e))?;
+
+        let svg_raw = fs::read_to_string(&client.svg_path)
+            .map_err(|e| format!("Failed to read SVG for client {}: {}", i, e))?;
+        let patched = svg_raw.replace("../picture.png", &format!("../client_{}.png", i));
+
+        let temp_svg = tmp_dir.join(format!("client_{}.svg", i));
+        fs::write(&temp_svg, &patched).map_err(|e| format!("Failed to write client SVG {}: {}", i, e))?;
+    }
+
+    let mut inner = String::new();
+    let mut y_mm = 0.0_f64;
+
+    for i in 0..clients.len() {
+        let temp_svg = tmp_dir.join(format!("client_{}.svg", i));
+        let raw = fs::read_to_string(&temp_svg)
+            .map_err(|e| format!("Failed to read patched SVG: {}", e))?;
+
+        let mut slot = raw.trim().to_string();
+        while let Some(cs) = slot.find("<!--") {
+            if let Some(ce) = slot[cs..].find("-->") {
+                slot.drain(cs..=cs + ce + 2);
+            } else {
+                break;
+            }
+        }
+        if let Some(start) = slot.find("<?xml") {
+            if let Some(end) = slot[start..].find("?>") {
+                slot.drain(start..=start + end + 2);
+            }
+        }
+
+        let open_tag = slot.find("<svg").unwrap_or(0);
+        let after_open = &slot[open_tag..];
+        let close_angle = after_open.find('>').unwrap_or(0);
+        let insert_at = open_tag + close_angle;
+        let slot_with_y = format!("{} y=\"{:.1}mm\"{}", &slot[..insert_at], y_mm, &slot[insert_at..]);
+
+        inner.push_str(&slot_with_y);
+        y_mm += 297.0;
+    }
+
+    let composite = format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+{}"#,
+        inner
+    );
+
+    let composite_path = tmp_dir.join("composite_multi.svg");
+    fs::write(&composite_path, &composite).map_err(|e| format!("Failed to write composite SVG: {}", e))?;
+
+    let pdf_path = match save_path {
+        Some(ref path) => {
+            let p = PathBuf::from(path);
+            let with_ext = if p.extension().map_or(true, |e| e != "pdf") {
+                p.with_extension("pdf")
+            } else {
+                p
+            };
+            with_ext
+        }
+        None => {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+            std::env::temp_dir().join(format!("rush_id_print_{}.pdf", ts))
+        }
+    };
+
+    let output = Command::new(&config.inkscape_path)
+        .arg("--export-filename")
+        .arg(&pdf_path)
+        .arg(&composite_path)
+        .output()
+        .map_err(|e| format!("Failed to run Inkscape: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Inkscape error: {}", stderr));
+    }
+
+    if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(["/C", "start", "", &pdf_path.to_string_lossy().to_string()])
+            .spawn()
+            .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
+    } else {
+        Command::new("xdg-open")
+            .arg(&pdf_path)
+            .spawn()
+            .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
+    }
+
+    let msg = if save_path.is_some() { "PDF saved" } else { "Composite PDF opened in viewer. Press Ctrl+P to print." };
+    Ok(msg.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     cleanup_temp_pdfs();
@@ -324,6 +442,7 @@ pub fn run() {
             write_picture,
             export_pdf,
             print_file,
+            composite_multi_pdf,
             get_key_count,
             open_file,
             check_inkscape_default,
