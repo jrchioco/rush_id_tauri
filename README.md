@@ -1,5 +1,7 @@
 # Rush ID
 
+This project is source-available, not open source. See the [LICENSE](LICENSE) file for details.
+
 Crop ID photos, remove backgrounds via the RemoveBG API, overlay onto SVG templates, then print or export PDF.
 
 Built with **Tauri v2 + React 19 + TypeScript + Tailwind CSS**.
