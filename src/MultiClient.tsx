@@ -38,6 +38,26 @@ function freshSlot(i: number): SlotData {
   };
 }
 
+function readFileAsDataUrl(filePath: string): Promise<{ dataUrl: string; fileName: string }> {
+  return new Promise((resolve, reject) => {
+    const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+    const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+    import("@tauri-apps/plugin-fs").then(({ readFile }) => {
+      readFile(filePath).then((bytes) => {
+        let binary = "";
+        const chunk = 8192;
+        for (let i = 0; i < bytes.length; i += chunk)
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        const base64 = btoa(binary);
+        resolve({
+          dataUrl: `data:${mimeType};base64,${base64}`,
+          fileName: filePath.split("/").pop() ?? filePath,
+        });
+      }).catch(reject);
+    }).catch(reject);
+  });
+}
+
 function cropImage(imgSrc: string, area: Area): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -116,30 +136,38 @@ export default function MultiClient() {
       listen("tauri://drag-drop", (event: any) => {
         const paths: string[] = event.payload.paths;
         if (!paths?.length) return;
-        const filePath = paths[0];
-        const ext = filePath.split(".").pop()?.toLowerCase();
         const validExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
-        if (!validExts.includes(ext ?? "")) { setError("Please drop an image file"); return; }
-        const current = slotsRef.current;
-        const emptyIdx = current.findIndex((s) => s.step === "empty");
-        if (emptyIdx === -1) { setError("All slots are full"); return; }
-        import("@tauri-apps/plugin-fs").then(({ readFile }) => {
-          readFile(filePath).then((bytes) => {
-            const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
-            let binary = "";
-            const chunk = 8192;
-            for (let i = 0; i < bytes.length; i += chunk)
-              binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-            const base64 = btoa(binary);
-            const dataUrl = `data:${mimeType};base64,${base64}`;
-            setSlots((prev) => {
-              const next = [...prev];
-              next[emptyIdx] = { ...next[emptyIdx], originalImage: dataUrl, step: "crop", crop: { x: 0, y: 0 }, zoom: 1, error: null };
-              return next;
-            });
-            logRef.current(`${LABELS[emptyIdx]}: ${filePath.split("/").pop() ?? filePath}`);
-          }).catch((e) => setError(`Read error: ${e}`));
+        const imagePaths = paths.filter((p) => {
+          const ext = p.split(".").pop()?.toLowerCase();
+          return validExts.includes(ext ?? "");
         });
+        if (imagePaths.length === 0) { setError("No valid image files dropped"); return; }
+        const current = slotsRef.current;
+        const emptyIndices = current
+          .map((s, i) => s.step === "empty" ? i : -1)
+          .filter((i) => i !== -1);
+        if (emptyIndices.length === 0) { setError("All slots are full"); return; }
+        const toFill = imagePaths.slice(0, emptyIndices.length);
+        if (toFill.length < imagePaths.length) {
+          setError(`${imagePaths.length - toFill.length} image(s) skipped — not enough empty slots`);
+        }
+        Promise.all(toFill.map(readFileAsDataUrl)).then((results) => {
+          setSlots((prev) => {
+            const next = [...prev];
+            results.forEach((r, idx) => {
+              next[emptyIndices[idx]] = {
+                ...next[emptyIndices[idx]],
+                originalImage: r.dataUrl,
+                step: "crop",
+                crop: { x: 0, y: 0 },
+                zoom: 1,
+                error: null,
+              };
+            });
+            return next;
+          });
+          results.forEach((r, idx) => logRef.current(`${LABELS[emptyIndices[idx]]}: ${r.fileName}`));
+        }).catch((e) => setError(`Read error: ${e}`));
       }).then((fn) => (ud = fn));
     });
     return () => { ud?.(); };
