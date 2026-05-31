@@ -19,7 +19,8 @@ interface SlotData {
   name: string;
 }
 
-const LABELS = ["Client A", "Client B", "Client C"];
+const SLOT_COUNT = 5;
+const LABELS = ["Client A", "Client B", "Client C", "Client D", "Client E"];
 
 function freshSlot(i: number): SlotData {
   return {
@@ -60,7 +61,7 @@ function cropImage(imgSrc: string, area: Area): Promise<string> {
 
 export default function MultiClient() {
   const [slots, setSlots] = useState<SlotData[]>(() =>
-    Array.from({ length: 3 }, (_, i) => freshSlot(i))
+    Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i))
   );
   const [templates, setTemplates] = useState<SvgTemplate[]>([]);
   const multiTemplates = templates.filter((t) => t.key.startsWith("multi_"));
@@ -247,7 +248,7 @@ export default function MultiClient() {
   }
 
   function handleResetAll() {
-    setSlots(Array.from({ length: 3 }, (_, i) => freshSlot(i)));
+    setSlots(Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)));
     setLogs([]);
     setError(null);
   }
@@ -256,7 +257,7 @@ export default function MultiClient() {
     fileInputRefs.current[i]?.click();
   }
 
-  const allDone = slots.every((s) => s.step === "done");
+  const anyDone = slots.some((s) => s.step === "done");
   const anyCrop = slots.some((s) => s.step === "crop" && s.croppedAreaPixels);
 
   return (
@@ -271,7 +272,7 @@ export default function MultiClient() {
         )}
 
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">Batch — 3 Slots</h2>
+          <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">Batch — {SLOT_COUNT} Slots</h2>
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-1.5 cursor-pointer select-none">
               <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">{testMode ? "Test" : "Live"}</span>
@@ -422,7 +423,7 @@ export default function MultiClient() {
           </div>
         ))}
 
-        {allDone && (
+        {anyDone && (
           <div className="flex gap-3">
             <button
               onClick={handleSavePdf}
@@ -468,7 +469,7 @@ export default function MultiClient() {
           <div className="border-t border-[#2a2a28] p-3 grid grid-cols-2 gap-2">
             {[
               { label: "API KEY", value: `Key ${activeKeyIndex + 1}/${keyCount}`, accent: true },
-              { label: "SLOTS", value: `${slots.filter(s => s.step !== "empty").length}/3`, accent: false },
+              { label: "SLOTS", value: `${slots.filter(s => s.step !== "empty").length}/${SLOT_COUNT}`, accent: false },
             ].map(({ label, value, accent }) => (
               <div key={label} className="bg-[#111110] border border-[#2a2a28] rounded-md p-2">
                 <div className="text-[9px] text-[#444] font-mono tracking-widest uppercase mb-1">{label}</div>
