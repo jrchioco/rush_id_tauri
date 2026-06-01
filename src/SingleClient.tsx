@@ -117,6 +117,13 @@ export default function SingleClient() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  const handleCropperWheel = useCallback((e: React.WheelEvent) => {
+    if (e.shiftKey) {
+      e.preventDefault();
+      setRotation((r) => Math.max(-90, Math.min(90, r - Math.sign(e.deltaY))));
+    }
+  }, []);
+
   async function handleColorChange(color: string) {
     if (!rawBase64) return;
     if (color === bgColor) return;
@@ -283,6 +290,8 @@ export default function SingleClient() {
                   zoom={zoom}
                   rotation={rotation}
                   aspect={1}
+                  onWheelRequest={(e) => e.ctrlKey || e.metaKey}
+                  cropperProps={{ onWheel: handleCropperWheel }}
                   onCropChange={setCrop}
                   onZoomChange={setZoom}
                   onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}

@@ -133,6 +133,17 @@ export default function MultiClient() {
       .catch((e) => setError(`Read error: ${e}`));
   });
 
+  const handleSlotCropperWheel = useCallback(
+    (i: number) => (e: React.WheelEvent) => {
+      if (e.shiftKey) {
+        e.preventDefault();
+        const current = slotsRef.current[i].rotation;
+        updateSlot(i, { rotation: Math.max(-90, Math.min(90, current - Math.sign(e.deltaY))) });
+      }
+    },
+    [],
+  );
+
   function updateSlot(i: number, p: Partial<SlotData>) {
     setSlots((prev) => {
       const next = [...prev];
@@ -384,6 +395,8 @@ export default function MultiClient() {
                       zoom={slot.zoom}
                       rotation={slot.rotation}
                       aspect={1}
+                      onWheelRequest={(e) => e.ctrlKey || e.metaKey}
+                      cropperProps={{ onWheel: handleSlotCropperWheel(i) }}
                       onCropChange={(c) => updateSlot(i, { crop: c })}
                       onZoomChange={(z) => updateSlot(i, { zoom: z })}
                       onCropComplete={(_: Area, pixels: Area) =>
