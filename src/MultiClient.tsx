@@ -395,6 +395,7 @@ export default function MultiClient() {
                       zoom={slot.zoom}
                       rotation={slot.rotation}
                       aspect={1}
+                      zoomSpeed={0.2}
                       onWheelRequest={(e) => e.ctrlKey || e.metaKey}
                       cropperProps={{ onWheel: handleSlotCropperWheel(i) }}
                       onCropChange={(c) => updateSlot(i, { crop: c })}

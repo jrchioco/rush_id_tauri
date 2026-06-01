@@ -290,6 +290,7 @@ export default function SingleClient() {
                   zoom={zoom}
                   rotation={rotation}
                   aspect={1}
+                  zoomSpeed={0.2}
                   onWheelRequest={(e) => e.ctrlKey || e.metaKey}
                   cropperProps={{ onWheel: handleCropperWheel }}
                   onCropChange={setCrop}
