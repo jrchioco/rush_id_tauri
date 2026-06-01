@@ -327,22 +327,24 @@ export default function SingleClient() {
             <div className="flex min-h-[500px] bg-[#0c0c0b]">
               <div className="w-14 flex-shrink-0 flex flex-col items-center justify-between py-3 border-r border-[#2a2a28] bg-[#111110]">
                 <span className="text-xs font-mono text-[#c8881a] font-semibold">{rotation}°</span>
-                <input
-                  type="range"
-                  min={-180}
-                  max={180}
-                  step={1}
-                  value={rotation}
-                  onChange={(e) => setRotation(Number(e.target.value))}
-                  className="accent-[#c8881a] cursor-pointer"
-                  style={{
-                    writingMode: 'vertical-lr',
-                    width: '16px',
-                    flex: 1,
-                    margin: '8px 0',
-                    padding: 0,
-                  }}
-                />
+                <div className="flex-1 flex items-center justify-center w-full overflow-hidden">
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    step={1}
+                    value={rotation}
+                    onChange={(e) => setRotation(Number(e.target.value))}
+                    className="accent-[#c8881a] cursor-pointer"
+                    style={{
+                      transform: 'rotate(-90deg)',
+                      width: '260px',
+                      margin: 0,
+                      padding: 0,
+                      flexShrink: 0,
+                    }}
+                  />
+                </div>
                 <div className="flex flex-col gap-1">
                   <button
                     onClick={() => setRotation((r) => r - 1)}

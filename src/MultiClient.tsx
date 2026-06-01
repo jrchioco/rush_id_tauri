@@ -392,20 +392,22 @@ export default function MultiClient() {
                 <div className="flex min-h-[360px] bg-[#0c0c0b]">
                   <div className="w-12 flex-shrink-0 flex flex-col items-center justify-between py-2 border-r border-[#2a2a28] bg-[#111110]">
                     <span className="text-[10px] font-mono text-[#c8881a] font-semibold">{slot.rotation}°</span>
-                    <input
-                      type="range"
-                      min={-180} max={180} step={1}
-                      value={slot.rotation}
-                      onChange={(e) => updateSlot(i, { rotation: Number(e.target.value) })}
-                      className="accent-[#c8881a] cursor-pointer"
-                      style={{
-                        writingMode: 'vertical-lr',
-                        width: '14px',
-                        flex: 1,
-                        margin: '6px 0',
-                        padding: 0,
-                      }}
-                    />
+                    <div className="flex-1 flex items-center justify-center w-full overflow-hidden">
+                      <input
+                        type="range"
+                        min={-180} max={180} step={1}
+                        value={slot.rotation}
+                        onChange={(e) => updateSlot(i, { rotation: Number(e.target.value) })}
+                        className="accent-[#c8881a] cursor-pointer"
+                        style={{
+                          transform: 'rotate(-90deg)',
+                          width: '220px',
+                          margin: 0,
+                          padding: 0,
+                          flexShrink: 0,
+                        }}
+                      />
+                    </div>
                     <div className="flex flex-col gap-0.5">
                       <button
                         onClick={() => updateSlot(i, { rotation: slot.rotation - 1 })}
