@@ -391,11 +391,21 @@ export default function MultiClient() {
               <>
                 <div className="flex min-h-[360px] bg-[#0c0c0b]">
                   <div className="w-12 flex-shrink-0 flex flex-col items-center justify-between py-2 border-r border-[#2a2a28] bg-[#111110]">
-                    <span className="text-[10px] font-mono text-[#c8881a] font-semibold">{slot.rotation}°</span>
+                    <input
+                      type="number"
+                      min={-90} max={90}
+                      value={slot.rotation}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        if (!isNaN(v)) updateSlot(i, { rotation: Math.max(-90, Math.min(90, v)) });
+                      }}
+                      className="w-9 bg-transparent text-[10px] font-mono text-[#c8881a] font-semibold text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none outline-none focus:border-b focus:border-[#c8881a]"
+                    />
+                    <span className="text-[10px] font-mono text-[#c8881a] font-semibold">°</span>
                     <div className="flex-1 flex items-center justify-center w-full overflow-hidden">
                       <input
                         type="range"
-                        min={-180} max={180} step={1}
+                        min={-90} max={90} step={1}
                         value={slot.rotation}
                         onChange={(e) => updateSlot(i, { rotation: Number(e.target.value) })}
                         className="accent-[#c8881a] cursor-pointer"
