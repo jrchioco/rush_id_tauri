@@ -26,6 +26,7 @@ export default function SingleClient() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [rotation, setRotation] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -62,6 +63,7 @@ export default function SingleClient() {
       setStep("crop");
       setCrop({ x: 0, y: 0 });
       setZoom(1);
+      setRotation(0);
       setError(null);
       log(`Loaded: ${file.name}`);
     };
@@ -109,6 +111,7 @@ export default function SingleClient() {
             setStep("crop");
             setCrop({ x: 0, y: 0 });
             setZoom(1);
+            setRotation(0);
             setError(null);
             log(`Loaded: ${filePath.split("/").pop() ?? filePath}`);
           }).catch((e) => {
@@ -171,13 +174,28 @@ export default function SingleClient() {
       img.src = originalImage;
       await new Promise((r) => (img.onload = r));
 
+      const rotRad = (rotation * Math.PI) / 180;
+      const cos = Math.abs(Math.cos(rotRad));
+      const sin = Math.abs(Math.sin(rotRad));
+      const rotW = Math.ceil(img.width * cos + img.height * sin);
+      const rotH = Math.ceil(img.width * sin + img.height * cos);
+
+      const rotCanvas = document.createElement("canvas");
+      rotCanvas.width = rotW;
+      rotCanvas.height = rotH;
+      const rotCtx = rotCanvas.getContext("2d")!;
+      rotCtx.translate(rotW / 2, rotH / 2);
+      rotCtx.rotate(rotRad);
+      rotCtx.translate(-img.width / 2, -img.height / 2);
+      rotCtx.drawImage(img, 0, 0);
+
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d")!;
       canvas.width = croppedAreaPixels.width;
       canvas.height = croppedAreaPixels.height;
 
       ctx.drawImage(
-        img,
+        rotCanvas,
         croppedAreaPixels.x,
         croppedAreaPixels.y,
         croppedAreaPixels.width,
@@ -247,6 +265,7 @@ export default function SingleClient() {
     setResultPath(null);
     setRawBase64(null);
     setBgColor("#ffffff");
+    setRotation(0);
     setError(null);
   }
 
@@ -305,16 +324,52 @@ export default function SingleClient() {
 
         {step === "crop" && originalImage && (
           <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
-            <div className="relative h-[500px] bg-[#0c0c0b]">
-              <Cropper
-                image={originalImage}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={handleCropComplete}
-              />
+            <div className="flex min-h-[500px] bg-[#0c0c0b]">
+              <div className="w-14 flex-shrink-0 flex flex-col items-center justify-between py-3 border-r border-[#2a2a28] bg-[#111110]">
+                <span className="text-xs font-mono text-[#c8881a] font-semibold">{rotation}°</span>
+                <input
+                  type="range"
+                  min={-180}
+                  max={180}
+                  step={1}
+                  value={rotation}
+                  onChange={(e) => setRotation(Number(e.target.value))}
+                  className="accent-[#c8881a] cursor-pointer"
+                  style={{
+                    writingMode: 'vertical-lr',
+                    width: '16px',
+                    flex: 1,
+                    margin: '8px 0',
+                    padding: 0,
+                  }}
+                />
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => setRotation((r) => r - 1)}
+                    className="w-8 h-6 bg-[#1a1a18] border border-[#2a2a28] rounded text-[10px] text-[#555] hover:text-[#e8e4da] hover:border-[#c8881a] transition-colors font-mono"
+                  >
+                    −1
+                  </button>
+                  <button
+                    onClick={() => setRotation((r) => r + 1)}
+                    className="w-8 h-6 bg-[#1a1a18] border border-[#2a2a28] rounded text-[10px] text-[#555] hover:text-[#e8e4da] hover:border-[#c8881a] transition-colors font-mono"
+                  >
+                    +1
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 relative">
+                <Cropper
+                  image={originalImage}
+                  crop={crop}
+                  zoom={zoom}
+                  rotation={rotation}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={handleCropComplete}
+                />
+              </div>
             </div>
             <div className="p-4 flex items-center gap-4 border-t border-[#2a2a28]">
               <label className="text-xs text-[#555] font-mono">Zoom</label>

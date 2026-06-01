@@ -10,6 +10,7 @@ interface SlotData {
   originalImage: string | null;
   crop: { x: number; y: number };
   zoom: number;
+  rotation: number;
   croppedAreaPixels: Area | null;
   rawBase64: string | null;
   resultPath: string | null;
@@ -28,6 +29,7 @@ function freshSlot(i: number): SlotData {
     originalImage: null,
     crop: { x: 0, y: 0 },
     zoom: 1,
+    rotation: 0,
     croppedAreaPixels: null,
     rawBase64: null,
     resultPath: null,
@@ -58,15 +60,30 @@ function readFileAsDataUrl(filePath: string): Promise<{ dataUrl: string; fileNam
   });
 }
 
-function cropImage(imgSrc: string, area: Area): Promise<string> {
+function cropImage(imgSrc: string, area: Area, rotation = 0): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
+      const rotRad = (rotation * Math.PI) / 180;
+      const cos = Math.abs(Math.cos(rotRad));
+      const sin = Math.abs(Math.sin(rotRad));
+      const rotW = Math.ceil(img.width * cos + img.height * sin);
+      const rotH = Math.ceil(img.width * sin + img.height * cos);
+
+      const rotCanvas = document.createElement("canvas");
+      rotCanvas.width = rotW;
+      rotCanvas.height = rotH;
+      const rotCtx = rotCanvas.getContext("2d")!;
+      rotCtx.translate(rotW / 2, rotH / 2);
+      rotCtx.rotate(rotRad);
+      rotCtx.translate(-img.width / 2, -img.height / 2);
+      rotCtx.drawImage(img, 0, 0);
+
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d")!;
       canvas.width = area.width;
       canvas.height = area.height;
-      ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, area.width, area.height);
+      ctx.drawImage(rotCanvas, area.x, area.y, area.width, area.height, 0, 0, area.width, area.height);
       canvas.toBlob((b) => {
         if (!b) { reject(new Error("toBlob failed")); return; }
         const r = new FileReader();
@@ -161,6 +178,7 @@ export default function MultiClient() {
                 step: "crop",
                 crop: { x: 0, y: 0 },
                 zoom: 1,
+                rotation: 0,
                 error: null,
               };
             });
@@ -185,7 +203,7 @@ export default function MultiClient() {
     if (!file.type.startsWith("image/")) return;
     const reader = new FileReader();
     reader.onload = () => {
-      updateSlot(i, { originalImage: reader.result as string, step: "crop", crop: { x: 0, y: 0 }, zoom: 1, error: null });
+      updateSlot(i, { originalImage: reader.result as string, step: "crop", crop: { x: 0, y: 0 }, zoom: 1, rotation: 0, error: null });
       log(`${LABELS[i]}: Loaded ${file.name}`);
     };
     reader.readAsDataURL(file);
@@ -200,7 +218,7 @@ export default function MultiClient() {
     try {
       const bgColors = pending.map(({ i }) => current[i].bgColor);
       const crops = await Promise.all(
-        pending.map(({ s }) => cropImage(s.originalImage!, s.croppedAreaPixels!))
+        pending.map(({ s }) => cropImage(s.originalImage!, s.croppedAreaPixels!, s.rotation || 0))
       );
       const results = testMode
         ? crops
@@ -371,16 +389,50 @@ export default function MultiClient() {
             {/* Crop state — no per-slot Remove BG button */}
             {slot.step === "crop" && slot.originalImage && (
               <>
-                <div className="relative h-[360px] bg-[#0c0c0b]">
-                  <Cropper
-                    image={slot.originalImage}
-                    crop={slot.crop}
-                    zoom={slot.zoom}
-                    aspect={1}
-                    onCropChange={(c) => updateSlot(i, { crop: c })}
-                    onZoomChange={(z) => updateSlot(i, { zoom: z })}
-                    onCropComplete={(_: Area, pixels: Area) => updateSlot(i, { croppedAreaPixels: pixels })}
-                  />
+                <div className="flex min-h-[360px] bg-[#0c0c0b]">
+                  <div className="w-12 flex-shrink-0 flex flex-col items-center justify-between py-2 border-r border-[#2a2a28] bg-[#111110]">
+                    <span className="text-[10px] font-mono text-[#c8881a] font-semibold">{slot.rotation}°</span>
+                    <input
+                      type="range"
+                      min={-180} max={180} step={1}
+                      value={slot.rotation}
+                      onChange={(e) => updateSlot(i, { rotation: Number(e.target.value) })}
+                      className="accent-[#c8881a] cursor-pointer"
+                      style={{
+                        writingMode: 'vertical-lr',
+                        width: '14px',
+                        flex: 1,
+                        margin: '6px 0',
+                        padding: 0,
+                      }}
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => updateSlot(i, { rotation: slot.rotation - 1 })}
+                        className="w-7 h-5 bg-[#1a1a18] border border-[#2a2a28] rounded text-[9px] text-[#555] hover:text-[#e8e4da] hover:border-[#c8881a] transition-colors font-mono"
+                      >
+                        −1
+                      </button>
+                      <button
+                        onClick={() => updateSlot(i, { rotation: slot.rotation + 1 })}
+                        className="w-7 h-5 bg-[#1a1a18] border border-[#2a2a28] rounded text-[9px] text-[#555] hover:text-[#e8e4da] hover:border-[#c8881a] transition-colors font-mono"
+                      >
+                        +1
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1 relative">
+                    <Cropper
+                      image={slot.originalImage}
+                      crop={slot.crop}
+                      zoom={slot.zoom}
+                      rotation={slot.rotation}
+                      aspect={1}
+                      onCropChange={(c) => updateSlot(i, { crop: c })}
+                      onZoomChange={(z) => updateSlot(i, { zoom: z })}
+                      onCropComplete={(_: Area, pixels: Area) => updateSlot(i, { croppedAreaPixels: pixels })}
+                    />
+                  </div>
                 </div>
                 <div className="p-3 flex items-center gap-3 border-t border-[#2a2a28]">
                   <label className="text-xs text-[#555] font-mono">Zoom</label>
