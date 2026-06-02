@@ -2,7 +2,7 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Component, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use tauri::{Emitter, Manager};
 
@@ -46,7 +46,7 @@ fn load_config(app: &tauri::AppHandle) -> Result<Config, String> {
     serde_json::from_str(&content).map_err(|e| format!("Invalid config.json: {}", e))
 }
 
-fn normalize_path(path: &PathBuf) -> PathBuf {
+fn normalize_path(path: &Path) -> PathBuf {
     let mut normalized = PathBuf::new();
     for component in path.components() {
         match component {
@@ -115,7 +115,7 @@ fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>, inkscape_pat
     if let Ok(entries) = fs::read_dir(res.join("SVGs")) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "svg") {
+            if path.extension().is_some_and(|e| e == "svg") {
                 let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
                 let rel = path.strip_prefix(&res).unwrap_or(&path).to_string_lossy().to_string();
                 svg_files.insert(stem, rel);
@@ -225,7 +225,7 @@ fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String)
     let patched_svg = patch_svg_path(&app_handle, &svg_path)?;
 
     let mut pdf_path = PathBuf::from(&save_path);
-    if pdf_path.extension().map_or(true, |e| e != "pdf") {
+    if pdf_path.extension().is_none_or(|e| e != "pdf") {
         pdf_path.set_extension("pdf");
     }
 
@@ -319,7 +319,7 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, 
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
-            .args(["/C", "start", "", &temp_pdf.to_string_lossy().to_string()])
+            .args(["/C", "start", "", temp_pdf.to_string_lossy().as_ref()])
             .spawn()
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     } else {
@@ -406,7 +406,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
     let pdf_path = match save_path {
         Some(ref path) => {
             let p = PathBuf::from(path);
-            let with_ext = if p.extension().map_or(true, |e| e != "pdf") {
+            let with_ext = if p.extension().is_none_or(|e| e != "pdf") {
                 p.with_extension("pdf")
             } else {
                 p
@@ -436,7 +436,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
-            .args(["/C", "start", "", &pdf_path.to_string_lossy().to_string()])
+            .args(["/C", "start", "", pdf_path.to_string_lossy().as_ref()])
             .spawn()
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     } else {
@@ -444,6 +444,26 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
             .arg(&pdf_path)
             .spawn()
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
+    }
+
+    let _ = fs::remove_file(tmp_dir.join("composite_multi.svg"));
+    if let Ok(entries) = fs::read_dir(&tmp_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("client_") && name_str.ends_with(".svg") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+    if let Ok(entries) = fs::read_dir(&d) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("client_") && name_str.ends_with(".png") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
     }
 
     let msg = if save_path.is_some() { "PDF saved" } else { "Composite PDF opened in viewer. Press Ctrl+P to print." };
