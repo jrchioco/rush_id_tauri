@@ -4,8 +4,10 @@ import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown } from "lucide-react";
 import { cn, fmt, compositeOnColor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
+import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
+import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
@@ -30,7 +32,6 @@ export default function SingleClient() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [rotation, setRotation] = useState(0);
   const [templateOpen, setTemplateOpen] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -51,27 +52,28 @@ export default function SingleClient() {
     }
   }, [templates, selectedTemplate]);
 
-  // NATIVE DRAG & DROP HANDLER (replaces Tauri version)
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    const imageFile = files.find((f) => f.type.startsWith("image/"));
-    if (imageFile) {
-      handleFile(imageFile);
-    } else if (files.length > 0) {
+  const { isDragging } = useTauriDragDrop(async (paths) => {
+    const filePath = paths[0];
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    const validExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
+    if (!validExts.includes(ext ?? "")) {
       setError("Please drop an image file");
+      return;
     }
-  };
+    try {
+      const { dataUrl, fileName } = await readFileAsDataUrl(filePath);
+      setOriginalImage(dataUrl);
+      setStep("crop");
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setRotation(0);
+      setError(null);
+      log(`Loaded: ${fileName}`);
+    } catch (e) {
+      setError(`Failed to read file: ${e}`);
+      log(`Error reading file: ${e}`);
+    }
+  });
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -242,9 +244,6 @@ export default function SingleClient() {
         {step === "select" && (
           <div
             onClick={() => fileInputRef.current?.click()}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
             className={cn(
               "border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-200 bg-[#1a1a18]",
               isDragging
@@ -277,7 +276,6 @@ export default function SingleClient() {
           </div>
         )}
 
-        {/* rest of your crop and done sections unchanged */}
         {step === "crop" && originalImage && (
           <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
             <div className="flex min-h-[500px] bg-[#0c0c0b]">
