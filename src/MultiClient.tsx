@@ -8,6 +8,7 @@ import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
+import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
@@ -58,6 +59,13 @@ export default function MultiClient() {
   const [testMode, setTestMode] = useState(false);
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const cropperWrapRefs = [
+    useCropperWheel({ onRotate: (delta) => updateSlotRotation(0, delta) }),
+    useCropperWheel({ onRotate: (delta) => updateSlotRotation(1, delta) }),
+    useCropperWheel({ onRotate: (delta) => updateSlotRotation(2, delta) }),
+    useCropperWheel({ onRotate: (delta) => updateSlotRotation(3, delta) }),
+    useCropperWheel({ onRotate: (delta) => updateSlotRotation(4, delta) }),
+  ];
 
   const { templates, keyCount } = useTemplates();
   const activeKeyIndex = useKeyUsed();
@@ -133,23 +141,17 @@ export default function MultiClient() {
       .catch((e) => setError(`Read error: ${e}`));
   });
 
-  const handleSlotCropperWheel = useCallback(
-    (i: number) => (e: React.WheelEvent) => {
-      if (e.shiftKey) {
-        e.preventDefault();
-        const current = slotsRef.current[i].rotation;
-        updateSlot(i, { rotation: Math.max(-90, Math.min(90, current - Math.sign(e.deltaY))) });
-      }
-    },
-    [],
-  );
-
   function updateSlot(i: number, p: Partial<SlotData>) {
     setSlots((prev) => {
       const next = [...prev];
       next[i] = { ...next[i], ...p };
       return next;
     });
+  }
+
+  function updateSlotRotation(i: number, delta: number) {
+    const current = slotsRef.current[i].rotation;
+    updateSlot(i, { rotation: Math.max(-90, Math.min(90, current + delta)) });
   }
 
   function handleSlotFile(i: number, file: File) {
@@ -388,7 +390,7 @@ export default function MultiClient() {
                     onChange={(r) => updateSlot(i, { rotation: r })}
                     size="sm"
                   />
-                  <div className="flex-1 relative">
+                  <div ref={cropperWrapRefs[i]} className="flex-1 relative">
                     <Cropper
                       image={slot.originalImage}
                       crop={slot.crop}
@@ -397,7 +399,6 @@ export default function MultiClient() {
                       aspect={1}
                       zoomSpeed={0.2}
                       onWheelRequest={(e) => e.ctrlKey || e.metaKey}
-                      cropperProps={{ onWheel: handleSlotCropperWheel(i) }}
                       onCropChange={(c) => updateSlot(i, { crop: c })}
                       onZoomChange={(z) => updateSlot(i, { zoom: z })}
                       onCropComplete={(_: Area, pixels: Area) =>

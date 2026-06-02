@@ -8,6 +8,7 @@ import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
+import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
@@ -36,6 +37,9 @@ export default function SingleClient() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { templates, keyCount } = useTemplates();
+  const cropperWrapRef = useCropperWheel({
+    onRotate: (delta) => setRotation((r) => Math.max(-90, Math.min(90, r + delta))),
+  });
   const activeKeyIndex = useKeyUsed();
 
   const log = useCallback((text: string) => {
@@ -115,13 +119,6 @@ export default function SingleClient() {
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  const handleCropperWheel = useCallback((e: React.WheelEvent) => {
-    if (e.shiftKey) {
-      e.preventDefault();
-      setRotation((r) => Math.max(-90, Math.min(90, r - Math.sign(e.deltaY))));
-    }
   }, []);
 
   async function handleColorChange(color: string) {
@@ -283,7 +280,7 @@ export default function SingleClient() {
           <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
             <div className="flex min-h-[500px] bg-[#0c0c0b]">
               <RotationSidebar value={rotation} onChange={setRotation} size="lg" />
-              <div className="flex-1 relative">
+              <div ref={cropperWrapRef} className="flex-1 relative">
                 <Cropper
                   image={originalImage}
                   crop={crop}
@@ -292,7 +289,6 @@ export default function SingleClient() {
                   aspect={1}
                   zoomSpeed={0.2}
                   onWheelRequest={(e) => e.ctrlKey || e.metaKey}
-                  cropperProps={{ onWheel: handleCropperWheel }}
                   onCropChange={setCrop}
                   onZoomChange={setZoom}
                   onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
