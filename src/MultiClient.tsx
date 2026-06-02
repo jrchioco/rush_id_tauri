@@ -4,10 +4,8 @@ import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X } from "lucide-react";
 import { cn, fmt, compositeOnColor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
-import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
-import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
@@ -57,6 +55,7 @@ export default function MultiClient() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testMode, setTestMode] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const cropperWrapRefs = [
@@ -93,16 +92,31 @@ export default function MultiClient() {
     );
   }, [templates, multiTemplates]);
 
-  useTauriDragDrop((paths) => {
+  // NATIVE DRAG & DROP HANDLER (replaces Tauri version)
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
     const validExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
-    const imagePaths = paths.filter((p) => {
-      const ext = p.split(".").pop()?.toLowerCase();
+    const imageFiles = files.filter((f) => {
+      const ext = f.name.split(".").pop()?.toLowerCase();
       return validExts.includes(ext ?? "");
     });
-    if (imagePaths.length === 0) {
+
+    if (imageFiles.length === 0) {
       setError("No valid image files dropped");
       return;
     }
+
     const current = slotsRef.current;
     const emptyIndices = current
       .map((s, i) => (s.step === "empty" ? i : -1))
@@ -111,13 +125,25 @@ export default function MultiClient() {
       setError("All slots are full");
       return;
     }
-    const toFill = imagePaths.slice(0, emptyIndices.length);
-    if (toFill.length < imagePaths.length) {
+
+    const toFill = imageFiles.slice(0, emptyIndices.length);
+    if (toFill.length < imageFiles.length) {
       setError(
-        `${imagePaths.length - toFill.length} image(s) skipped — not enough empty slots`,
+        `${imageFiles.length - toFill.length} image(s) skipped — not enough empty slots`,
       );
     }
-    Promise.all(toFill.map(readFileAsDataUrl))
+
+    // Read each file with FileReader
+    const readPromises = toFill.map((file) => {
+      return new Promise<{ dataUrl: string; fileName: string }>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ dataUrl: reader.result as string, fileName: file.name });
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readPromises)
       .then((results) => {
         setSlots((prev) => {
           const next = [...prev];
@@ -139,7 +165,7 @@ export default function MultiClient() {
         );
       })
       .catch((e) => setError(`Read error: ${e}`));
-  });
+  };
 
   function updateSlot(i: number, p: Partial<SlotData>) {
     setSlots((prev) => {
@@ -366,6 +392,9 @@ export default function MultiClient() {
             {slot.step === "empty" && (
               <div
                 onClick={() => clickSlotUpload(i)}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 className="border-2 border-dashed border-[#2a2a28] rounded-lg m-3 p-6 text-center cursor-pointer hover:border-[#c8881a]/50 transition-all bg-[#1a1a18]"
               >
                 <Upload className="w-6 h-6 mx-auto mb-2 text-[#444]" />
