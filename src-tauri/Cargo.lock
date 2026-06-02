@@ -2800,7 +2800,7 @@ dependencies = [
 
 [[package]]
 name = "rush_id_tauri"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "base64 0.22.1",
  "reqwest 0.12.28",

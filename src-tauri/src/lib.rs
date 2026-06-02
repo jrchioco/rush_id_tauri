@@ -370,6 +370,26 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
     let tmp_dir = d.join("tmp");
     fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
 
+    let _ = fs::remove_file(tmp_dir.join("composite_multi.svg"));
+    if let Ok(entries) = fs::read_dir(&tmp_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("client_") && name_str.ends_with(".svg") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+    if let Ok(entries) = fs::read_dir(&d) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("client_") && name_str.ends_with(".png") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+
     for (i, client) in clients.iter().enumerate() {
         let pic_name = format!("client_{}.png", i);
         let pic_path = d.join(&pic_name);
@@ -468,26 +488,6 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
             .arg(&pdf_path)
             .spawn()
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
-    }
-
-    let _ = fs::remove_file(tmp_dir.join("composite_multi.svg"));
-    if let Ok(entries) = fs::read_dir(&tmp_dir) {
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-            if name_str.starts_with("client_") && name_str.ends_with(".svg") {
-                let _ = fs::remove_file(entry.path());
-            }
-        }
-    }
-    if let Ok(entries) = fs::read_dir(&d) {
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-            if name_str.starts_with("client_") && name_str.ends_with(".png") {
-                let _ = fs::remove_file(entry.path());
-            }
-        }
     }
 
     let msg = if save_path.is_some() { "PDF saved" } else { "Composite PDF opened in viewer. Press Ctrl+P to print." };
