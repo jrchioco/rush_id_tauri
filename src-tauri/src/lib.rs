@@ -146,7 +146,31 @@ fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>, inkscape_pat
 
 #[tauri::command]
 fn get_svg_templates(app_handle: tauri::AppHandle) -> Result<Vec<SvgTemplate>, String> {
-    let config = load_config(&app_handle)?;
+    let d = data_dir(&app_handle);
+    let mut config = load_config(&app_handle)?;
+
+    let res = resource_dir(&app_handle);
+    let mut changed = false;
+    if let Ok(entries) = fs::read_dir(res.join("SVGs")) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_some_and(|e| e == "svg") {
+                let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                if !config.svg_files.contains_key(&stem) {
+                    let rel = path.strip_prefix(&res).unwrap_or(&path).to_string_lossy().to_string();
+                    config.svg_files.insert(stem, rel);
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    if changed {
+        if let Ok(json) = serde_json::to_string_pretty(&config) {
+            let _ = fs::write(d.join("config.json"), &json);
+        }
+    }
+
     let mut templates = Vec::new();
     for (key, rel_path) in &config.svg_files {
         let full_path = resolve(&app_handle, rel_path);

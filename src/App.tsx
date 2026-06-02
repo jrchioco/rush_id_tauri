@@ -1,16 +1,18 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, Scan, Layers, Sparkles } from "lucide-react";
+import { X, Scan, Layers, Sparkles, IdCard } from "lucide-react";
 import { cn } from "./lib/utils";
 import SingleClient from "./SingleClient";
 import MultiClient from "./MultiClient";
 import GeminiTab from "./GeminiTab";
+import PassportClient from "./PassportClient";
 
-type Tab = "single" | "multi" | "gemini";
+type Tab = "single" | "multi" | "passport" | "gemini";
 
 const TABS: { key: Tab; label: string; icon: typeof Scan }[] = [
   { key: "single", label: "Single", icon: Scan },
   { key: "multi", label: "Multi", icon: Layers },
+  { key: "passport", label: "Passport", icon: IdCard },
   { key: "gemini", label: "Gemini", icon: Sparkles },
 ];
 
@@ -218,6 +220,7 @@ export default function App() {
 
       {activeTab === "single" && <SingleClient />}
       {activeTab === "multi" && <MultiClient />}
+      {activeTab === "passport" && <PassportClient />}
       {activeTab === "gemini" && <GeminiTab />}
     </div>
   );
