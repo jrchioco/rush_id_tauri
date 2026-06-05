@@ -13,6 +13,7 @@ import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
 import { ErrorBanner } from "./components/ErrorBanner";
+import type { LabelMode } from "./types";
 
 const ASPECT = 35 / 45;
 
@@ -29,7 +30,18 @@ interface SlotData {
   selectedTemplate: string;
   error: string | null;
   name: string;
-  showLabel: boolean;
+  labelMode: LabelMode;
+  signatureDataUrl: string | null;
+}
+
+function labelArgsFor(
+  mode: LabelMode,
+  name: string,
+  signature: string | null,
+): [string | undefined, string | null] {
+  if (mode === "off") return [undefined, null];
+  if (mode === "name") return [name, null];
+  return [name, signature];
 }
 
 const SLOT_COUNT = 5;
@@ -49,7 +61,8 @@ function freshSlot(i: number): SlotData {
     selectedTemplate: "",
     error: null,
     name: LABELS[i],
-    showLabel: false,
+    labelMode: "off",
+    signatureDataUrl: null,
   };
 }
 
@@ -63,6 +76,8 @@ export default function PassportClient() {
   const [testMode, setTestMode] = useState(false);
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const sigFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const compositeIdRefs = useRef<Map<number, number>>(new Map());
   const cropperWrapRefs = [
     useCropperWheel({ onRotate: (delta) => updateSlotRotation(0, delta) }),
     useCropperWheel({ onRotate: (delta) => updateSlotRotation(1, delta) }),
@@ -185,7 +200,7 @@ export default function PassportClient() {
     log(`Processing ${pending.length} slot(s)${testMode ? " (test mode — no API calls)" : ""}...`);
     try {
     const bgColors = pending.map(({ i }) => current[i].bgColor);
-    const labelNames = pending.map(({ s }) => (s.showLabel ? s.name : undefined));
+    const labelArgs = pending.map(({ s }) => labelArgsFor(s.labelMode, s.name, s.signatureDataUrl));
     const crops = await Promise.all(
       pending.map(({ s }) => cropImage(s.originalImage!, s.croppedAreaPixels!, s.rotation || 0)),
     );
@@ -193,7 +208,7 @@ export default function PassportClient() {
       ? crops
       : await Promise.all(crops.map((b64) => invoke<string>("remove_bg", { imageBase64: b64 })));
     const colorResults = await Promise.all(
-      results.map((b64, j) => compositeOnColor(b64, bgColors[j], labelNames[j])),
+      results.map((b64, j) => compositeOnColor(b64, bgColors[j], labelArgs[j][0], labelArgs[j][1])),
     );
       setSlots((prev) => {
         const next = [...prev];
@@ -255,34 +270,77 @@ export default function PassportClient() {
     await handleComposite(savePath);
   }
 
+  function bumpCompositeId(i: number): number {
+    const next = (compositeIdRefs.current.get(i) ?? 0) + 1;
+    compositeIdRefs.current.set(i, next);
+    return next;
+  }
+
+  async function slotCompositeAndApply(
+    i: number,
+    base64: string,
+    color: string,
+    name: string | undefined,
+    signature: string | null,
+  ) {
+    const id = bumpCompositeId(i);
+    const dataUrl = await compositeOnColor(base64, color, name, signature);
+    if (id !== compositeIdRefs.current.get(i)) return;
+    updateSlot(i, { resultPath: dataUrl });
+  }
+
   function handleSlotColorChange(i: number, color: string) {
     const slot = slotsRef.current[i];
     if (!slot.rawBase64) return;
     if (color === slot.bgColor) return;
     updateSlot(i, { bgColor: color });
-    const labelName = slot.showLabel ? slot.name : undefined;
-    compositeOnColor(slot.rawBase64, color, labelName).then((url) => {
-      updateSlot(i, { resultPath: url });
-    });
+    const [name, sig] = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl);
+    slotCompositeAndApply(i, slot.rawBase64, color, name, sig).catch((e) =>
+      log(`Error: ${e}`),
+    );
   }
 
-  function handleSlotLabelToggle(i: number, enabled: boolean) {
+  function handleSlotLabelCycle(i: number) {
     const slot = slotsRef.current[i];
-    updateSlot(i, { showLabel: enabled });
+    const next: LabelMode = slot.labelMode === "off" ? "name" : slot.labelMode === "name" ? "name-sig" : "off";
+    updateSlot(i, { labelMode: next });
     if (!slot.rawBase64) return;
-    const labelName = enabled ? slot.name : "";
-    compositeOnColor(slot.rawBase64, slot.bgColor, labelName).then((url) => {
-      updateSlot(i, { resultPath: url });
-    });
+    const [name, sig] = labelArgsFor(next, slot.name, slot.signatureDataUrl);
+    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, sig).catch((e) =>
+      log(`Error: ${e}`),
+    );
   }
 
   function handleSlotNameChange(i: number, name: string) {
     const slot = slotsRef.current[i];
     updateSlot(i, { name });
-    if (!slot.showLabel || !slot.rawBase64) return;
-    compositeOnColor(slot.rawBase64, slot.bgColor, name).then((url) => {
-      updateSlot(i, { resultPath: url });
-    });
+    if (slot.labelMode === "off" || !slot.rawBase64) return;
+    const sig = slot.labelMode === "name-sig" ? slot.signatureDataUrl : null;
+    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, sig).catch((e) =>
+      log(`Error: ${e}`),
+    );
+  }
+
+  function handleSlotSignatureFile(i: number, file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file");
+      return;
+    }
+    const slot = slotsRef.current[i];
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      updateSlot(i, { signatureDataUrl: dataUrl, labelMode: "name-sig" });
+      if (slot.rawBase64) {
+        try {
+          await slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, slot.name, dataUrl);
+        } catch (e) {
+          log(`Error: ${e}`);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   function handleSlotReset(i: number) {
@@ -385,7 +443,7 @@ export default function PassportClient() {
                   className={cn(
                     "flex-1 min-w-0 bg-transparent text-xs font-semibold font-mono tracking-widest uppercase",
                     "border-b focus:outline-none focus:border-[#c8881a] px-1 py-0.5",
-                    slot.showLabel ? "border-[#c8881a] text-[#c8881a]" : "border-transparent text-[#888]",
+                    slot.labelMode !== "off" ? "border-[#c8881a] text-[#c8881a]" : "border-transparent text-[#888]",
                   )}
                 />
               ) : (
@@ -396,16 +454,20 @@ export default function PassportClient() {
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {slot.step === "done" && (
                   <button
-                    onClick={() => handleSlotLabelToggle(i, !slot.showLabel)}
-                    title={slot.showLabel ? "Hide name label" : "Show name label"}
+                    onClick={() => handleSlotLabelCycle(i)}
+                    title={
+                      slot.labelMode === "off" ? "Off — click to enable name only" :
+                      slot.labelMode === "name" ? "Name only — click to add signature" :
+                      "Name + signature — click to turn off"
+                    }
                     className={cn(
                       "px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border transition-colors",
-                      slot.showLabel
-                        ? "border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10"
-                        : "border-[#2a2a28] text-[#555] hover:text-[#888] hover:border-[#888]",
+                      slot.labelMode === "off"
+                        ? "border-[#2a2a28] text-[#555] hover:text-[#888] hover:border-[#888]"
+                        : "border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10",
                     )}
                   >
-                    Label
+                    {slot.labelMode === "off" ? "Label" : slot.labelMode === "name" ? "Name" : "Name+Sig"}
                   </button>
                 )}
                 {slot.step !== "empty" && (
@@ -499,6 +561,34 @@ export default function PassportClient() {
                   <div className="flex-1" />
                   <span className="text-[10px] text-[#4caf78] font-mono">✓ Done</span>
                 </div>
+                {slot.labelMode === "name-sig" && (
+                  <div className="flex items-center gap-2">
+                    {slot.signatureDataUrl ? (
+                      <img
+                        src={slot.signatureDataUrl}
+                        alt="Signature"
+                        className="h-8 max-w-[80px] object-contain bg-white rounded border border-[#2a2a28]"
+                      />
+                    ) : (
+                      <span className="text-[9px] text-[#555] font-mono">no signature</span>
+                    )}
+                    <button
+                      onClick={() => sigFileInputRefs.current[i]?.click()}
+                      className="flex-1 px-2 py-1 bg-[#1a1a18] border border-[#2a2a28] rounded text-[10px] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a] font-mono transition-colors"
+                    >
+                      {slot.signatureDataUrl ? "Change" : "Browse for signature"}
+                    </button>
+                    <input
+                      ref={(el) => {
+                        sigFileInputRefs.current[i] = el;
+                      }}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleSlotSignatureFile(i, e.target.files?.[0])}
+                    />
+                  </div>
+                )}
                 <div>
                   <select
                     value={slot.selectedTemplate}

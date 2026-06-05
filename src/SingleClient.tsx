@@ -13,9 +13,19 @@ import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
 import { ErrorBanner } from "./components/ErrorBanner";
-import type { LogEntry } from "./types";
+import type { LogEntry, LabelMode } from "./types";
 
 type Step = "select" | "crop" | "done";
+
+function labelArgsFor(
+  mode: LabelMode,
+  name: string,
+  signature: string | null,
+): [string | undefined, string | null] {
+  if (mode === "off") return [undefined, null];
+  if (mode === "name") return [name, null];
+  return [name, signature];
+}
 
 export default function SingleClient() {
   const [step, setStep] = useState<Step>("select");
@@ -32,11 +42,14 @@ export default function SingleClient() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [rotation, setRotation] = useState(0);
   const [templateOpen, setTemplateOpen] = useState(false);
-  const [showLabel, setShowLabel] = useState(false);
+  const [labelMode, setLabelMode] = useState<LabelMode>("off");
   const [nameLabel, setNameLabel] = useState("");
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sigFileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const compositeIdRef = useRef(0);
 
   const { templates, keyCount } = useTemplates();
   const cropperWrapRef = useCropperWheel({
@@ -123,45 +136,87 @@ export default function SingleClient() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  function labelArgs(): [string | undefined, string | null] {
+    if (labelMode === "off") return [undefined, null];
+    if (labelMode === "name") return [nameLabel, null];
+    return [nameLabel, signatureDataUrl];
+  }
+
+  async function compositeAndApply(
+    base64: string,
+    color: string,
+    name: string | undefined,
+    signature: string | null,
+  ) {
+    const id = ++compositeIdRef.current;
+    const dataUrl = await compositeOnColor(base64, color, name, signature);
+    if (id !== compositeIdRef.current) return;
+    setResultPath(dataUrl);
+    try {
+      await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
+    } catch (e) {
+      log(`Error: ${e}`);
+    }
+  }
+
   async function handleColorChange(color: string) {
     if (!rawBase64) return;
     if (color === bgColor) return;
     setBgColor(color);
     log(`Applying background: ${color}`);
+    const [name, sig] = labelArgs();
     try {
-      const labelName = showLabel ? nameLabel : undefined;
-      const dataUrl = await compositeOnColor(rawBase64, color, labelName);
-      setResultPath(dataUrl);
-      await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
+      await compositeAndApply(rawBase64, color, name, sig);
     } catch (e) {
       log(`Error: ${e}`);
     }
   }
 
-  async function handleLabelToggle(enabled: boolean) {
-    setShowLabel(enabled);
+  function handleLabelModeCycle() {
+    const next: LabelMode = labelMode === "off" ? "name" : labelMode === "name" ? "name-sig" : "off";
+    setLabelMode(next);
     if (!rawBase64) return;
-    log(enabled ? "Showing name label" : "Hiding name label");
-    try {
-      const labelName = enabled ? nameLabel : "";
-      const dataUrl = await compositeOnColor(rawBase64, bgColor, labelName);
-      setResultPath(dataUrl);
-      await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
-    } catch (e) {
-      log(`Error: ${e}`);
-    }
+    log(
+      next === "off" ? "Hiding name label" :
+      next === "name" ? "Showing name label" :
+      "Showing name + signature label",
+    );
+    const [name, sig] = labelArgsFor(next, nameLabel, signatureDataUrl);
+    compositeAndApply(rawBase64, bgColor, name, sig).catch((e) => log(`Error: ${e}`));
   }
 
   async function handleNameChange(name: string) {
     setNameLabel(name);
-    if (!showLabel || !rawBase64) return;
+    if (labelMode === "off" || !rawBase64) return;
+    const sig = labelMode === "name-sig" ? signatureDataUrl : null;
     try {
-      const dataUrl = await compositeOnColor(rawBase64, bgColor, name);
-      setResultPath(dataUrl);
-      await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
+      await compositeAndApply(rawBase64, bgColor, name, sig);
     } catch (e) {
       log(`Error: ${e}`);
     }
+  }
+
+  function handleSignatureFile(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setSignatureDataUrl(dataUrl);
+      if (labelMode !== "name-sig") setLabelMode("name-sig");
+      log("Signature loaded");
+      if (rawBase64) {
+        try {
+          await compositeAndApply(rawBase64, bgColor, nameLabel, dataUrl);
+        } catch (e) {
+          log(`Error: ${e}`);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   async function handleProcess() {
@@ -177,8 +232,13 @@ export default function SingleClient() {
 
       setRawBase64(b64);
       setBgColor("#ffffff");
-      const labelName = showLabel ? nameLabel : undefined;
-      const dataUrl = await compositeOnColor(b64, "#ffffff", labelName);
+      const [name, sig] = labelArgs();
+      const dataUrl = await compositeOnColor(b64, "#ffffff", name, sig);
+      const procId = ++compositeIdRef.current;
+      if (procId !== compositeIdRef.current) {
+        setLoading(false);
+        return;
+      }
       setResultPath(dataUrl);
       await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
       setStep("done");
@@ -226,8 +286,9 @@ export default function SingleClient() {
     setRawBase64(null);
     setBgColor("#ffffff");
     setRotation(0);
-    setShowLabel(false);
+    setLabelMode("off");
     setNameLabel("");
+    setSignatureDataUrl(null);
     setError(null);
   }
 
@@ -389,22 +450,23 @@ export default function SingleClient() {
               <div className="flex items-center justify-between">
                 <label className="text-xs text-[#555] font-mono tracking-widest uppercase">Name Label</label>
                 <button
-                  onClick={() => handleLabelToggle(!showLabel)}
-                  title={showLabel ? "Hide name label" : "Show name label"}
+                  onClick={handleLabelModeCycle}
+                  title={
+                    labelMode === "off" ? "Off — click to enable name only" :
+                    labelMode === "name" ? "Name only — click to add signature" :
+                    "Name + signature — click to turn off"
+                  }
                   className={cn(
-                    "w-7 h-4 rounded-full transition-colors relative",
-                    showLabel ? "bg-[#c8881a]" : "bg-[#2a2a28]",
+                    "px-2 py-0.5 rounded text-[10px] font-mono tracking-wider uppercase border transition-colors",
+                    labelMode === "off"
+                      ? "border-[#2a2a28] text-[#555] hover:text-[#888] hover:border-[#888]"
+                      : "border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
-                      showLabel ? "translate-x-[14px]" : "translate-x-[2px]",
-                    )}
-                  />
+                  {labelMode === "off" ? "Label" : labelMode === "name" ? "Name" : "Name+Sig"}
                 </button>
               </div>
-              {showLabel && (
+              {labelMode !== "off" && (
                 <input
                   type="text"
                   value={nameLabel}
@@ -413,6 +475,32 @@ export default function SingleClient() {
                   maxLength={60}
                   className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] placeholder-[#444] font-mono focus:outline-none focus:border-[#c8881a]"
                 />
+              )}
+              {labelMode === "name-sig" && (
+                <div className="flex items-center gap-2">
+                  {signatureDataUrl ? (
+                    <img
+                      src={signatureDataUrl}
+                      alt="Signature"
+                      className="h-8 max-w-[100px] object-contain bg-white rounded border border-[#2a2a28]"
+                    />
+                  ) : (
+                    <span className="text-[10px] text-[#555] font-mono">no signature</span>
+                  )}
+                  <button
+                    onClick={() => sigFileInputRef.current?.click()}
+                    className="flex-1 px-3 py-1.5 bg-[#1a1a18] border border-[#2a2a28] rounded-lg text-xs text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a] font-mono transition-colors"
+                  >
+                    {signatureDataUrl ? "Change signature" : "Browse for signature"}
+                  </button>
+                  <input
+                    ref={sigFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleSignatureFile(e.target.files?.[0])}
+                  />
+                </div>
               )}
             </div>
 

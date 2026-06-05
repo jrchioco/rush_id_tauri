@@ -8,3 +8,5 @@ export interface LogEntry {
   time: string;
   text: string;
 }
+
+export type LabelMode = "off" | "name" | "name-sig";
