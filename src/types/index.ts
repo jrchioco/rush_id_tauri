@@ -10,3 +10,5 @@ export interface LogEntry {
 }
 
 export type LabelMode = "off" | "name" | "name-sig";
+
+export type { FontChoice, FontOption } from "../lib/utils";

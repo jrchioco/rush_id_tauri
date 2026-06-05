@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown } from "lucide-react";
-import { cn, fmt, compositeOnColor } from "./lib/utils";
+import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
@@ -13,7 +13,7 @@ import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
 import { ErrorBanner } from "./components/ErrorBanner";
-import type { LogEntry, LabelMode } from "./types";
+import type { LogEntry, LabelMode, FontChoice } from "./types";
 
 type Step = "select" | "crop" | "done";
 
@@ -21,10 +21,12 @@ function labelArgsFor(
   mode: LabelMode,
   name: string,
   signature: string | null,
-): [string | undefined, string | null] {
-  if (mode === "off") return [undefined, null];
-  if (mode === "name") return [name, null];
-  return [name, signature];
+  fontChoice: FontChoice,
+): { name: string | undefined; signature: string | null; fontStack: string } {
+  const fontStack = getFontOption(fontChoice).stack;
+  if (mode === "off") return { name: undefined, signature: null, fontStack };
+  if (mode === "name") return { name, signature: null, fontStack };
+  return { name, signature, fontStack };
 }
 
 export default function SingleClient() {
@@ -45,6 +47,7 @@ export default function SingleClient() {
   const [labelMode, setLabelMode] = useState<LabelMode>("off");
   const [nameLabel, setNameLabel] = useState("");
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [fontChoice, setFontChoice] = useState<FontChoice>("black");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sigFileInputRef = useRef<HTMLInputElement>(null);
@@ -136,10 +139,11 @@ export default function SingleClient() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  function labelArgs(): [string | undefined, string | null] {
-    if (labelMode === "off") return [undefined, null];
-    if (labelMode === "name") return [nameLabel, null];
-    return [nameLabel, signatureDataUrl];
+  function labelArgs(): { name: string | undefined; signature: string | null; fontStack: string } {
+    const fontStack = getFontOption(fontChoice).stack;
+    if (labelMode === "off") return { name: undefined, signature: null, fontStack };
+    if (labelMode === "name") return { name: nameLabel, signature: null, fontStack };
+    return { name: nameLabel, signature: signatureDataUrl, fontStack };
   }
 
   async function compositeAndApply(
@@ -147,9 +151,10 @@ export default function SingleClient() {
     color: string,
     name: string | undefined,
     signature: string | null,
+    fontStack: string = getFontOption(fontChoice).stack,
   ) {
     const id = ++compositeIdRef.current;
-    const dataUrl = await compositeOnColor(base64, color, name, signature);
+    const dataUrl = await compositeOnColor(base64, color, name, signature, fontStack);
     if (id !== compositeIdRef.current) return;
     setResultPath(dataUrl);
     try {
@@ -164,9 +169,9 @@ export default function SingleClient() {
     if (color === bgColor) return;
     setBgColor(color);
     log(`Applying background: ${color}`);
-    const [name, sig] = labelArgs();
+    const { name, signature, fontStack } = labelArgs();
     try {
-      await compositeAndApply(rawBase64, color, name, sig);
+      await compositeAndApply(rawBase64, color, name, signature, fontStack);
     } catch (e) {
       log(`Error: ${e}`);
     }
@@ -181,8 +186,17 @@ export default function SingleClient() {
       next === "name" ? "Showing name label" :
       "Showing name + signature label",
     );
-    const [name, sig] = labelArgsFor(next, nameLabel, signatureDataUrl);
-    compositeAndApply(rawBase64, bgColor, name, sig).catch((e) => log(`Error: ${e}`));
+    const { name, signature, fontStack } = labelArgsFor(next, nameLabel, signatureDataUrl, fontChoice);
+    compositeAndApply(rawBase64, bgColor, name, signature, fontStack).catch((e) => log(`Error: ${e}`));
+  }
+
+  function handleFontCycle() {
+    const next = getNextFontChoice(fontChoice);
+    setFontChoice(next);
+    if (!rawBase64) return;
+    const { name, signature, fontStack } = labelArgsFor(labelMode, nameLabel, signatureDataUrl, next);
+    log(`Font: ${getFontOption(next).label.join(" ")}`);
+    compositeAndApply(rawBase64, bgColor, name, signature, fontStack).catch((e) => log(`Error: ${e}`));
   }
 
   async function handleNameChange(name: string) {
@@ -232,8 +246,8 @@ export default function SingleClient() {
 
       setRawBase64(b64);
       setBgColor("#ffffff");
-      const [name, sig] = labelArgs();
-      const dataUrl = await compositeOnColor(b64, "#ffffff", name, sig);
+      const { name, signature, fontStack } = labelArgs();
+      const dataUrl = await compositeOnColor(b64, "#ffffff", name, signature, fontStack);
       const procId = ++compositeIdRef.current;
       if (procId !== compositeIdRef.current) {
         setLoading(false);
@@ -289,6 +303,7 @@ export default function SingleClient() {
     setLabelMode("off");
     setNameLabel("");
     setSignatureDataUrl(null);
+    setFontChoice("black");
     setError(null);
   }
 
@@ -467,14 +482,24 @@ export default function SingleClient() {
                 </button>
               </div>
               {labelMode !== "off" && (
-                <input
-                  type="text"
-                  value={nameLabel}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  placeholder="FULL NAME"
-                  maxLength={60}
-                  className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] placeholder-[#444] font-mono focus:outline-none focus:border-[#c8881a]"
-                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleFontCycle}
+                    title={`Font: ${getFontOption(fontChoice).label.join(" ")} — click to cycle`}
+                    className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10 flex flex-col items-center leading-tight"
+                  >
+                    <span>{getFontOption(fontChoice).label[0]}</span>
+                    {getFontOption(fontChoice).label[1] && <span>{getFontOption(fontChoice).label[1]}</span>}
+                  </button>
+                  <input
+                    type="text"
+                    value={nameLabel}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="FULL NAME"
+                    maxLength={60}
+                    className="flex-1 min-w-0 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] placeholder-[#444] font-mono focus:outline-none focus:border-[#c8881a]"
+                  />
+                </div>
               )}
               {labelMode === "name-sig" && (
                 <div className="flex items-center gap-2">

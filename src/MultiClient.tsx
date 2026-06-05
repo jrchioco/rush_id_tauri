@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X } from "lucide-react";
-import { cn, fmt, compositeOnColor } from "./lib/utils";
+import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
@@ -13,7 +13,7 @@ import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
 import { ErrorBanner } from "./components/ErrorBanner";
-import type { LabelMode } from "./types";
+import type { LabelMode, FontChoice } from "./types";
 
 interface SlotData {
   step: "empty" | "crop" | "done";
@@ -30,16 +30,19 @@ interface SlotData {
   name: string;
   labelMode: LabelMode;
   signatureDataUrl: string | null;
+  fontChoice: FontChoice;
 }
 
 function labelArgsFor(
   mode: LabelMode,
   name: string,
   signature: string | null,
-): [string | undefined, string | null] {
-  if (mode === "off") return [undefined, null];
-  if (mode === "name") return [name, null];
-  return [name, signature];
+  fontChoice: FontChoice,
+): { name: string | undefined; signature: string | null; fontStack: string } {
+  const fontStack = getFontOption(fontChoice).stack;
+  if (mode === "off") return { name: undefined, signature: null, fontStack };
+  if (mode === "name") return { name, signature: null, fontStack };
+  return { name, signature, fontStack };
 }
 
 const SLOT_COUNT = 5;
@@ -61,6 +64,7 @@ function freshSlot(i: number): SlotData {
     name: LABELS[i],
     labelMode: "off",
     signatureDataUrl: null,
+    fontChoice: "black",
   };
 }
 
@@ -198,7 +202,7 @@ export default function MultiClient() {
     log(`Processing ${pending.length} slot(s)${testMode ? " (test mode — no API calls)" : ""}...`);
     try {
     const bgColors = pending.map(({ i }) => current[i].bgColor);
-    const labelArgs = pending.map(({ s }) => labelArgsFor(s.labelMode, s.name, s.signatureDataUrl));
+    const labelArgs = pending.map(({ s }) => labelArgsFor(s.labelMode, s.name, s.signatureDataUrl, s.fontChoice));
     const crops = await Promise.all(
       pending.map(({ s }) => cropImage(s.originalImage!, s.croppedAreaPixels!, s.rotation || 0)),
     );
@@ -206,7 +210,7 @@ export default function MultiClient() {
       ? crops
       : await Promise.all(crops.map((b64) => invoke<string>("remove_bg", { imageBase64: b64 })));
     const colorResults = await Promise.all(
-      results.map((b64, j) => compositeOnColor(b64, bgColors[j], labelArgs[j][0], labelArgs[j][1])),
+      results.map((b64, j) => compositeOnColor(b64, bgColors[j], labelArgs[j].name, labelArgs[j].signature, labelArgs[j].fontStack)),
     );
       setSlots((prev) => {
         const next = [...prev];
@@ -280,9 +284,10 @@ export default function MultiClient() {
     color: string,
     name: string | undefined,
     signature: string | null,
+    fontStack: string,
   ) {
     const id = bumpCompositeId(i);
-    const dataUrl = await compositeOnColor(base64, color, name, signature);
+    const dataUrl = await compositeOnColor(base64, color, name, signature, fontStack);
     if (id !== compositeIdRefs.current.get(i)) return;
     updateSlot(i, { resultPath: dataUrl });
   }
@@ -292,8 +297,8 @@ export default function MultiClient() {
     if (!slot.rawBase64) return;
     if (color === slot.bgColor) return;
     updateSlot(i, { bgColor: color });
-    const [name, sig] = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl);
-    slotCompositeAndApply(i, slot.rawBase64, color, name, sig).catch((e) =>
+    const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
+    slotCompositeAndApply(i, slot.rawBase64, color, name, signature, fontStack).catch((e) =>
       log(`Error: ${e}`),
     );
   }
@@ -303,8 +308,19 @@ export default function MultiClient() {
     const next: LabelMode = slot.labelMode === "off" ? "name" : slot.labelMode === "name" ? "name-sig" : "off";
     updateSlot(i, { labelMode: next });
     if (!slot.rawBase64) return;
-    const [name, sig] = labelArgsFor(next, slot.name, slot.signatureDataUrl);
-    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, sig).catch((e) =>
+    const { name, signature, fontStack } = labelArgsFor(next, slot.name, slot.signatureDataUrl, slot.fontChoice);
+    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, signature, fontStack).catch((e) =>
+      log(`Error: ${e}`),
+    );
+  }
+
+  function handleSlotFontCycle(i: number) {
+    const slot = slotsRef.current[i];
+    const next = getNextFontChoice(slot.fontChoice);
+    updateSlot(i, { fontChoice: next });
+    if (!slot.rawBase64) return;
+    const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, next);
+    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, signature, fontStack).catch((e) =>
       log(`Error: ${e}`),
     );
   }
@@ -314,7 +330,8 @@ export default function MultiClient() {
     updateSlot(i, { name });
     if (slot.labelMode === "off" || !slot.rawBase64) return;
     const sig = slot.labelMode === "name-sig" ? slot.signatureDataUrl : null;
-    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, sig).catch((e) =>
+    const { fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
+    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, sig, fontStack).catch((e) =>
       log(`Error: ${e}`),
     );
   }
@@ -333,7 +350,8 @@ export default function MultiClient() {
       updateSlot(i, { signatureDataUrl: dataUrl, labelMode: nextMode });
       if (slot.rawBase64) {
         try {
-          await slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, slot.name, dataUrl);
+          const { fontStack } = labelArgsFor(nextMode, slot.name, dataUrl, slot.fontChoice);
+          await slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, slot.name, dataUrl, fontStack);
         } catch (e) {
           log(`Error: ${e}`);
         }
@@ -432,6 +450,16 @@ export default function MultiClient() {
         {slots.map((slot, i) => (
           <div key={i} className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-[#2a2a28]">
+              {slot.step === "done" && (
+                <button
+                  onClick={() => handleSlotFontCycle(i)}
+                  title={`Font: ${getFontOption(slot.fontChoice).label.join(" ")} — click to cycle`}
+                  className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10 flex flex-col items-center leading-tight"
+                >
+                  <span>{getFontOption(slot.fontChoice).label[0]}</span>
+                  {getFontOption(slot.fontChoice).label[1] && <span>{getFontOption(slot.fontChoice).label[1]}</span>}
+                </button>
+              )}
               {slot.step === "done" ? (
                 <input
                   type="text"
@@ -446,7 +474,7 @@ export default function MultiClient() {
                   )}
                 />
               ) : (
-                <span className="text-xs font-semibold text-[#888] font-mono tracking-widest uppercase">
+                <span className="text-xs font-semibold text-[#888] font-mono tracking-widest uppercase flex-1">
                   {slot.name}
                 </span>
               )}
