@@ -32,6 +32,8 @@ export default function SingleClient() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [rotation, setRotation] = useState(0);
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [showLabel, setShowLabel] = useState(false);
+  const [nameLabel, setNameLabel] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -127,7 +129,34 @@ export default function SingleClient() {
     setBgColor(color);
     log(`Applying background: ${color}`);
     try {
-      const dataUrl = await compositeOnColor(rawBase64, color);
+      const labelName = showLabel ? nameLabel : undefined;
+      const dataUrl = await compositeOnColor(rawBase64, color, labelName);
+      setResultPath(dataUrl);
+      await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
+    } catch (e) {
+      log(`Error: ${e}`);
+    }
+  }
+
+  async function handleLabelToggle(enabled: boolean) {
+    setShowLabel(enabled);
+    if (!rawBase64) return;
+    log(enabled ? "Showing name label" : "Hiding name label");
+    try {
+      const labelName = enabled ? nameLabel : "";
+      const dataUrl = await compositeOnColor(rawBase64, bgColor, labelName);
+      setResultPath(dataUrl);
+      await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
+    } catch (e) {
+      log(`Error: ${e}`);
+    }
+  }
+
+  async function handleNameChange(name: string) {
+    setNameLabel(name);
+    if (!showLabel || !rawBase64) return;
+    try {
+      const dataUrl = await compositeOnColor(rawBase64, bgColor, name);
       setResultPath(dataUrl);
       await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
     } catch (e) {
@@ -148,7 +177,8 @@ export default function SingleClient() {
 
       setRawBase64(b64);
       setBgColor("#ffffff");
-      const dataUrl = await compositeOnColor(b64, "#ffffff");
+      const labelName = showLabel ? nameLabel : undefined;
+      const dataUrl = await compositeOnColor(b64, "#ffffff", labelName);
       setResultPath(dataUrl);
       await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
       setStep("done");
@@ -196,6 +226,8 @@ export default function SingleClient() {
     setRawBase64(null);
     setBgColor("#ffffff");
     setRotation(0);
+    setShowLabel(false);
+    setNameLabel("");
     setError(null);
   }
 
@@ -351,6 +383,37 @@ export default function SingleClient() {
             <div className="space-y-1.5">
               <label className="text-xs text-[#555] font-mono tracking-widest uppercase">Background Color</label>
               <ColorPicker value={bgColor} onChange={handleColorChange} size="lg" />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-[#555] font-mono tracking-widest uppercase">Name Label</label>
+                <button
+                  onClick={() => handleLabelToggle(!showLabel)}
+                  title={showLabel ? "Hide name label" : "Show name label"}
+                  className={cn(
+                    "w-7 h-4 rounded-full transition-colors relative",
+                    showLabel ? "bg-[#c8881a]" : "bg-[#2a2a28]",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
+                      showLabel ? "translate-x-[14px]" : "translate-x-[2px]",
+                    )}
+                  />
+                </button>
+              </div>
+              {showLabel && (
+                <input
+                  type="text"
+                  value={nameLabel}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="FULL NAME"
+                  maxLength={60}
+                  className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] placeholder-[#444] font-mono focus:outline-none focus:border-[#c8881a]"
+                />
+              )}
             </div>
 
             <div className="border border-[#2a2a28] rounded-lg p-4 space-y-3 bg-[#111110]">

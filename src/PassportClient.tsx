@@ -29,6 +29,7 @@ interface SlotData {
   selectedTemplate: string;
   error: string | null;
   name: string;
+  showLabel: boolean;
 }
 
 const SLOT_COUNT = 5;
@@ -48,6 +49,7 @@ function freshSlot(i: number): SlotData {
     selectedTemplate: "",
     error: null,
     name: LABELS[i],
+    showLabel: false,
   };
 }
 
@@ -182,16 +184,17 @@ export default function PassportClient() {
     setBusy(true);
     log(`Processing ${pending.length} slot(s)${testMode ? " (test mode — no API calls)" : ""}...`);
     try {
-      const bgColors = pending.map(({ i }) => current[i].bgColor);
-      const crops = await Promise.all(
-        pending.map(({ s }) => cropImage(s.originalImage!, s.croppedAreaPixels!, s.rotation || 0)),
-      );
-      const results = testMode
-        ? crops
-        : await Promise.all(crops.map((b64) => invoke<string>("remove_bg", { imageBase64: b64 })));
-      const colorResults = await Promise.all(
-        results.map((b64, j) => compositeOnColor(b64, bgColors[j])),
-      );
+    const bgColors = pending.map(({ i }) => current[i].bgColor);
+    const labelNames = pending.map(({ s }) => (s.showLabel ? s.name : undefined));
+    const crops = await Promise.all(
+      pending.map(({ s }) => cropImage(s.originalImage!, s.croppedAreaPixels!, s.rotation || 0)),
+    );
+    const results = testMode
+      ? crops
+      : await Promise.all(crops.map((b64) => invoke<string>("remove_bg", { imageBase64: b64 })));
+    const colorResults = await Promise.all(
+      results.map((b64, j) => compositeOnColor(b64, bgColors[j], labelNames[j])),
+    );
       setSlots((prev) => {
         const next = [...prev];
         for (let j = 0; j < pending.length; j++) {
@@ -257,7 +260,27 @@ export default function PassportClient() {
     if (!slot.rawBase64) return;
     if (color === slot.bgColor) return;
     updateSlot(i, { bgColor: color });
-    compositeOnColor(slot.rawBase64, color).then((url) => {
+    const labelName = slot.showLabel ? slot.name : undefined;
+    compositeOnColor(slot.rawBase64, color, labelName).then((url) => {
+      updateSlot(i, { resultPath: url });
+    });
+  }
+
+  function handleSlotLabelToggle(i: number, enabled: boolean) {
+    const slot = slotsRef.current[i];
+    updateSlot(i, { showLabel: enabled });
+    if (!slot.rawBase64) return;
+    const labelName = enabled ? slot.name : "";
+    compositeOnColor(slot.rawBase64, slot.bgColor, labelName).then((url) => {
+      updateSlot(i, { resultPath: url });
+    });
+  }
+
+  function handleSlotNameChange(i: number, name: string) {
+    const slot = slotsRef.current[i];
+    updateSlot(i, { name });
+    if (!slot.showLabel || !slot.rawBase64) return;
+    compositeOnColor(slot.rawBase64, slot.bgColor, name).then((url) => {
       updateSlot(i, { resultPath: url });
     });
   }
@@ -351,18 +374,49 @@ export default function PassportClient() {
 
         {slots.map((slot, i) => (
           <div key={i} className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[#2a2a28]">
-              <span className="text-xs font-semibold text-[#888] font-mono tracking-widest uppercase">
-                {slot.name}
-              </span>
-              {slot.step !== "empty" && (
-                <button
-                  onClick={() => handleSlotReset(i)}
-                  className="text-[#555] hover:text-red-400 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+            <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-[#2a2a28]">
+              {slot.step === "done" ? (
+                <input
+                  type="text"
+                  value={slot.name}
+                  onChange={(e) => handleSlotNameChange(i, e.target.value)}
+                  placeholder={LABELS[i]}
+                  maxLength={60}
+                  className={cn(
+                    "flex-1 min-w-0 bg-transparent text-xs font-semibold font-mono tracking-widest uppercase",
+                    "border-b focus:outline-none focus:border-[#c8881a] px-1 py-0.5",
+                    slot.showLabel ? "border-[#c8881a] text-[#c8881a]" : "border-transparent text-[#888]",
+                  )}
+                />
+              ) : (
+                <span className="text-xs font-semibold text-[#888] font-mono tracking-widest uppercase">
+                  {slot.name}
+                </span>
               )}
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {slot.step === "done" && (
+                  <button
+                    onClick={() => handleSlotLabelToggle(i, !slot.showLabel)}
+                    title={slot.showLabel ? "Hide name label" : "Show name label"}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border transition-colors",
+                      slot.showLabel
+                        ? "border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10"
+                        : "border-[#2a2a28] text-[#555] hover:text-[#888] hover:border-[#888]",
+                    )}
+                  >
+                    Label
+                  </button>
+                )}
+                {slot.step !== "empty" && (
+                  <button
+                    onClick={() => handleSlotReset(i)}
+                    className="text-[#555] hover:text-red-400 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {slot.step === "empty" && (
