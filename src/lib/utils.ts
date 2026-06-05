@@ -145,7 +145,7 @@ export async function applyNameLabel(
     drawContainedImage(ctx, sigImg, 0, labelY, w, sigRegionH);
     if (text) {
       const maxFont = nameRegionH - LABEL_NAME_CEILING_PX - LABEL_NAME_FLOORING_PX;
-      const { fontSize, text: fitted } = fitText(ctx, text, w * 0.92, nameRegionH, fontStack, maxFont);
+      const { fontSize, text: fitted } = fitText(ctx, text, w * 0.95, nameRegionH, fontStack, maxFont);
       const textTop = labelY + sigRegionH + LABEL_NAME_CEILING_PX;
       const textBottom = labelY + labelH - LABEL_NAME_FLOORING_PX;
       const textY = textTop + (textBottom - textTop - fontSize) / 2 + fontSize;
@@ -156,7 +156,7 @@ export async function applyNameLabel(
       ctx.fillText(fitted, w / 2, textY);
     }
   } else if (text) {
-    const { fontSize, text: fitted } = fitText(ctx, text, w * 0.9, labelH, fontStack);
+    const { fontSize, text: fitted } = fitText(ctx, text, w * 0.95, labelH, fontStack);
     ctx.font = `bold ${fontSize}px ${fontStack}`;
     ctx.fillStyle = "#000000";
     ctx.textAlign = "center";
