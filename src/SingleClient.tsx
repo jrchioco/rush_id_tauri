@@ -247,8 +247,8 @@ export default function SingleClient() {
       setRawBase64(b64);
       setBgColor("#ffffff");
       const { name, signature, fontStack } = labelArgs();
-      const dataUrl = await compositeOnColor(b64, "#ffffff", name, signature, fontStack);
       const procId = ++compositeIdRef.current;
+      const dataUrl = await compositeOnColor(b64, "#ffffff", name, signature, fontStack);
       if (procId !== compositeIdRef.current) {
         setLoading(false);
         return;
@@ -267,6 +267,7 @@ export default function SingleClient() {
 
   async function handlePrint() {
     if (!selectedTemplate) return;
+    setError(null);
     try {
       log("Opening print dialog...");
       const msg = await invoke<string>("print_file", { svgPath: selectedTemplate });
@@ -279,6 +280,7 @@ export default function SingleClient() {
 
   async function handleSavePdf() {
     if (!selectedTemplate) return;
+    setError(null);
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const savePath = await save({ filters: [{ name: "PDF", extensions: ["pdf"] }] });
@@ -327,7 +329,7 @@ export default function SingleClient() {
   return (
     <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">
       <div className="space-y-4">
-        {error && <ErrorBanner message={error} />}
+        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
         {step === "select" && (
           <div
@@ -375,7 +377,7 @@ export default function SingleClient() {
                   zoom={zoom}
                   rotation={rotation}
                   aspect={1}
-                  zoomSpeed={0.2}
+                  zoomSpeed={0.1}
                   onWheelRequest={(e) => e.ctrlKey || e.metaKey}
                   onCropChange={setCrop}
                   onZoomChange={setZoom}
@@ -389,7 +391,7 @@ export default function SingleClient() {
                 type="range"
                 min={1}
                 max={3}
-                step={0.1}
+                step={0.05}
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
                 className="flex-1 accent-[#c8881a]"

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X } from "lucide-react";
@@ -26,7 +26,6 @@ interface SlotData {
   resultPath: string | null;
   bgColor: string;
   selectedTemplate: string;
-  error: string | null;
   name: string;
   labelMode: LabelMode;
   signatureDataUrl: string | null;
@@ -60,7 +59,6 @@ function freshSlot(i: number): SlotData {
     resultPath: null,
     bgColor: "#ffffff",
     selectedTemplate: "",
-    error: null,
     name: LABELS[i],
     labelMode: "off",
     signatureDataUrl: null,
@@ -90,7 +88,7 @@ export default function MultiClient() {
 
   const { templates, keyCount } = useTemplates();
   const activeKeyIndex = useKeyUsed();
-  const multiTemplates = templates.filter((t) => t.key.startsWith("multi_"));
+  const multiTemplates = useMemo(() => templates.filter((t) => t.key.startsWith("multi_")), [templates]);
   const displayTemplates = multiTemplates.length > 0 ? multiTemplates : templates;
 
   const log = useCallback((text: string) => {
@@ -150,7 +148,6 @@ export default function MultiClient() {
               crop: { x: 0, y: 0 },
               zoom: 1,
               rotation: 0,
-              error: null,
             };
           });
           return next;
@@ -185,7 +182,6 @@ export default function MultiClient() {
         crop: { x: 0, y: 0 },
         zoom: 1,
         rotation: 0,
-        error: null,
       });
       log(`${LABELS[i]}: Loaded ${file.name}`);
     };
@@ -266,7 +262,6 @@ export default function MultiClient() {
     const missing = done.find((s) => !s.selectedTemplate);
     if (missing) {
       log("✗ No template selected for one or more slots");
-      setBusy(false);
       return;
     }
     setBusy(true);
@@ -286,10 +281,6 @@ export default function MultiClient() {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function handlePrintAll() {
-    await handleComposite();
   }
 
   async function handleSavePdf() {
@@ -373,7 +364,7 @@ export default function MultiClient() {
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
-      const nextMode: LabelMode = slot.labelMode === "name-sig" ? "name-sig" : "name-sig";
+      const nextMode: LabelMode = "name-sig";
       updateSlot(i, { signatureDataUrl: dataUrl, labelMode: nextMode });
       if (slot.rawBase64) {
         try {
@@ -569,7 +560,7 @@ export default function MultiClient() {
                       zoom={slot.zoom}
                       rotation={slot.rotation}
                       aspect={1}
-                      zoomSpeed={0.2}
+                      zoomSpeed={0.1}
                       onWheelRequest={(e) => e.ctrlKey || e.metaKey}
                       onCropChange={(c) => updateSlot(i, { crop: c })}
                       onZoomChange={(z) => updateSlot(i, { zoom: z })}
@@ -585,7 +576,7 @@ export default function MultiClient() {
                     type="range"
                     min={1}
                     max={3}
-                    step={0.1}
+                    step={0.05}
                     value={slot.zoom}
                     onChange={(e) => updateSlot(i, { zoom: Number(e.target.value) })}
                     className="flex-1 accent-[#c8881a]"
@@ -656,11 +647,6 @@ export default function MultiClient() {
                     ))}
                   </select>
                 </div>
-                {slot.error && (
-                  <div className="bg-red-950 border border-red-800 rounded-lg p-2 text-red-400 text-xs font-mono">
-                    {slot.error}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -677,7 +663,7 @@ export default function MultiClient() {
               Save PDF
             </button>
             <button
-              onClick={handlePrintAll}
+              onClick={() => handleComposite()}
               disabled={busy}
               className="flex-1 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] flex items-center justify-center gap-2"
             >

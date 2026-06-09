@@ -17,7 +17,7 @@ export function fmt() {
   return new Date().toLocaleTimeString();
 }
 
-export const LABEL_FONT = '"Arial Black", "Arial Narrow Bold", "Arial Narrow", "Open Sans ExtraBold", "Open Sans Condensed", "Liberation Sans Narrow", "Arial", sans-serif';
+const LABEL_FONT = '"Arial Black", "Arial Narrow Bold", "Arial Narrow", "Open Sans ExtraBold", "Open Sans Condensed", "Liberation Sans Narrow", "Arial", sans-serif';
 
 export type FontChoice = "black" | "narrow-bold" | "narrow" | "impact";
 
@@ -27,7 +27,7 @@ export interface FontOption {
   stack: string;
 }
 
-export const FONT_OPTIONS: FontOption[] = [
+const FONT_OPTIONS: FontOption[] = [
   { id: "black",       label: ["ARIAL", "BLACK"], stack: '"Arial Black", "Open Sans ExtraBold", "Liberation Sans Bold", sans-serif' },
   { id: "narrow-bold", label: ["NARROW", "BOLD"], stack: '"Arial Narrow Bold", "Arial Narrow", "Open Sans Condensed Bold", "Liberation Sans Narrow", sans-serif' },
   { id: "narrow",      label: ["ARIAL", "NARROW"], stack: '"Arial Narrow", "Open Sans Condensed", "Liberation Sans Narrow", sans-serif' },
@@ -119,7 +119,7 @@ function drawContainedImage(
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
-export async function applyNameLabel(
+async function applyNameLabel(
   canvas: HTMLCanvasElement,
   rawName?: string,
   signatureDataUrl?: string | null,
@@ -128,7 +128,7 @@ export async function applyNameLabel(
   const ctx = canvas.getContext("2d")!;
   const w = canvas.width;
   const h = canvas.height;
-  const hasSignature = !!(signatureDataUrl && signatureDataUrl);
+  const hasSignature = !!signatureDataUrl;
   const labelH = hasSignature
     ? Math.max(LABEL_BAR_MIN_SIG, Math.round(h * LABEL_BAR_RATIO_SIG))
     : Math.max(LABEL_BAR_MIN_NAME, Math.round(h * LABEL_BAR_RATIO_NAME));
@@ -138,7 +138,7 @@ export async function applyNameLabel(
   const text = (rawName ?? "").trim().toUpperCase();
   if (!text && !hasSignature) return;
 
-  if (hasSignature && signatureDataUrl) {
+  if (hasSignature) {
     const sigRegionH = Math.round(labelH * LABEL_SIG_REGION_RATIO);
     const nameRegionH = labelH - sigRegionH;
     const sigImg = await loadImage(signatureDataUrl);
