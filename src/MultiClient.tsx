@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X } from "lucide-react";
+import { toast } from "sonner";
 import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
@@ -12,7 +13,6 @@ import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
-import { ErrorBanner } from "./components/ErrorBanner";
 import type { LabelMode, FontChoice } from "./types";
 
 interface SlotData {
@@ -72,7 +72,6 @@ export default function MultiClient() {
   );
   const [logs, setLogs] = useState<{ time: string; text: string }[]>([]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [testMode, setTestMode] = useState(false);
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -119,7 +118,7 @@ export default function MultiClient() {
       return validExts.includes(ext ?? "");
     });
     if (imagePaths.length === 0) {
-      setError("No valid image files dropped");
+      toast.error("No valid image files dropped");
       return;
     }
     const current = slotsRef.current;
@@ -127,12 +126,12 @@ export default function MultiClient() {
       .map((s, i) => (s.step === "empty" ? i : -1))
       .filter((i) => i !== -1);
     if (emptyIndices.length === 0) {
-      setError("All slots are full");
+      toast.error("All slots are full");
       return;
     }
     const toFill = imagePaths.slice(0, emptyIndices.length);
     if (toFill.length < imagePaths.length) {
-      setError(
+      toast.error(
         `${imagePaths.length - toFill.length} image(s) skipped — not enough empty slots`,
       );
     }
@@ -156,7 +155,7 @@ export default function MultiClient() {
           logRef.current(`${LABELS[emptyIndices[idx]]}: ${r.fileName}`),
         );
       })
-      .catch((e) => setError(`Read error: ${e}`));
+      .catch((e) => toast.error(`Read error: ${e}`));
   });
 
   function updateSlot(i: number, p: Partial<SlotData>) {
@@ -202,7 +201,7 @@ export default function MultiClient() {
             const current = slotsRef.current;
             const emptyIdx = current.findIndex((s) => s.step === "empty");
             if (emptyIdx === -1) {
-              setError("All slots are full");
+              toast.error("All slots are full");
               return;
             }
             handleSlotFileRef.current(emptyIdx, file);
@@ -251,7 +250,7 @@ export default function MultiClient() {
       log(`✓ Batch ${testMode ? "cropped" : "processing complete"}`);
     } catch (e) {
       log(`Batch error: ${e}`);
-      setError(String(e));
+      toast.error(String(e));
     } finally {
       setBusy(false);
     }
@@ -279,7 +278,7 @@ export default function MultiClient() {
       log(`✓ ${msg}`);
     } catch (e) {
       log(`Error: ${e}`);
-      setError(String(e));
+      toast.error(String(e));
     } finally {
       setBusy(false);
     }
@@ -320,7 +319,7 @@ export default function MultiClient() {
     const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
     slotCompositeAndApply(i, slot.rawBase64, color, name, signature, fontStack).catch((e) => {
       log(`Error: ${e}`);
-      setError(String(e));
+      toast.error(String(e));
     });
   }
 
@@ -332,7 +331,7 @@ export default function MultiClient() {
     const { name, signature, fontStack } = labelArgsFor(next, slot.name, slot.signatureDataUrl, slot.fontChoice);
     slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, signature, fontStack).catch((e) => {
       log(`Error: ${e}`);
-      setError(String(e));
+      toast.error(String(e));
     });
   }
 
@@ -344,7 +343,7 @@ export default function MultiClient() {
     const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, next);
     slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, signature, fontStack).catch((e) => {
       log(`Error: ${e}`);
-      setError(String(e));
+      toast.error(String(e));
     });
   }
 
@@ -356,14 +355,14 @@ export default function MultiClient() {
     const { fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
     slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, sig, fontStack).catch((e) => {
       log(`Error: ${e}`);
-      setError(String(e));
+      toast.error(String(e));
     });
   }
 
   function handleSlotSignatureFile(i: number, file: File | undefined) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("Please select an image file");
+      toast.error("Please select an image file");
       return;
     }
     const slot = slotsRef.current[i];
@@ -378,7 +377,7 @@ export default function MultiClient() {
           await slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, slot.name, dataUrl, fontStack);
         } catch (e) {
           log(`Error: ${e}`);
-          setError(String(e));
+          toast.error(String(e));
         }
       }
     };
@@ -391,13 +390,11 @@ export default function MultiClient() {
       next[i] = freshSlot(i);
       return next;
     });
-    setError(null);
   }
 
   function handleResetAll() {
     setSlots(Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)));
     setLogs([]);
-    setError(null);
   }
 
   function clickSlotUpload(i: number) {
@@ -425,7 +422,6 @@ export default function MultiClient() {
   return (
     <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">
       <div className="space-y-4">
-        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">

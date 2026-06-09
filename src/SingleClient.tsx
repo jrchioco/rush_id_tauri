@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
@@ -12,7 +13,6 @@ import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
-import { ErrorBanner } from "./components/ErrorBanner";
 import type { LogEntry, LabelMode, FontChoice } from "./types";
 
 type Step = "select" | "crop" | "done";
@@ -38,7 +38,6 @@ export default function SingleClient() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -75,7 +74,7 @@ export default function SingleClient() {
     const ext = filePath.split(".").pop()?.toLowerCase();
     const validExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
     if (!validExts.includes(ext ?? "")) {
-      setError("Please drop an image file");
+      toast.error("Please drop an image file");
       return;
     }
     try {
@@ -85,17 +84,16 @@ export default function SingleClient() {
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setRotation(0);
-      setError(null);
       log(`Loaded: ${fileName}`);
     } catch (e) {
-      setError(`Failed to read file: ${e}`);
+      toast.error(`Failed to read file: ${e}`);
       log(`Error reading file: ${e}`);
     }
   });
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
-      setError("Please select an image file");
+      toast.error("Please select an image file");
       return;
     }
     const reader = new FileReader();
@@ -105,7 +103,6 @@ export default function SingleClient() {
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setRotation(0);
-      setError(null);
       log(`Loaded: ${file.name}`);
     };
     reader.readAsDataURL(file);
@@ -189,7 +186,7 @@ export default function SingleClient() {
     const { name, signature, fontStack } = labelArgsFor(next, nameLabel, signatureDataUrl, fontChoice);
     compositeAndApply(rawBase64, bgColor, name, signature, fontStack).catch((e) => {
       log(`Error: ${e}`);
-      setError(String(e));
+      toast.error(String(e));
     });
   }
 
@@ -201,7 +198,7 @@ export default function SingleClient() {
     log(`Font: ${getFontOption(next).label.join(" ")}`);
     compositeAndApply(rawBase64, bgColor, name, signature, fontStack).catch((e) => {
       log(`Error: ${e}`);
-      setError(String(e));
+      toast.error(String(e));
     });
   }
 
@@ -219,7 +216,7 @@ export default function SingleClient() {
   function handleSignatureFile(file: File | undefined) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("Please select an image file");
+      toast.error("Please select an image file");
       return;
     }
     const reader = new FileReader();
@@ -242,7 +239,6 @@ export default function SingleClient() {
   async function handleProcess() {
     if (!originalImage || !croppedAreaPixels) return;
     setLoading(true);
-    setError(null);
     log("Cropping image...");
 
     try {
@@ -264,7 +260,7 @@ export default function SingleClient() {
       setStep("done");
       log("✓ Background removed");
     } catch (e) {
-      setError(String(e));
+      toast.error(String(e));
       log(`Error: ${e}`);
     } finally {
       setLoading(false);
@@ -273,20 +269,18 @@ export default function SingleClient() {
 
   async function handlePrint() {
     if (!selectedTemplate) return;
-    setError(null);
     try {
       log("Opening print dialog...");
       const msg = await invoke<string>("print_file", { svgPath: selectedTemplate });
       log(`✓ ${msg}`);
     } catch (e) {
-      setError(String(e));
+      toast.error(String(e));
       log(`Error: ${e}`);
     }
   }
 
   async function handleSavePdf() {
     if (!selectedTemplate) return;
-    setError(null);
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const savePath = await save({ filters: [{ name: "PDF", extensions: ["pdf"] }] });
@@ -296,7 +290,7 @@ export default function SingleClient() {
       await invoke("open_file", { path: pdfPath });
       log("✓ PDF saved — press Ctrl+P to print");
     } catch (e) {
-      setError(String(e));
+      toast.error(String(e));
       log(`Error: ${e}`);
     }
   }
@@ -312,7 +306,6 @@ export default function SingleClient() {
     setNameLabel("");
     setSignatureDataUrl(null);
     setFontChoice("black");
-    setError(null);
   }
 
   const statFooter =
@@ -335,7 +328,6 @@ export default function SingleClient() {
   return (
     <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">
       <div className="space-y-4">
-        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
         {step === "select" && (
           <div

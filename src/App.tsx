@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Scan, Layers, Sparkles, IdCard } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import SingleClient from "./SingleClient";
@@ -20,7 +21,6 @@ const TABS: { key: Tab; label: string; icon: typeof Scan }[] = [
 export default function App() {
   const [configReady, setConfigReady] = useState<boolean | null>(null);
   const [setupKeys, setSetupKeys] = useState([""]);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("single");
 
@@ -39,14 +39,13 @@ export default function App() {
   }, []);
 
   async function handleSaveConfig() {
-    setSaveError(null);
     try {
       await invoke("save_config", {
         apiKeys: setupKeys.filter((k) => k.trim()),
       });
       setConfigReady(true);
     } catch (e) {
-      setSaveError(String(e));
+      toast.error(String(e));
     }
   }
 
@@ -108,12 +107,6 @@ export default function App() {
               + add another key
             </button>
           </div>
-
-          {saveError && (
-            <div className="bg-red-950 border border-red-800 rounded-lg p-3 text-red-400 text-xs mt-4 flex items-center gap-2 font-mono">
-              <X className="w-3 h-3 flex-shrink-0" /> {saveError}
-            </div>
-          )}
 
           <button
             onClick={handleSaveConfig}
