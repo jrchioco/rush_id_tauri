@@ -11,7 +11,6 @@ struct Config {
     input_folder_path: String,
     output_folder_path: String,
     api_keys: Vec<String>,
-    inkscape_path: String,
     svg_files: HashMap<String, String>,
 }
 
@@ -95,6 +94,25 @@ fn resolve_data(app: &tauri::AppHandle, path: &str) -> PathBuf {
     normalize_path(&resolved)
 }
 
+fn svg_to_pdf(svg_content: &str, pdf_path: &Path, tmp_dir: &Path) -> Result<(), String> {
+    let mut options = svg2pdf::usvg::Options::default();
+    options.dpi = 72.0;
+    options.resources_dir = Some(tmp_dir.to_path_buf());
+    options.fontdb_mut().load_system_fonts();
+
+    let rtree = svg2pdf::usvg::Tree::from_str(svg_content, &options)
+        .map_err(|e| format!("SVG parse error: {}", e))?;
+
+    let pdf_bytes = svg2pdf::to_pdf(
+        &rtree,
+        svg2pdf::ConversionOptions::default(),
+        svg2pdf::PageOptions::default(),
+    ).map_err(|e| format!("PDF conversion error: {}", e))?;
+
+    fs::write(pdf_path, &pdf_bytes).map_err(|e| format!("Failed to write PDF: {}", e))?;
+    Ok(())
+}
+
 #[derive(Debug, Serialize)]
 struct SvgTemplate {
     key: String,
@@ -108,7 +126,7 @@ fn check_config(app_handle: tauri::AppHandle) -> bool {
 }
 
 #[tauri::command]
-fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>, inkscape_path: Option<String>) -> Result<(), String> {
+fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<(), String> {
     let res = resource_dir(&app_handle);
     let mut svg_files = HashMap::new();
 
@@ -133,7 +151,6 @@ fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>, inkscape_pat
         input_folder_path: "input".into(),
         output_folder_path: ".".into(),
         api_keys,
-        inkscape_path: inkscape_path.filter(|p| !p.trim().is_empty()).unwrap_or_else(|| "inkscape".into()),
         svg_files,
     };
 
@@ -245,26 +262,22 @@ fn write_picture(app_handle: tauri::AppHandle, image_base64: String) -> Result<S
 
 #[tauri::command]
 fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String) -> Result<String, String> {
-    let config = load_config(&app_handle)?;
+    let tmp_dir = data_dir(&app_handle).join("tmp");
     let patched_svg = patch_svg_path(&app_handle, &svg_path)?;
+    let svg_content = fs::read_to_string(&patched_svg)
+        .map_err(|e| format!("Failed to read SVG: {}", e))?;
 
     let mut pdf_path = PathBuf::from(&save_path);
     if pdf_path.extension().is_none_or(|e| e != "pdf") {
         pdf_path.set_extension("pdf");
     }
 
-    let output = Command::new(&config.inkscape_path)
-        .arg("--export-filename")
-        .arg(&pdf_path)
-        .arg(&patched_svg)
-        .output()
-        .map_err(|e| format!("Failed to run Inkscape: {}", e))?;
+    svg_to_pdf(&svg_content, &pdf_path, &tmp_dir)?;
 
-    if output.status.success() && pdf_path.exists() {
+    if pdf_path.exists() {
         Ok(pdf_path.to_string_lossy().to_string())
     } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Inkscape error: {}", stderr))
+        Err("PDF generation failed".to_string())
     }
 }
 
@@ -279,21 +292,6 @@ fn cleanup_temp_pdfs() {
             }
         }
     }
-}
-
-#[tauri::command]
-fn check_inkscape_default() -> bool {
-    PathBuf::from("C:\\Program Files\\Inkscape\\bin\\inkscape.exe").exists()
-}
-
-#[tauri::command]
-fn save_inkscape_path(app_handle: tauri::AppHandle, inkscape_path: String) -> Result<(), String> {
-    let mut config = load_config(&app_handle)?;
-    config.inkscape_path = inkscape_path;
-    let d = data_dir(&app_handle);
-    let json = serde_json::to_string_pretty(&config).map_err(|e| format!("Serialize error: {}", e))?;
-    fs::write(d.join("config.json"), &json).map_err(|e| format!("Failed to write config: {}", e))?;
-    Ok(())
 }
 
 #[tauri::command]
@@ -320,8 +318,10 @@ fn open_file(path: String) -> Result<(), String> {
 
 #[tauri::command]
 fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, String> {
-    let config = load_config(&app_handle)?;
+    let tmp_dir = data_dir(&app_handle).join("tmp");
     let patched_svg = patch_svg_path(&app_handle, &svg_path)?;
+    let svg_content = fs::read_to_string(&patched_svg)
+        .map_err(|e| format!("Failed to read SVG: {}", e))?;
 
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -329,17 +329,7 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, 
         .as_millis();
     let temp_pdf = std::env::temp_dir().join(format!("rush_id_print_{}.pdf", ts));
 
-    let output = Command::new(&config.inkscape_path)
-        .arg("--export-filename")
-        .arg(&temp_pdf)
-        .arg(&patched_svg)
-        .output()
-        .map_err(|e| format!("Failed to run Inkscape: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Inkscape error: {}", stderr));
-    }
+    svg_to_pdf(&svg_content, &temp_pdf, &tmp_dir)?;
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
@@ -365,7 +355,6 @@ struct ClientSlot {
 
 #[tauri::command]
 fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, save_path: Option<String>) -> Result<String, String> {
-    let config = load_config(&app_handle)?;
     let d = data_dir(&app_handle);
     let tmp_dir = d.join("tmp");
     fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
@@ -466,17 +455,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         }
     };
 
-    let output = Command::new(&config.inkscape_path)
-        .arg("--export-filename")
-        .arg(&pdf_path)
-        .arg(&composite_path)
-        .output()
-        .map_err(|e| format!("Failed to run Inkscape: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Inkscape error: {}", stderr));
-    }
+    svg_to_pdf(&composite, &pdf_path, &tmp_dir)?;
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
@@ -512,8 +491,6 @@ pub fn run() {
             composite_multi_pdf,
             get_key_count,
             open_file,
-            check_inkscape_default,
-            save_inkscape_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

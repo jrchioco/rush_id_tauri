@@ -307,26 +307,6 @@ export default function SingleClient() {
     setError(null);
   }
 
-  const inkscapeAction =
-    error && error.toLowerCase().includes("inkscape") ? (
-      <button
-        onClick={async () => {
-          const { open } = await import("@tauri-apps/plugin-dialog");
-          const selected = await open({
-            title: "Find inkscape.exe",
-            filters: [{ name: "Executable", extensions: ["exe"] }],
-          });
-          if (selected) {
-            await invoke("save_inkscape_path", { inkscapePath: selected });
-            setError(null);
-          }
-        }}
-        className="flex-shrink-0 px-2 py-1 bg-[#2a1a0a] border border-[#c8881a]/40 rounded text-[#c8881a] hover:border-[#c8881a] transition-colors"
-      >
-        Browse for Inkscape
-      </button>
-    ) : undefined;
-
   const statFooter =
     keyCount > 0 ? (
       <div className="border-t border-[#2a2a28] p-3 grid grid-cols-2 gap-2">
@@ -347,7 +327,7 @@ export default function SingleClient() {
   return (
     <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">
       <div className="space-y-4">
-        {error && <ErrorBanner message={error} action={inkscapeAction} />}
+        {error && <ErrorBanner message={error} />}
 
         {step === "select" && (
           <div
