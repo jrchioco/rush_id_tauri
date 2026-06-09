@@ -175,7 +175,7 @@ export default function MultiClient() {
     updateSlot(i, { rotation: Math.max(-90, Math.min(90, current + delta)) });
   }
 
-  function handleSlotFile(i: number, file: File) {
+  const handleSlotFile = useCallback((i: number, file: File) => {
     if (!file.type.startsWith("image/")) return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -190,7 +190,34 @@ export default function MultiClient() {
       log(`${LABELS[i]}: Loaded ${file.name}`);
     };
     reader.readAsDataURL(file);
-  }
+  }, [log]);
+
+  const handleSlotFileRef = useRef(handleSlotFile);
+  useEffect(() => { handleSlotFileRef.current = handleSlotFile; }, [handleSlotFile]);
+
+  useEffect(() => {
+    function handlePaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile() ?? e.clipboardData?.files?.[0];
+          if (file) {
+            const current = slotsRef.current;
+            const emptyIdx = current.findIndex((s) => s.step === "empty");
+            if (emptyIdx === -1) {
+              setError("All slots are full");
+              return;
+            }
+            handleSlotFileRef.current(emptyIdx, file);
+            break;
+          }
+        }
+      }
+    }
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, []);
 
   async function handleProcessAll() {
     const current = slotsRef.current;
