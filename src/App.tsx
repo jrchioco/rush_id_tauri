@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Scan, Layers, Sparkles, IdCard } from "lucide-react";
 import { cn } from "./lib/utils";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import SingleClient from "./SingleClient";
 import MultiClient from "./MultiClient";
 import GeminiTab from "./GeminiTab";
@@ -175,10 +176,10 @@ export default function App() {
         </div>
       </header>
 
-      {activeTab === "single" && <SingleClient />}
-      {activeTab === "multi" && <MultiClient />}
-      {activeTab === "passport" && <PassportClient />}
-      {activeTab === "gemini" && <GeminiTab />}
+      {activeTab === "single" && <ErrorBoundary><SingleClient /></ErrorBoundary>}
+      {activeTab === "multi" && <ErrorBoundary><MultiClient /></ErrorBoundary>}
+      {activeTab === "passport" && <ErrorBoundary><PassportClient /></ErrorBoundary>}
+      {activeTab === "gemini" && <ErrorBoundary><GeminiTab /></ErrorBoundary>}
     </div>
   );
 }

@@ -187,7 +187,10 @@ export default function SingleClient() {
       "Showing name + signature label",
     );
     const { name, signature, fontStack } = labelArgsFor(next, nameLabel, signatureDataUrl, fontChoice);
-    compositeAndApply(rawBase64, bgColor, name, signature, fontStack).catch((e) => log(`Error: ${e}`));
+    compositeAndApply(rawBase64, bgColor, name, signature, fontStack).catch((e) => {
+      log(`Error: ${e}`);
+      setError(String(e));
+    });
   }
 
   function handleFontCycle() {
@@ -196,7 +199,10 @@ export default function SingleClient() {
     if (!rawBase64) return;
     const { name, signature, fontStack } = labelArgsFor(labelMode, nameLabel, signatureDataUrl, next);
     log(`Font: ${getFontOption(next).label.join(" ")}`);
-    compositeAndApply(rawBase64, bgColor, name, signature, fontStack).catch((e) => log(`Error: ${e}`));
+    compositeAndApply(rawBase64, bgColor, name, signature, fontStack).catch((e) => {
+      log(`Error: ${e}`);
+      setError(String(e));
+    });
   }
 
   async function handleNameChange(name: string) {

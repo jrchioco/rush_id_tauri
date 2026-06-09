@@ -251,6 +251,7 @@ export default function MultiClient() {
       log(`✓ Batch ${testMode ? "cropped" : "processing complete"}`);
     } catch (e) {
       log(`Batch error: ${e}`);
+      setError(String(e));
     } finally {
       setBusy(false);
     }
@@ -278,6 +279,7 @@ export default function MultiClient() {
       log(`✓ ${msg}`);
     } catch (e) {
       log(`Error: ${e}`);
+      setError(String(e));
     } finally {
       setBusy(false);
     }
@@ -316,9 +318,10 @@ export default function MultiClient() {
     if (color === slot.bgColor) return;
     updateSlot(i, { bgColor: color });
     const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
-    slotCompositeAndApply(i, slot.rawBase64, color, name, signature, fontStack).catch((e) =>
-      log(`Error: ${e}`),
-    );
+    slotCompositeAndApply(i, slot.rawBase64, color, name, signature, fontStack).catch((e) => {
+      log(`Error: ${e}`);
+      setError(String(e));
+    });
   }
 
   function handleSlotLabelCycle(i: number) {
@@ -327,9 +330,10 @@ export default function MultiClient() {
     updateSlot(i, { labelMode: next });
     if (!slot.rawBase64) return;
     const { name, signature, fontStack } = labelArgsFor(next, slot.name, slot.signatureDataUrl, slot.fontChoice);
-    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, signature, fontStack).catch((e) =>
-      log(`Error: ${e}`),
-    );
+    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, signature, fontStack).catch((e) => {
+      log(`Error: ${e}`);
+      setError(String(e));
+    });
   }
 
   function handleSlotFontCycle(i: number) {
@@ -338,9 +342,10 @@ export default function MultiClient() {
     updateSlot(i, { fontChoice: next });
     if (!slot.rawBase64) return;
     const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, next);
-    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, signature, fontStack).catch((e) =>
-      log(`Error: ${e}`),
-    );
+    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, signature, fontStack).catch((e) => {
+      log(`Error: ${e}`);
+      setError(String(e));
+    });
   }
 
   function handleSlotNameChange(i: number, name: string) {
@@ -349,9 +354,10 @@ export default function MultiClient() {
     if (slot.labelMode === "off" || !slot.rawBase64) return;
     const sig = slot.labelMode === "name-sig" ? slot.signatureDataUrl : null;
     const { fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
-    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, sig, fontStack).catch((e) =>
-      log(`Error: ${e}`),
-    );
+    slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, name, sig, fontStack).catch((e) => {
+      log(`Error: ${e}`);
+      setError(String(e));
+    });
   }
 
   function handleSlotSignatureFile(i: number, file: File | undefined) {
@@ -372,6 +378,7 @@ export default function MultiClient() {
           await slotCompositeAndApply(i, slot.rawBase64, slot.bgColor, slot.name, dataUrl, fontStack);
         } catch (e) {
           log(`Error: ${e}`);
+          setError(String(e));
         }
       }
     };
