@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 
 export function useCropperWheel({
   onRotate,
-  step = 2,
+  step = 1,
 }: {
   onRotate: (delta: number) => void;
   step?: number;
