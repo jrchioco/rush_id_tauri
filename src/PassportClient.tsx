@@ -87,7 +87,7 @@ export default function PassportClient() {
     useCropperWheel({ onRotate: (delta) => updateSlotRotation(4, delta) }),
   ];
 
-  const { templates, keyCount } = useTemplates();
+  const { templates, keyCount, loading: templatesLoading } = useTemplates();
   const activeKeyIndex = useKeyUsed();
   const passportTemplates = useMemo(() => templates.filter((t) => t.key.toLowerCase().includes("passport")), [templates]);
   const displayTemplates = passportTemplates.length > 0 ? passportTemplates : templates;
@@ -642,17 +642,21 @@ export default function PassportClient() {
                   </div>
                 )}
                 <div>
-                  <select
-                    value={slot.selectedTemplate}
-                    onChange={(e) => updateSlot(i, { selectedTemplate: e.target.value })}
-                    className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1 text-xs text-[#e8e4da] font-mono focus:outline-none focus:border-[#c8881a]"
-                  >
-                    {displayTemplates.map((t) => (
-                      <option key={t.key} value={t.path}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
+                  {templatesLoading ? (
+                    <div className="w-full h-7 bg-[#1a1a18] border border-[#2a2a28] rounded-lg animate-pulse" />
+                  ) : (
+                    <select
+                      value={slot.selectedTemplate}
+                      onChange={(e) => updateSlot(i, { selectedTemplate: e.target.value })}
+                      className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1 text-xs text-[#e8e4da] font-mono focus:outline-none focus:border-[#c8881a]"
+                    >
+                      {displayTemplates.map((t) => (
+                        <option key={t.key} value={t.path}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
             )}

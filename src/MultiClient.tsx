@@ -85,7 +85,7 @@ export default function MultiClient() {
     useCropperWheel({ onRotate: (delta) => updateSlotRotation(4, delta) }),
   ];
 
-  const { templates, keyCount } = useTemplates();
+  const { templates, keyCount, loading: templatesLoading } = useTemplates();
   const activeKeyIndex = useKeyUsed();
   const multiTemplates = useMemo(() => templates.filter((t) => t.key.startsWith("multi_")), [templates]);
   const displayTemplates = multiTemplates.length > 0 ? multiTemplates : templates;
@@ -641,17 +641,21 @@ export default function MultiClient() {
                   </div>
                 )}
                 <div>
-                  <select
-                    value={slot.selectedTemplate}
-                    onChange={(e) => updateSlot(i, { selectedTemplate: e.target.value })}
-                    className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1 text-xs text-[#e8e4da] font-mono focus:outline-none focus:border-[#c8881a]"
-                  >
-                    {displayTemplates.map((t) => (
-                      <option key={t.key} value={t.path}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
+                  {templatesLoading ? (
+                    <div className="w-full h-7 bg-[#1a1a18] border border-[#2a2a28] rounded-lg animate-pulse" />
+                  ) : (
+                    <select
+                      value={slot.selectedTemplate}
+                      onChange={(e) => updateSlot(i, { selectedTemplate: e.target.value })}
+                      className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1 text-xs text-[#e8e4da] font-mono focus:outline-none focus:border-[#c8881a]"
+                    >
+                      {displayTemplates.map((t) => (
+                        <option key={t.key} value={t.path}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
             )}

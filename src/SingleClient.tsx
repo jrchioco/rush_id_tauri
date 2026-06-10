@@ -53,7 +53,7 @@ export default function SingleClient() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const compositeIdRef = useRef(0);
 
-  const { templates, keyCount } = useTemplates();
+  const { templates, keyCount, loading: templatesLoading } = useTemplates();
   const cropperWrapRef = useCropperWheel({
     onRotate: (delta) => setRotation((r) => Math.max(-90, Math.min(90, r + delta))),
   });
@@ -515,35 +515,41 @@ export default function SingleClient() {
             <div className="border border-[#2a2a28] rounded-lg p-4 space-y-3 bg-[#111110]">
               <div className="relative" ref={dropdownRef}>
                 <label className="text-xs text-[#555] font-mono tracking-widest uppercase">SVG Template</label>
-                <button
-                  onClick={() => setTemplateOpen(!templateOpen)}
-                  className="w-full mt-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] font-mono flex items-center justify-between focus:outline-none focus:border-[#c8881a]"
-                >
-                  <span>{templates.find((t) => t.path === selectedTemplate)?.name ?? "Select"}</span>
-                  <ChevronDown
-                    className={cn("w-4 h-4 text-[#555] transition-transform", templateOpen && "rotate-180")}
-                  />
-                </button>
-                {templateOpen && (
-                  <div className="absolute z-10 mt-1 w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg overflow-hidden shadow-xl">
-                    {templates.map((t) => (
-                      <button
-                        key={t.key}
-                        onClick={() => {
-                          setSelectedTemplate(t.path);
-                          setTemplateOpen(false);
-                        }}
-                        className={cn(
-                          "w-full text-left px-3 py-2 text-sm font-mono transition-colors",
-                          t.path === selectedTemplate
-                            ? "text-[#c8881a] bg-[#1a1508]"
-                            : "text-[#e8e4da] hover:bg-[#2a2a28]",
-                        )}
-                      >
-                        {t.name}
-                      </button>
-                    ))}
-                  </div>
+                {templatesLoading ? (
+                  <div className="w-full mt-2 h-9 bg-[#1a1a18] border border-[#2a2a28] rounded-lg animate-pulse" />
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setTemplateOpen(!templateOpen)}
+                      className="w-full mt-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] font-mono flex items-center justify-between focus:outline-none focus:border-[#c8881a]"
+                    >
+                      <span>{templates.find((t) => t.path === selectedTemplate)?.name ?? "Select"}</span>
+                      <ChevronDown
+                        className={cn("w-4 h-4 text-[#555] transition-transform", templateOpen && "rotate-180")}
+                      />
+                    </button>
+                    {templateOpen && (
+                      <div className="absolute z-10 mt-1 w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg overflow-hidden shadow-xl">
+                        {templates.map((t) => (
+                          <button
+                            key={t.key}
+                            onClick={() => {
+                              setSelectedTemplate(t.path);
+                              setTemplateOpen(false);
+                            }}
+                            className={cn(
+                              "w-full text-left px-3 py-2 text-sm font-mono transition-colors",
+                              t.path === selectedTemplate
+                                ? "text-[#c8881a] bg-[#1a1508]"
+                                : "text-[#e8e4da] hover:bg-[#2a2a28]",
+                            )}
+                          >
+                            {t.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               <div className="flex gap-3">
