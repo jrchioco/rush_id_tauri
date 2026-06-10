@@ -376,6 +376,8 @@ export default function SingleClient() {
                   rotation={rotation}
                   aspect={1}
                   zoomSpeed={0.1}
+                  showGrid={false}
+                  classes={{ cropAreaClassName: "cropper-face-guide-1x1" }}
                   onWheelRequest={(e) => e.ctrlKey || e.metaKey}
                   onCropChange={setCrop}
                   onZoomChange={setZoom}

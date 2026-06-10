@@ -6,3 +6,25 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
+
+/* Face guide overlay for square crops (1:1) */
+.cropper-face-guide-1x1::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('./assets/face-guide-square.svg') center / contain no-repeat;
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Face guide overlay for passport crops (35:45) */
+.cropper-face-guide-passport::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('./assets/face-guide-passport.svg') center / contain no-repeat;
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 1;
+}
