@@ -162,6 +162,22 @@ fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<()
 }
 
 #[tauri::command]
+fn get_config(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let config = load_config(&app_handle)?;
+    Ok(config.api_keys)
+}
+
+#[tauri::command]
+fn update_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<(), String> {
+    let mut config = load_config(&app_handle)?;
+    config.api_keys = api_keys;
+    let json = serde_json::to_string_pretty(&config).map_err(|e| format!("Serialize error: {}", e))?;
+    let config_path = data_dir(&app_handle).join("config.json");
+    fs::write(&config_path, &json).map_err(|e| format!("Failed to write config: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
 fn get_svg_templates(app_handle: tauri::AppHandle) -> Result<Vec<SvgTemplate>, String> {
     let d = data_dir(&app_handle);
     let mut config = load_config(&app_handle)?;
@@ -483,6 +499,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             check_config,
             save_config,
+            get_config,
+            update_config,
             get_svg_templates,
             remove_bg,
             write_picture,

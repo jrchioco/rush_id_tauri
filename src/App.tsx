@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, Scan, Layers, Sparkles, IdCard } from "lucide-react";
+import { X, Scan, Layers, Sparkles, IdCard, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { SettingsModal } from "./components/SettingsModal";
 import SingleClient from "./SingleClient";
 import MultiClient from "./MultiClient";
 import GeminiTab from "./GeminiTab";
@@ -23,6 +24,8 @@ export default function App() {
   const [setupKeys, setSetupKeys] = useState([""]);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("single");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [configVersion, setConfigVersion] = useState(0);
 
   useEffect(() => {
     invoke<boolean>("check_config").then((ready) => {
@@ -149,30 +152,46 @@ export default function App() {
               <p className="text-xs text-[#555] font-mono">Image Background Removal & SVG Printer</p>
             </div>
           </div>
-          <nav className="flex gap-1">
-            {TABS.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-mono tracking-wide flex items-center gap-1.5 transition-colors",
-                  activeTab === key
-                    ? "bg-[#c8881a]/20 text-[#c8881a] border border-[#c8881a]/30"
-                    : "text-[#555] hover:text-[#888] hover:bg-[#1a1a18]"
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
-          </nav>
+          <div className="flex items-center gap-1">
+            <nav className="flex gap-1">
+              {TABS.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-mono tracking-wide flex items-center gap-1.5 transition-colors",
+                    activeTab === key
+                      ? "bg-[#c8881a]/20 text-[#c8881a] border border-[#c8881a]/30"
+                      : "text-[#555] hover:text-[#888] hover:bg-[#1a1a18]"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </nav>
+            <div className="w-px h-5 bg-[#2a2a28] mx-1" />
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="p-1.5 rounded-lg text-[#555] hover:text-[#888] hover:bg-[#1a1a18] transition-colors"
+              title="Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {activeTab === "single" && <ErrorBoundary><SingleClient /></ErrorBoundary>}
-      {activeTab === "multi" && <ErrorBoundary><MultiClient /></ErrorBoundary>}
-      {activeTab === "passport" && <ErrorBoundary><PassportClient /></ErrorBoundary>}
-      {activeTab === "gemini" && <ErrorBoundary><GeminiTab /></ErrorBoundary>}
+      {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} /></ErrorBoundary>}
+      {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} /></ErrorBoundary>}
+      {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} /></ErrorBoundary>}
+      {activeTab === "gemini" && <ErrorBoundary><GeminiTab key={configVersion} /></ErrorBoundary>}
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSaved={() => setConfigVersion((v) => v + 1)}
+      />
     </div>
   );
 }
