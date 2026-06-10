@@ -566,6 +566,7 @@ export default function PassportClient() {
                       aspect={ASPECT}
                       zoomSpeed={0.1}
                       showGrid={false}
+                      restrictPosition={false}
                       classes={{ cropAreaClassName: "cropper-face-guide-passport" }}
                       onWheelRequest={(e) => e.ctrlKey || e.metaKey}
                       onCropChange={(c) => updateSlot(i, { crop: c })}
