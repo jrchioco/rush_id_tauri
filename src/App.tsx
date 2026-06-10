@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Scan, Layers, Sparkles, IdCard, Settings } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +23,8 @@ export default function App() {
   const [configReady, setConfigReady] = useState<boolean | null>(null);
   const [setupKeys, setSetupKeys] = useState([""]);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const updateRef = useRef<any>(null);
   const [activeTab, setActiveTab] = useState<Tab>("single");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
@@ -36,7 +38,10 @@ export default function App() {
   useEffect(() => {
     import("@tauri-apps/plugin-updater").then(({ check }) => {
       check().then((update) => {
-        if (update) setUpdateAvailable(true);
+        if (update) {
+          updateRef.current = update;
+          setUpdateAvailable(true);
+        }
       }).catch(() => {});
     }).catch(() => {});
   }, []);
@@ -130,13 +135,23 @@ export default function App() {
           <span>A new version is available.</span>
           <button
             onClick={() => {
-              import("@tauri-apps/plugin-updater").then(({ check }) => {
-                check().then((update) => update?.downloadAndInstall()).catch(() => {});
-              }).catch(() => {});
+              const update = updateRef.current;
+              if (!update) return;
+              setUpdating(true);
+              update.downloadAndInstall().then(() => {
+                toast.success("Update installed. Restarting...");
+                import("@tauri-apps/plugin-process").then(({ relaunch }) => {
+                  relaunch();
+                });
+              }).catch((e: any) => {
+                setUpdating(false);
+                toast.error("Update failed: " + String(e));
+              });
             }}
-            className="underline font-medium hover:text-[#e8a030] transition-colors"
+            disabled={updating}
+            className="underline font-medium hover:text-[#e8a030] transition-colors disabled:opacity-50"
           >
-            Update now
+            {updating ? "Downloading..." : "Update now"}
           </button>
         </div>
       )}
