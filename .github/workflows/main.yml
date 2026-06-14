@@ -44,7 +44,7 @@ jobs:
           $sigFile = Get-ChildItem "src-tauri/target/release/bundle/nsis/" -Filter "*.sig" | Select-Object -First 1
           if ($sigFile) {
             $sig = (Get-Content $sigFile.FullName -Raw).Trim()
-            $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Rush%20ID_${version}_x64-setup.exe"
+            $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Rush.ID_${version}_x64-setup.exe"
             $pubDate = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
             $json = @{
               version = "v$version"
