@@ -199,13 +199,13 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
             <div className="space-y-2">
               <button
                 onClick={() => setLicenseOpen(true)}
-                className="text-xs text-[#c8881a] hover:text-[#e8a030] font-mono transition-colors"
+                className="block text-xs text-[#c8881a] hover:text-[#e8a030] font-mono transition-colors"
               >
                 License →
               </button>
               <button
                 onClick={() => setPatchNotesOpen(true)}
-                className="text-xs text-[#c8881a] hover:text-[#e8a030] font-mono transition-colors"
+                className="block text-xs text-[#c8881a] hover:text-[#e8a030] font-mono transition-colors"
               >
                 Patch Notes →
               </button>

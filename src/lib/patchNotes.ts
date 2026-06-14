@@ -5,6 +5,17 @@ export interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.11.0": {
+    title: "What's New in v1.11.0",
+    date: "2026-06-15",
+    notes: [
+      "About tab in Settings — view version, Tauri, React, svg2pdf, and OS info",
+      "Patch Notes viewer — scrollable modal with all release history",
+      "License viewer — read the J3FF Printing Services license in-app",
+      "What's New screen — shows patch notes automatically after each update",
+      "View on GitHub link now opens in system browser",
+    ],
+  },
   "1.10.4": {
     title: "What's New in v1.10.4",
     date: "2026-06-14",
