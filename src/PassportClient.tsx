@@ -97,13 +97,9 @@ export default function PassportClient() {
   }, []);
 
   const slotsRef = useRef<SlotData[]>(slots);
+  slotsRef.current = slots;
   const logRef = useRef(log);
-  useEffect(() => {
-    slotsRef.current = slots;
-  }, [slots]);
-  useEffect(() => {
-    logRef.current = log;
-  }, [log]);
+  logRef.current = log;
 
   useEffect(() => {
     const fallback = passportTemplates.length > 0 ? passportTemplates[0] : templates[0];
@@ -190,7 +186,7 @@ export default function PassportClient() {
   }, [log]);
 
   const handleSlotFileRef = useRef(handleSlotFile);
-  useEffect(() => { handleSlotFileRef.current = handleSlotFile; }, [handleSlotFile]);
+  handleSlotFileRef.current = handleSlotFile;
 
   useEffect(() => {
     function handlePaste(e: ClipboardEvent) {
