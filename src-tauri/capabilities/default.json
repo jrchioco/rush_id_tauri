@@ -14,6 +14,8 @@
     "updater:allow-download-and-install",
     "process:default",
     "process:allow-restart",
+    "shell:default",
+    "shell:allow-open",
     {
       "identifier": "fs:allow-read",
       "allow": [{ "path": "**" }]

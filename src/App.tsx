@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SettingsModal } from "./components/SettingsModal";
+import { WhatsNewModal } from "./components/WhatsNewModal";
 import SingleClient from "./SingleClient";
 import MultiClient from "./MultiClient";
 import GeminiTab from "./GeminiTab";
@@ -28,6 +29,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("single");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
 
   useEffect(() => {
     invoke<boolean>("check_config").then((ready) => {
@@ -44,6 +46,13 @@ export default function App() {
         }
       }).catch(() => {});
     }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (localStorage.getItem("showWhatsNew") === "true") {
+      localStorage.removeItem("showWhatsNew");
+      setShowWhatsNew(true);
+    }
   }, []);
 
   async function handleSaveConfig() {
@@ -140,6 +149,7 @@ export default function App() {
               setUpdating(true);
               update.downloadAndInstall().then(() => {
                 toast.success("Update installed. Restarting...");
+                localStorage.setItem("showWhatsNew", "true");
                 import("@tauri-apps/plugin-process").then(({ relaunch }) => {
                   relaunch();
                 });
@@ -206,6 +216,11 @@ export default function App() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onSaved={() => setConfigVersion((v) => v + 1)}
+      />
+
+      <WhatsNewModal
+        open={showWhatsNew}
+        onClose={() => setShowWhatsNew(false)}
       />
     </div>
   );
