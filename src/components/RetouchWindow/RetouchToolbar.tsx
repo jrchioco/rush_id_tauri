@@ -15,10 +15,14 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
     setBrushSize,
     opacity,
     setOpacity,
+    hardness,
+    setHardness,
     brightness,
     setBrightness,
     contrast,
     setContrast,
+    zoom,
+    setZoom,
     canUndo,
     undo,
   } = state;
@@ -70,6 +74,20 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 max={100}
                 value={brushSize}
                 onChange={(e) => setBrushSize(Number(e.target.value))}
+                className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
+              />
+            </div>
+            <div>
+              <div className="flex justify-between text-[10px] text-[#888] font-mono mb-1">
+                <span>Hardness</span>
+                <span>{hardness}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={hardness}
+                onChange={(e) => setHardness(Number(e.target.value))}
                 className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
               />
             </div>
@@ -127,6 +145,19 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
         </div>
 
         <div>
+          <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Zoom</h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setZoom(1)}
+              className="px-2 py-1 text-[10px] text-[#888] hover:text-[#e8e4da] font-mono border border-[#2a2a28] rounded transition-colors"
+            >
+              Reset
+            </button>
+            <span className="text-[10px] text-[#555] font-mono">{Math.round(zoom * 100)}%</span>
+          </div>
+        </div>
+
+        <div>
           <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Actions</h3>
           <div className="space-y-1">
             <button
@@ -157,7 +188,9 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
             Alt+Click = set clone source{"\n"}
             [ / ] = brush size{"\n"}
             S / E = switch tool{"\n"}
-            Ctrl+Z = undo
+            Ctrl+Z = undo{"\n"}
+            Ctrl+Wheel = zoom{"\n"}
+            Ctrl+0 = reset zoom
           </p>
         </div>
       </div>

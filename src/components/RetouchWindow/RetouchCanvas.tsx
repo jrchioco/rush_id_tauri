@@ -12,18 +12,23 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
   const {
     baseCanvasRef,
     drawCanvasRef,
+    cloneSourceCanvasRef,
     tool,
+    zoom,
+    setZoom,
     cloneSource,
     altHeld,
     isDrawingRef,
     strokeStartRef,
     cloneSourceRef,
     transformRef,
+    zoomOffsetRef,
     computeTransform,
     paintClone,
     paintEraser,
     pushUndo,
     setCloneSource,
+    updateCloneSource,
   } = state;
 
   const resize = useCallback(() => {
@@ -31,20 +36,26 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     if (!container) return;
     const rect = container.getBoundingClientRect();
     const t = computeTransform(rect.width, rect.height);
+    const z = zoom;
+    const zdx = zoomOffsetRef.current.dx;
+    const zdy = zoomOffsetRef.current.dy;
 
     const baseCanvas = baseCanvasRef.current;
     const drawCanvas = drawCanvasRef.current;
     if (!baseCanvas || !drawCanvas) return;
 
-    baseCanvas.style.width = `${t.displayW}px`;
-    baseCanvas.style.height = `${t.displayH}px`;
-    baseCanvas.style.left = `${t.offsetX}px`;
-    baseCanvas.style.top = `${t.offsetY}px`;
+    const scaledW = t.displayW * z;
+    const scaledH = t.displayH * z;
 
-    drawCanvas.style.width = `${t.displayW}px`;
-    drawCanvas.style.height = `${t.displayH}px`;
-    drawCanvas.style.left = `${t.offsetX}px`;
-    drawCanvas.style.top = `${t.offsetY}px`;
+    baseCanvas.style.width = `${scaledW}px`;
+    baseCanvas.style.height = `${scaledH}px`;
+    baseCanvas.style.left = `${t.offsetX + zdx}px`;
+    baseCanvas.style.top = `${t.offsetY + zdy}px`;
+
+    drawCanvas.style.width = `${scaledW}px`;
+    drawCanvas.style.height = `${scaledH}px`;
+    drawCanvas.style.left = `${t.offsetX + zdx}px`;
+    drawCanvas.style.top = `${t.offsetY + zdy}px`;
 
     const cursorCanvas = cursorCanvasRef.current;
     if (cursorCanvas) {
@@ -53,7 +64,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
       cursorCanvas.style.width = `${rect.width}px`;
       cursorCanvas.style.height = `${rect.height}px`;
     }
-  }, [baseCanvasRef, drawCanvasRef, computeTransform]);
+  }, [baseCanvasRef, drawCanvasRef, computeTransform, zoom, zoomOffsetRef]);
 
   useEffect(() => {
     resize();
@@ -82,6 +93,37 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     };
   }, [state.setAltHeld]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+
+      const rect = container.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+
+      const b = transformRef.current;
+      const z = zoom;
+      const newZoom = Math.min(5, Math.max(1, z + (e.deltaY > 0 ? -0.25 : 0.25)));
+      const newScale = b.scale * newZoom;
+
+      const canvasX = (cursorX - b.offsetX - zoomOffsetRef.current.dx) / (b.scale * z);
+      const canvasY = (cursorY - b.offsetY - zoomOffsetRef.current.dy) / (b.scale * z);
+
+      const newDx = cursorX - b.offsetX - canvasX * newScale;
+      const newDy = cursorY - b.offsetY - canvasY * newScale;
+
+      zoomOffsetRef.current = { dx: newDx, dy: newDy };
+      setZoom(newZoom);
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [setZoom, zoom, transformRef, zoomOffsetRef]);
+
   const getDisplayCoords = useCallback((e: React.PointerEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return { x: 0, y: 0 };
@@ -95,8 +137,9 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const t = transformRef.current;
-    const radius = (state.brushSize / 2) * t.scale;
+    const b = transformRef.current;
+    const z = zoom;
+    const radius = (state.brushSize / 2) * b.scale * z;
 
     ctx.strokeStyle = "rgba(255,255,255,0.8)";
     ctx.lineWidth = 1;
@@ -109,7 +152,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     ctx.beginPath();
     ctx.arc(displayX, displayY, radius + 1, 0, Math.PI * 2);
     ctx.stroke();
-  }, [transformRef, state.brushSize]);
+  }, [transformRef, state.brushSize, zoom]);
 
   const drawCloneCrosshair = useCallback((displayX: number, displayY: number) => {
     const canvas = cursorCanvasRef.current;
@@ -128,6 +171,15 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     ctx.stroke();
   }, []);
 
+  const canvasToDisplay = useCallback((imgX: number, imgY: number) => {
+    const b = transformRef.current;
+    const z = zoom;
+    return {
+      x: imgX * b.scale * z + b.offsetX + zoomOffsetRef.current.dx,
+      y: imgY * b.scale * z + b.offsetY + zoomOffsetRef.current.dy,
+    };
+  }, [transformRef, zoom, zoomOffsetRef]);
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const display = getDisplayCoords(e);
 
@@ -135,11 +187,8 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
       const imgCoords = state.toImageCoords(display.x, display.y);
       cloneSourceRef.current = imgCoords;
       setCloneSource(imgCoords);
-      const t = transformRef.current;
-      drawCloneCrosshair(
-        imgCoords.x * t.scale + t.offsetX,
-        imgCoords.y * t.scale + t.offsetY,
-      );
+      const d = canvasToDisplay(imgCoords.x, imgCoords.y);
+      drawCloneCrosshair(d.x, d.y);
       return;
     }
 
@@ -157,7 +206,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     } else {
       paintEraser(display.x, display.y);
     }
-  }, [tool, getDisplayCoords, paintClone, paintEraser, state.toImageCoords, cloneSourceRef, setCloneSource, isDrawingRef, strokeStartRef, drawCanvasRef, transformRef, drawCloneCrosshair]);
+  }, [tool, getDisplayCoords, paintClone, paintEraser, state.toImageCoords, cloneSourceRef, setCloneSource, isDrawingRef, strokeStartRef, drawCanvasRef, canvasToDisplay, drawCloneCrosshair]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const display = getDisplayCoords(e);
@@ -169,11 +218,8 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     }
 
     if (tool === "clone" && cloneSource) {
-      const t = transformRef.current;
-      drawCloneCrosshair(
-        cloneSource.x * t.scale + t.offsetX,
-        cloneSource.y * t.scale + t.offsetY,
-      );
+      const d = canvasToDisplay(cloneSource.x, cloneSource.y);
+      drawCloneCrosshair(d.x, d.y);
     }
 
     if (!altHeld) {
@@ -187,13 +233,14 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     } else {
       paintEraser(display.x, display.y);
     }
-  }, [tool, altHeld, cloneSource, getDisplayCoords, paintClone, paintEraser, drawCursor, drawCloneCrosshair, transformRef, isDrawingRef]);
+  }, [tool, altHeld, cloneSource, getDisplayCoords, paintClone, paintEraser, drawCursor, drawCloneCrosshair, canvasToDisplay, isDrawingRef]);
 
   const handlePointerUp = useCallback(() => {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
     pushUndo();
-  }, [pushUndo]);
+    updateCloneSource();
+  }, [pushUndo, updateCloneSource]);
 
   const cursorClass = tool === "clone" && !altHeld && cloneSource
     ? "cursor-none"
@@ -225,6 +272,10 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
       <canvas
         ref={cursorCanvasRef}
         className="absolute pointer-events-none"
+      />
+      <canvas
+        ref={cloneSourceCanvasRef}
+        className="hidden"
       />
     </div>
   );

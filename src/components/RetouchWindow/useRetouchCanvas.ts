@@ -17,89 +17,131 @@ interface CanvasTransform {
   displayH: number;
 }
 
+interface CanvasPair {
+  base: ImageData;
+  draw: ImageData;
+}
+
+function makeHardnessGradient(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  hardness: number,
+): CanvasGradient {
+  const inner = hardness / 100;
+  const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  gradient.addColorStop(0, "rgba(0,0,0,1)");
+  gradient.addColorStop(Math.min(inner, 0.99), "rgba(0,0,0,1)");
+  gradient.addColorStop(1, "rgba(0,0,0,0)");
+  return gradient;
+}
+
 export function useRetouchCanvas(_imageDataUrl: string) {
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cloneSourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const originalImageRef = useRef<HTMLImageElement | null>(null);
-  const undoStackRef = useRef<ImageData[]>([]);
+  const undoStackRef = useRef<CanvasPair[]>([]);
   const isDrawingRef = useRef(false);
   const strokeStartRef = useRef<{ x: number; y: number } | null>(null);
   const cloneSourceRef = useRef<CloneSource | null>(null);
   const altHeldRef = useRef(false);
-  const transformRef = useRef<CanvasTransform>({ scale: 1, offsetX: 0, offsetY: 0, displayW: 0, displayH: 0 });
+  const baseTransformRef = useRef<CanvasTransform>({ scale: 1, offsetX: 0, offsetY: 0, displayW: 0, displayH: 0 });
+  const zoomOffsetRef = useRef({ dx: 0, dy: 0 });
 
   const [tool, setTool] = useState<Tool>("clone");
   const [brushSize, setBrushSize] = useState(30);
   const [opacity, setOpacity] = useState(1.0);
+  const [hardness, setHardness] = useState(50);
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
+  const [zoom, setZoom] = useState(1);
   const [canUndo, setCanUndo] = useState(false);
   const [cloneSource, setCloneSource] = useState<CloneSource | null>(null);
   const [altHeld, setAltHeld] = useState(false);
 
   const toImageCoords = useCallback((displayX: number, displayY: number) => {
-    const t = transformRef.current;
+    const b = baseTransformRef.current;
+    const zdx = zoomOffsetRef.current.dx;
+    const zdy = zoomOffsetRef.current.dy;
     return {
-      x: (displayX - t.offsetX) / t.scale,
-      y: (displayY - t.offsetY) / t.scale,
+      x: (displayX - b.offsetX - zdx) / (b.scale * zoom),
+      y: (displayY - b.offsetY - zdy) / (b.scale * zoom),
     };
-  }, []);
+  }, [zoom]);
 
   const pushUndo = useCallback(() => {
-    const canvas = drawCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const baseCanvas = baseCanvasRef.current;
+    const drawCanvas = drawCanvasRef.current;
+    if (!baseCanvas || !drawCanvas) return;
+    const baseCtx = baseCanvas.getContext("2d");
+    const drawCtx = drawCanvas.getContext("2d");
+    if (!baseCtx || !drawCtx) return;
+    const pair: CanvasPair = {
+      base: baseCtx.getImageData(0, 0, baseCanvas.width, baseCanvas.height),
+      draw: drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height),
+    };
     const stack = undoStackRef.current;
     if (stack.length >= MAX_UNDO) stack.shift();
-    stack.push(data);
+    stack.push(pair);
     setCanUndo(stack.length > 0);
   }, []);
 
   const undo = useCallback(() => {
     const stack = undoStackRef.current;
     if (stack.length === 0) return;
-    const canvas = drawCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const data = stack.pop()!;
-    ctx.putImageData(data, 0, 0);
+    const baseCanvas = baseCanvasRef.current;
+    const drawCanvas = drawCanvasRef.current;
+    if (!baseCanvas || !drawCanvas) return;
+    const baseCtx = baseCanvas.getContext("2d");
+    const drawCtx = drawCanvas.getContext("2d");
+    if (!baseCtx || !drawCtx) return;
+    const pair = stack.pop()!;
+    baseCtx.putImageData(pair.base, 0, 0);
+    drawCtx.putImageData(pair.draw, 0, 0);
     setCanUndo(stack.length > 0);
+    updateCloneSource();
+  }, []);
+
+  const updateCloneSource = useCallback(() => {
+    const baseCanvas = baseCanvasRef.current;
+    const drawCanvas = drawCanvasRef.current;
+    const cloneCanvas = cloneSourceCanvasRef.current;
+    if (!baseCanvas || !drawCanvas || !cloneCanvas) return;
+    cloneCanvas.width = baseCanvas.width;
+    cloneCanvas.height = baseCanvas.height;
+    const ctx = cloneCanvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(baseCanvas, 0, 0);
+    ctx.drawImage(drawCanvas, 0, 0);
   }, []);
 
   const resetCanvas = useCallback(() => {
     const drawCanvas = drawCanvasRef.current;
-    if (!drawCanvas) return;
-    const ctx = drawCanvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    const baseCanvas = baseCanvasRef.current;
+    if (!drawCanvas || !baseCanvas) return;
+    const drawCtx = drawCanvas.getContext("2d");
+    const baseCtx = baseCanvas.getContext("2d");
+    if (!drawCtx || !baseCtx) return;
+    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
+    const img = originalImageRef.current;
+    if (img) baseCtx.drawImage(img, 0, 0);
     undoStackRef.current = [];
     setCanUndo(false);
     setBrightness(100);
     setContrast(100);
     setBrushSize(30);
     setOpacity(1.0);
+    setHardness(50);
+    setZoom(1);
+    zoomOffsetRef.current = { dx: 0, dy: 0 };
     setCloneSource(null);
     cloneSourceRef.current = null;
-  }, []);
-
-  const renderBaseCanvas = useCallback(() => {
-    const canvas = baseCanvasRef.current;
-    const img = originalImageRef.current;
-    if (!canvas || !img) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
-    ctx.drawImage(img, 0, 0);
-    ctx.filter = "none";
-  }, [brightness, contrast]);
+    baseCanvas.style.filter = "none";
+    updateCloneSource();
+  }, [updateCloneSource]);
 
   const loadSource = useCallback((src: string) => {
     return new Promise<void>((resolve, reject) => {
@@ -110,31 +152,40 @@ export function useRetouchCanvas(_imageDataUrl: string) {
         setCanUndo(false);
         setCloneSource(null);
         cloneSourceRef.current = null;
+        setBrightness(100);
+        setContrast(100);
+        setZoom(1);
+        zoomOffsetRef.current = { dx: 0, dy: 0 };
 
         const baseCanvas = baseCanvasRef.current;
         const drawCanvas = drawCanvasRef.current;
+        const cloneCanvas = cloneSourceCanvasRef.current;
         if (!baseCanvas || !drawCanvas) { resolve(); return; }
 
         baseCanvas.width = img.naturalWidth;
         baseCanvas.height = img.naturalHeight;
         drawCanvas.width = img.naturalWidth;
         drawCanvas.height = img.naturalHeight;
+        if (cloneCanvas) {
+          cloneCanvas.width = img.naturalWidth;
+          cloneCanvas.height = img.naturalHeight;
+        }
 
         const baseCtx = baseCanvas.getContext("2d")!;
         baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
-        baseCtx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
         baseCtx.drawImage(img, 0, 0);
-        baseCtx.filter = "none";
+        baseCanvas.style.filter = "none";
 
         const drawCtx = drawCanvas.getContext("2d", { willReadFrequently: true })!;
         drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
 
+        updateCloneSource();
         resolve();
       };
       img.onerror = () => reject(new Error("Failed to load retouch image"));
       img.src = src;
     });
-  }, [brightness, contrast]);
+  }, [updateCloneSource]);
 
   const computeTransform = useCallback((containerW: number, containerH: number) => {
     const img = originalImageRef.current;
@@ -154,27 +205,27 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     const oy = (containerH - dh) / 2;
     const scale = dw / img.naturalWidth;
     const t = { scale, offsetX: ox, offsetY: oy, displayW: dw, displayH: dh };
-    transformRef.current = t;
+    baseTransformRef.current = t;
+    zoomOffsetRef.current = { dx: 0, dy: 0 };
     return t;
   }, []);
 
   const paintClone = useCallback((displayX: number, displayY: number) => {
     const drawCanvas = drawCanvasRef.current;
-    const baseCanvas = baseCanvasRef.current;
+    const cloneCanvas = cloneSourceCanvasRef.current;
     const start = strokeStartRef.current;
     const source = cloneSourceRef.current;
-    if (!drawCanvas || !baseCanvas || !start || !source) return;
+    if (!drawCanvas || !cloneCanvas || !start || !source) return;
     const ctx = drawCanvas.getContext("2d");
     if (!ctx) return;
 
-    const t = transformRef.current;
-    const imgX = (displayX - t.offsetX) / t.scale;
-    const imgY = (displayY - t.offsetY) / t.scale;
-    const startImgX = (start.x - t.offsetX) / t.scale;
-    const startImgY = (start.y - t.offsetY) / t.scale;
+    const imgX = (displayX - baseTransformRef.current.offsetX - zoomOffsetRef.current.dx) / (baseTransformRef.current.scale * zoom);
+    const imgY = (displayY - baseTransformRef.current.offsetY - zoomOffsetRef.current.dy) / (baseTransformRef.current.scale * zoom);
+    const startImgX = (start.x - baseTransformRef.current.offsetX - zoomOffsetRef.current.dx) / (baseTransformRef.current.scale * zoom);
+    const startImgY = (start.y - baseTransformRef.current.offsetY - zoomOffsetRef.current.dy) / (baseTransformRef.current.scale * zoom);
     const srcX = source.x + (imgX - startImgX);
     const srcY = source.y + (imgY - startImgY);
-    const brushImgSize = brushSize / t.scale;
+    const brushImgSize = brushSize / (baseTransformRef.current.scale * zoom);
 
     ctx.save();
     ctx.beginPath();
@@ -182,41 +233,48 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     ctx.clip();
     ctx.globalAlpha = opacity;
     ctx.drawImage(
-      baseCanvas,
+      cloneCanvas,
       srcX - brushImgSize / 2, srcY - brushImgSize / 2, brushImgSize, brushImgSize,
       imgX - brushImgSize / 2, imgY - brushImgSize / 2, brushImgSize, brushImgSize,
     );
     ctx.restore();
-  }, [brushSize, opacity]);
+  }, [brushSize, opacity, zoom]);
 
   const paintEraser = useCallback((displayX: number, displayY: number) => {
     const drawCanvas = drawCanvasRef.current;
-    if (!drawCanvas) return;
-    const ctx = drawCanvas.getContext("2d");
-    if (!ctx) return;
+    const baseCanvas = baseCanvasRef.current;
+    if (!drawCanvas || !baseCanvas) return;
+    const drawCtx = drawCanvas.getContext("2d");
+    const baseCtx = baseCanvas.getContext("2d");
+    if (!drawCtx || !baseCtx) return;
 
-    const t = transformRef.current;
-    const imgX = (displayX - t.offsetX) / t.scale;
-    const imgY = (displayY - t.offsetY) / t.scale;
-    const brushImgSize = brushSize / t.scale;
+    const imgX = (displayX - baseTransformRef.current.offsetX - zoomOffsetRef.current.dx) / (baseTransformRef.current.scale * zoom);
+    const imgY = (displayY - baseTransformRef.current.offsetY - zoomOffsetRef.current.dy) / (baseTransformRef.current.scale * zoom);
+    const brushImgSize = brushSize / (baseTransformRef.current.scale * zoom);
 
-    ctx.save();
-    ctx.globalCompositeOperation = "destination-out";
-    const gradient = ctx.createRadialGradient(imgX, imgY, 0, imgX, imgY, brushImgSize / 2);
-    gradient.addColorStop(0, "rgba(0,0,0,1)");
-    gradient.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(imgX, imgY, brushImgSize / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }, [brushSize]);
+    drawCtx.save();
+    drawCtx.globalCompositeOperation = "destination-out";
+    const drawGrad = makeHardnessGradient(drawCtx, imgX, imgY, brushImgSize / 2, hardness);
+    drawCtx.fillStyle = drawGrad;
+    drawCtx.beginPath();
+    drawCtx.arc(imgX, imgY, brushImgSize / 2, 0, Math.PI * 2);
+    drawCtx.fill();
+    drawCtx.restore();
+
+    baseCtx.save();
+    baseCtx.globalCompositeOperation = "destination-out";
+    const baseGrad = makeHardnessGradient(baseCtx, imgX, imgY, brushImgSize / 2, hardness);
+    baseCtx.fillStyle = baseGrad;
+    baseCtx.beginPath();
+    baseCtx.arc(imgX, imgY, brushImgSize / 2, 0, Math.PI * 2);
+    baseCtx.fill();
+    baseCtx.restore();
+  }, [brushSize, hardness, zoom]);
 
   const flattenAndSave = useCallback((): string | null => {
-    const baseCanvas = baseCanvasRef.current;
     const drawCanvas = drawCanvasRef.current;
     const img = originalImageRef.current;
-    if (!baseCanvas || !drawCanvas || !img) return null;
+    if (!drawCanvas || !img) return null;
 
     const offscreen = document.createElement("canvas");
     offscreen.width = img.naturalWidth;
@@ -231,8 +289,10 @@ export function useRetouchCanvas(_imageDataUrl: string) {
   }, [brightness, contrast]);
 
   useEffect(() => {
-    renderBaseCanvas();
-  }, [brightness, contrast, renderBaseCanvas]);
+    const baseCanvas = baseCanvasRef.current;
+    if (!baseCanvas) return;
+    baseCanvas.style.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+  }, [brightness, contrast]);
 
   const setAltHeldState = useCallback((held: boolean) => {
     altHeldRef.current = held;
@@ -242,16 +302,21 @@ export function useRetouchCanvas(_imageDataUrl: string) {
   return {
     baseCanvasRef,
     drawCanvasRef,
+    cloneSourceCanvasRef,
     tool,
     setTool,
     brushSize,
     setBrushSize,
     opacity,
     setOpacity,
+    hardness,
+    setHardness,
     brightness,
     setBrightness,
     contrast,
     setContrast,
+    zoom,
+    setZoom,
     canUndo,
     cloneSource,
     setCloneSource,
@@ -261,7 +326,8 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     altHeldRef,
     isDrawingRef,
     strokeStartRef,
-    transformRef,
+    transformRef: baseTransformRef,
+    zoomOffsetRef,
     loadSource,
     computeTransform,
     toImageCoords,
@@ -271,5 +337,6 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     undo,
     resetCanvas,
     flattenAndSave,
+    updateCloneSource,
   };
 }

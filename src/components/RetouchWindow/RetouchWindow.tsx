@@ -64,6 +64,11 @@ export function RetouchWindow({ isOpen, imageDataUrl, onClose, onSave }: Retouch
         state.setTool("eraser");
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === "0") {
+        e.preventDefault();
+        state.setZoom(1);
+        return;
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
