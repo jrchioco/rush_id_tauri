@@ -13,6 +13,7 @@ import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
+import { RetouchButton, RetouchWindow } from "./components/RetouchWindow";
 import type { LogEntry, LabelMode, FontChoice } from "./types";
 
 type Step = "select" | "crop" | "done";
@@ -47,6 +48,9 @@ export default function SingleClient() {
   const [nameLabel, setNameLabel] = useState("");
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [fontChoice, setFontChoice] = useState<FontChoice>("black");
+
+  const [retouchOpen, setRetouchOpen] = useState(false);
+  const [retouchImageData, setRetouchImageData] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sigFileInputRef = useRef<HTMLInputElement>(null);
@@ -234,6 +238,26 @@ export default function SingleClient() {
       }
     };
     reader.readAsDataURL(file);
+  }
+
+  function handleRetouchOpen() {
+    if (!rawBase64) return;
+    setRetouchImageData("data:image/png;base64," + rawBase64);
+    setRetouchOpen(true);
+  }
+
+  async function handleRetouchSave(newDataUrl: string) {
+    const newRaw = newDataUrl.split(",")[1];
+    if (!newRaw) return;
+    setRawBase64(newRaw);
+    log("Applying retouch...");
+    const { name, signature, fontStack } = labelArgs();
+    try {
+      await compositeAndApply(newRaw, bgColor, name, signature, fontStack);
+      log("Retouch applied");
+    } catch (e) {
+      log(`Error: ${e}`);
+    }
   }
 
   async function handleProcess() {
@@ -430,13 +454,14 @@ export default function SingleClient() {
             </div>
 
             <div
-              className="rounded-lg flex items-center justify-center p-6 min-h-[300px]"
+              className="relative rounded-lg flex items-center justify-center p-6 min-h-[300px]"
               style={{
                 backgroundImage: "repeating-conic-gradient(#1e1e1c 0% 25%, #161614 0% 50%)",
                 backgroundSize: "16px 16px",
               }}
             >
               <img src={resultPath} alt="Result" className="max-h-[360px] object-contain rounded shadow-2xl" />
+              <RetouchButton onClick={handleRetouchOpen} />
             </div>
 
             <div className="space-y-1.5">
@@ -579,6 +604,13 @@ export default function SingleClient() {
       </div>
 
       <LogsPanel title="Status & Logs" entries={logs} footer={statFooter} />
+
+      <RetouchWindow
+        isOpen={retouchOpen}
+        imageDataUrl={retouchImageData}
+        onClose={() => setRetouchOpen(false)}
+        onSave={handleRetouchSave}
+      />
     </main>
   );
 }

@@ -13,6 +13,7 @@ import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
+import { RetouchButton, RetouchWindow } from "./components/RetouchWindow";
 import type { LabelMode, FontChoice } from "./types";
 
 interface SlotData {
@@ -73,6 +74,9 @@ export default function MultiClient() {
   const [logs, setLogs] = useState<{ time: string; text: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [testMode, setTestMode] = useState(false);
+  const [retouchOpen, setRetouchOpen] = useState(false);
+  const [retouchSlotIndex, setRetouchSlotIndex] = useState(0);
+  const [retouchImageData, setRetouchImageData] = useState("");
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const sigFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -380,6 +384,31 @@ export default function MultiClient() {
     reader.readAsDataURL(file);
   }
 
+  function handleRetouchOpen(i: number) {
+    const slot = slotsRef.current[i];
+    if (!slot.rawBase64) return;
+    setRetouchSlotIndex(i);
+    setRetouchImageData("data:image/png;base64," + slot.rawBase64);
+    setRetouchOpen(true);
+  }
+
+  async function handleRetouchSave(newDataUrl: string) {
+    const newRaw = newDataUrl.split(",")[1];
+    if (!newRaw) return;
+    const i = retouchSlotIndex;
+    const slot = slotsRef.current[i];
+    updateSlot(i, { rawBase64: newRaw });
+    log(`Applying retouch to slot ${i + 1}...`);
+    const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
+    try {
+      await slotCompositeAndApply(i, newRaw, slot.bgColor, name, signature, fontStack);
+      log(`Retouch applied to slot ${i + 1}`);
+    } catch (e) {
+      log(`Error: ${e}`);
+      toast.error(String(e));
+    }
+  }
+
   function handleSlotReset(i: number) {
     const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
     setSlots((prev) => {
@@ -593,13 +622,14 @@ export default function MultiClient() {
             {slot.step === "done" && slot.resultPath && (
               <div className="p-3 space-y-3">
                 <div
-                  className="rounded-lg flex items-center justify-center p-3"
+                  className="relative rounded-lg flex items-center justify-center p-3"
                   style={{
                     backgroundImage: "repeating-conic-gradient(#1e1e1c 0% 25%, #161614 0% 50%)",
                     backgroundSize: "12px 12px",
                   }}
                 >
                   <img src={slot.resultPath} alt="Result" className="max-h-[120px] object-contain rounded shadow-lg" />
+                  <RetouchButton onClick={() => handleRetouchOpen(i)} />
                 </div>
                 <div className="flex items-center gap-2">
                   <ColorPicker
@@ -683,6 +713,13 @@ export default function MultiClient() {
       </div>
 
       <LogsPanel title="Batch Logs" entries={logs} footer={statFooter} />
+
+      <RetouchWindow
+        isOpen={retouchOpen}
+        imageDataUrl={retouchImageData}
+        onClose={() => setRetouchOpen(false)}
+        onSave={handleRetouchSave}
+      />
     </main>
   );
 }
