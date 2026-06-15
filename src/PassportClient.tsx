@@ -49,7 +49,7 @@ function labelArgsFor(
 const SLOT_COUNT = 5;
 const LABELS = ["Passport 1", "Passport 2", "Passport 3", "Passport 4", "Passport 5"];
 
-function freshSlot(i: number): SlotData {
+function freshSlot(i: number, defaultTemplate = ""): SlotData {
   return {
     step: "empty",
     originalImage: null,
@@ -60,7 +60,7 @@ function freshSlot(i: number): SlotData {
     rawBase64: null,
     resultPath: null,
     bgColor: "#ffffff",
-    selectedTemplate: "",
+    selectedTemplate: defaultTemplate,
     name: LABELS[i],
     labelMode: "off",
     signatureDataUrl: null,
@@ -382,15 +382,17 @@ export default function PassportClient() {
   }
 
   function handleSlotReset(i: number) {
+    const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
     setSlots((prev) => {
       const next = [...prev];
-      next[i] = freshSlot(i);
+      next[i] = freshSlot(i, fallback?.path ?? "");
       return next;
     });
   }
 
   function handleResetAll() {
-    setSlots(Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)));
+    const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
+    setSlots(Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i, fallback?.path ?? "")));
     setLogs([]);
   }
 

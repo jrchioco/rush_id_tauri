@@ -5,6 +5,13 @@ export interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.11.1": {
+    title: "What's New in v1.11.1",
+    date: "2026-06-15",
+    notes: [
+      "Fixed stale template selection after Reset All in Multi and Passport tabs",
+    ],
+  },
   "1.11.0": {
     title: "What's New in v1.11.0",
     date: "2026-06-15",

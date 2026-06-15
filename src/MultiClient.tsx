@@ -47,7 +47,7 @@ function labelArgsFor(
 const SLOT_COUNT = 5;
 const LABELS = ["Client A", "Client B", "Client C", "Client D", "Client E"];
 
-function freshSlot(i: number): SlotData {
+function freshSlot(i: number, defaultTemplate = ""): SlotData {
   return {
     step: "empty",
     originalImage: null,
@@ -58,7 +58,7 @@ function freshSlot(i: number): SlotData {
     rawBase64: null,
     resultPath: null,
     bgColor: "#ffffff",
-    selectedTemplate: "",
+    selectedTemplate: defaultTemplate,
     name: LABELS[i],
     labelMode: "off",
     signatureDataUrl: null,
@@ -381,15 +381,17 @@ export default function MultiClient() {
   }
 
   function handleSlotReset(i: number) {
+    const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
     setSlots((prev) => {
       const next = [...prev];
-      next[i] = freshSlot(i);
+      next[i] = freshSlot(i, fallback?.path ?? "");
       return next;
     });
   }
 
   function handleResetAll() {
-    setSlots(Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)));
+    const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
+    setSlots(Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i, fallback?.path ?? "")));
     setLogs([]);
   }
 
