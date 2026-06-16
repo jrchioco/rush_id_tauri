@@ -30,6 +30,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     pushUndo,
     setCloneSource,
     updateCloneSource,
+    viewVersion,
   } = state;
 
   const resize = useCallback(() => {
@@ -65,7 +66,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
       cursorCanvas.style.width = `${rect.width}px`;
       cursorCanvas.style.height = `${rect.height}px`;
     }
-  }, [baseCanvasRef, drawCanvasRef, computeTransform, zoom, zoomOffsetRef]);
+  }, [baseCanvasRef, drawCanvasRef, computeTransform, zoom, zoomOffsetRef, viewVersion]);
 
   useEffect(() => {
     resize();
@@ -125,13 +126,17 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
       const newZoom = Math.min(5, Math.max(1, z + (e.deltaY > 0 ? -0.25 : 0.25)));
       const newScale = b.scale * newZoom;
 
-      const canvasX = (cursorX - b.offsetX - zoomOffsetRef.current.dx) / (b.scale * z);
-      const canvasY = (cursorY - b.offsetY - zoomOffsetRef.current.dy) / (b.scale * z);
+      if (newZoom <= 1) {
+        zoomOffsetRef.current = { dx: 0, dy: 0 };
+      } else {
+        const canvasX = (cursorX - b.offsetX - zoomOffsetRef.current.dx) / (b.scale * z);
+        const canvasY = (cursorY - b.offsetY - zoomOffsetRef.current.dy) / (b.scale * z);
+        zoomOffsetRef.current = {
+          dx: cursorX - b.offsetX - canvasX * newScale,
+          dy: cursorY - b.offsetY - canvasY * newScale,
+        };
+      }
 
-      const newDx = cursorX - b.offsetX - canvasX * newScale;
-      const newDy = cursorY - b.offsetY - canvasY * newScale;
-
-      zoomOffsetRef.current = { dx: newDx, dy: newDy };
       setZoom(newZoom);
     };
 

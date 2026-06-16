@@ -61,6 +61,7 @@ export function useRetouchCanvas(_imageDataUrl: string) {
   const [canUndo, setCanUndo] = useState(false);
   const [cloneSource, setCloneSource] = useState<CloneSource | null>(null);
   const [altHeld, setAltHeld] = useState(false);
+  const [viewVersion, setViewVersion] = useState(0);
 
   const toImageCoords = useCallback((displayX: number, displayY: number) => {
     const b = baseTransformRef.current;
@@ -291,6 +292,12 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     baseCanvas.style.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
   }, [brightness, contrast]);
 
+  const resetView = useCallback(() => {
+    setZoom(1);
+    zoomOffsetRef.current = { dx: 0, dy: 0 };
+    setViewVersion(v => v + 1);
+  }, []);
+
   const setAltHeldState = useCallback((held: boolean) => {
     altHeldRef.current = held;
     setAltHeld(held);
@@ -333,6 +340,8 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     pushUndo,
     undo,
     resetCanvas,
+    resetView,
+    viewVersion,
     flattenAndSave,
     updateCloneSource,
   };
