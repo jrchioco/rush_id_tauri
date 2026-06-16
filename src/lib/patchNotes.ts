@@ -5,6 +5,15 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.12.1": {
+    title: "What's New in v1.12.1",
+    date: "2026-06-17",
+    notes: [
+      "Fixed retouch eraser progress not saving after Save & Close",
+      "Fixed zoom-to-cursor scroll rubber-banding in retouch window",
+      "Removed dead exports, unused props, and stale code",
+    ],
+  },
   "1.12.0": {
     title: "What's New in v1.12.0",
     date: "2026-06-16",
