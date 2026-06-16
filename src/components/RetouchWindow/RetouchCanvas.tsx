@@ -100,14 +100,28 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
+
+      const b = transformRef.current;
+      const z = zoom;
+
+      if (z > 1 && !e.ctrlKey && !e.metaKey) {
+        const maxDx = b.displayW * (z - 1) / 2;
+        const maxDy = b.displayH * (z - 1) / 2;
+        const cur = zoomOffsetRef.current;
+        zoomOffsetRef.current = {
+          dx: Math.max(-maxDx, Math.min(maxDx, cur.dx - e.deltaX)),
+          dy: Math.max(-maxDy, Math.min(maxDy, cur.dy - e.deltaY)),
+        };
+        resize();
+        return;
+      }
+
       if (!e.ctrlKey && !e.metaKey) return;
 
       const rect = container.getBoundingClientRect();
       const cursorX = e.clientX - rect.left;
       const cursorY = e.clientY - rect.top;
 
-      const b = transformRef.current;
-      const z = zoom;
       const newZoom = Math.min(5, Math.max(1, z + (e.deltaY > 0 ? -0.25 : 0.25)));
       const newScale = b.scale * newZoom;
 
@@ -123,7 +137,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
 
     container.addEventListener("wheel", handleWheel, { passive: false });
     return () => container.removeEventListener("wheel", handleWheel);
-  }, [setZoom, zoom, transformRef, zoomOffsetRef]);
+  }, [setZoom, zoom, transformRef, zoomOffsetRef, resize]);
 
   const getDisplayCoords = useCallback((e: React.PointerEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
