@@ -104,22 +104,25 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
 
       const b = transformRef.current;
       const z = zoom;
+      const rect = container.getBoundingClientRect();
 
       if (z > 1 && !e.ctrlKey && !e.metaKey) {
-        const maxDx = b.displayW * (z - 1) / 2;
-        const maxDy = b.displayH * (z - 1) / 2;
+        const scaledW = b.displayW * z;
+        const scaledH = b.displayH * z;
+        const minDx = -(scaledW - rect.width);
+        const maxDx = 0;
+        const minDy = -(scaledH - rect.height);
+        const maxDy = 0;
         const cur = zoomOffsetRef.current;
         zoomOffsetRef.current = {
-          dx: Math.max(-maxDx, Math.min(maxDx, cur.dx - e.deltaX)),
-          dy: Math.max(-maxDy, Math.min(maxDy, cur.dy - e.deltaY)),
+          dx: Math.max(minDx, Math.min(maxDx, cur.dx - e.deltaX)),
+          dy: Math.max(minDy, Math.min(maxDy, cur.dy - e.deltaY)),
         };
         resize();
         return;
       }
 
       if (!e.ctrlKey && !e.metaKey) return;
-
-      const rect = container.getBoundingClientRect();
       const cursorX = e.clientX - rect.left;
       const cursorY = e.clientY - rect.top;
 
