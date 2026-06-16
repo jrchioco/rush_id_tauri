@@ -5,6 +5,19 @@ export interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.12.0": {
+    title: "What's New in v1.12.0",
+    date: "2026-06-16",
+    notes: [
+      "Retouch window — clone stamp and eraser tools for editing ID photos",
+      "Clone stamp with Alt+click source selection",
+      "Eraser with adjustable hardness",
+      "Brush size, hardness, and opacity sliders for both tools",
+      "Brightness and contrast adjustments",
+      "Undo support (Ctrl+Z)",
+      "Zoom controls — Ctrl+wheel, Ctrl+0 reset, scroll to pan",
+    ],
+  },
   "1.11.1": {
     title: "What's New in v1.11.1",
     date: "2026-06-15",
