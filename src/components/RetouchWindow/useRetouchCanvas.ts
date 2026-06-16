@@ -43,6 +43,7 @@ export function useRetouchCanvas(_imageDataUrl: string) {
   const cloneSourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const originalImageRef = useRef<HTMLImageElement | null>(null);
   const undoStackRef = useRef<CanvasPair[]>([]);
+  const postUndoLengthRef = useRef<number | null>(null);
   const isDrawingRef = useRef(false);
   const strokeStartRef = useRef<{ x: number; y: number } | null>(null);
   const cloneSourceRef = useRef<CloneSource | null>(null);
@@ -71,20 +72,14 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     };
   }, [zoom]);
 
-  const pushUndo = useCallback(() => {
-    const baseCanvas = baseCanvasRef.current;
-    const drawCanvas = drawCanvasRef.current;
-    if (!baseCanvas || !drawCanvas) return;
-    const baseCtx = baseCanvas.getContext("2d");
-    const drawCtx = drawCanvas.getContext("2d");
-    if (!baseCtx || !drawCtx) return;
-    const pair: CanvasPair = {
-      base: baseCtx.getImageData(0, 0, baseCanvas.width, baseCanvas.height),
-      draw: drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height),
-    };
+  const pushUndo = useCallback((pre: CanvasPair) => {
     const stack = undoStackRef.current;
+    if (postUndoLengthRef.current !== null) {
+      stack.length = postUndoLengthRef.current;
+      postUndoLengthRef.current = null;
+    }
     if (stack.length >= MAX_UNDO) stack.shift();
-    stack.push(pair);
+    stack.push(pre);
     setCanUndo(stack.length > 0);
   }, []);
 
@@ -100,6 +95,7 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     const pair = stack.pop()!;
     baseCtx.putImageData(pair.base, 0, 0);
     drawCtx.putImageData(pair.draw, 0, 0);
+    postUndoLengthRef.current = stack.length;
     setCanUndo(stack.length > 0);
     updateCloneSource();
   }, []);
@@ -129,6 +125,7 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     const img = originalImageRef.current;
     if (img) baseCtx.drawImage(img, 0, 0);
     undoStackRef.current = [];
+    postUndoLengthRef.current = null;
     setCanUndo(false);
     setBrightness(100);
     setContrast(100);
@@ -149,6 +146,7 @@ export function useRetouchCanvas(_imageDataUrl: string) {
       img.onload = () => {
         originalImageRef.current = img;
         undoStackRef.current = [];
+        postUndoLengthRef.current = null;
         setCanUndo(false);
         setCloneSource(null);
         cloneSourceRef.current = null;

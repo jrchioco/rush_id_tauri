@@ -8,6 +8,7 @@ interface RetouchCanvasProps {
 export function RetouchCanvas({ state }: RetouchCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const preStrokePairRef = useRef<{ base: ImageData; draw: ImageData } | null>(null);
 
   const {
     baseCanvasRef,
@@ -196,6 +197,20 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
 
     isDrawingRef.current = true;
     strokeStartRef.current = display;
+
+    const baseCanvas = baseCanvasRef.current;
+    const drawCanvas = drawCanvasRef.current;
+    if (baseCanvas && drawCanvas) {
+      const baseCtx = baseCanvas.getContext("2d");
+      const drawCtx = drawCanvas.getContext("2d");
+      if (baseCtx && drawCtx) {
+        preStrokePairRef.current = {
+          base: baseCtx.getImageData(0, 0, baseCanvas.width, baseCanvas.height),
+          draw: drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height),
+        };
+      }
+    }
+
     const canvas = drawCanvasRef.current;
     if (canvas) {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -238,7 +253,10 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
   const handlePointerUp = useCallback(() => {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
-    pushUndo();
+    if (preStrokePairRef.current) {
+      pushUndo(preStrokePairRef.current);
+      preStrokePairRef.current = null;
+    }
     updateCloneSource();
   }, [pushUndo, updateCloneSource]);
 
