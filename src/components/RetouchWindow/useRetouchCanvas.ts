@@ -206,7 +206,6 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     const scale = dw / img.naturalWidth;
     const t = { scale, offsetX: ox, offsetY: oy, displayW: dw, displayH: dh };
     baseTransformRef.current = t;
-    zoomOffsetRef.current = { dx: 0, dy: 0 };
     return t;
   }, []);
 

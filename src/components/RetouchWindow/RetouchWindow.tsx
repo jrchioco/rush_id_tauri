@@ -67,6 +67,7 @@ export function RetouchWindow({ isOpen, imageDataUrl, onClose, onSave }: Retouch
       if ((e.ctrlKey || e.metaKey) && e.key === "0") {
         e.preventDefault();
         state.setZoom(1);
+        state.zoomOffsetRef.current = { dx: 0, dy: 0 };
         return;
       }
     };

@@ -148,7 +148,10 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
           <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Zoom</h3>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setZoom(1)}
+              onClick={() => {
+                setZoom(1);
+                state.zoomOffsetRef.current = { dx: 0, dy: 0 };
+              }}
               className="px-2 py-1 text-[10px] text-[#888] hover:text-[#e8e4da] font-mono border border-[#2a2a28] rounded transition-colors"
             >
               Reset
