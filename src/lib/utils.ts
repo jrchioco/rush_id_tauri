@@ -21,7 +21,7 @@ const LABEL_FONT = '"Arial Black", "Arial Narrow Bold", "Arial Narrow", "Open Sa
 
 export type FontChoice = "black" | "narrow-bold" | "narrow" | "impact";
 
-export interface FontOption {
+interface FontOption {
   id: FontChoice;
   label: [string] | [string, string];
   stack: string;

@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 
-export type Tool = "clone" | "eraser";
+type Tool = "clone" | "eraser";
 
 const MAX_UNDO = 20;
 
@@ -37,7 +37,7 @@ function makeHardnessGradient(
   return gradient;
 }
 
-export function useRetouchCanvas(_imageDataUrl: string) {
+export function useRetouchCanvas() {
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cloneSourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -47,7 +47,6 @@ export function useRetouchCanvas(_imageDataUrl: string) {
   const isDrawingRef = useRef(false);
   const strokeStartRef = useRef<{ x: number; y: number } | null>(null);
   const cloneSourceRef = useRef<CloneSource | null>(null);
-  const altHeldRef = useRef(false);
   const baseTransformRef = useRef<CanvasTransform>({ scale: 1, offsetX: 0, offsetY: 0, displayW: 0, displayH: 0 });
   const zoomOffsetRef = useRef({ dx: 0, dy: 0 });
 
@@ -299,7 +298,6 @@ export function useRetouchCanvas(_imageDataUrl: string) {
   }, []);
 
   const setAltHeldState = useCallback((held: boolean) => {
-    altHeldRef.current = held;
     setAltHeld(held);
   }, []);
 
@@ -327,7 +325,6 @@ export function useRetouchCanvas(_imageDataUrl: string) {
     cloneSourceRef,
     altHeld,
     setAltHeld: setAltHeldState,
-    altHeldRef,
     isDrawingRef,
     strokeStartRef,
     transformRef: baseTransformRef,

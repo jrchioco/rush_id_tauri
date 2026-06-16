@@ -13,7 +13,7 @@ interface RetouchWindowProps {
 }
 
 export function RetouchWindow({ isOpen, imageDataUrl, onClose, onSave }: RetouchWindowProps) {
-  const state = useRetouchCanvas(imageDataUrl);
+  const state = useRetouchCanvas();
 
   const handleSave = useCallback(() => {
     const dataUrl = state.flattenAndSave();

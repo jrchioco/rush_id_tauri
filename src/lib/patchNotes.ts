@@ -1,4 +1,4 @@
-export interface PatchNote {
+interface PatchNote {
   title: string;
   date: string;
   notes: string[];
