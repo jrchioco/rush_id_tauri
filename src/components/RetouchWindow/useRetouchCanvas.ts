@@ -271,15 +271,15 @@ export function useRetouchCanvas(_imageDataUrl: string) {
 
   const flattenAndSave = useCallback((): string | null => {
     const drawCanvas = drawCanvasRef.current;
-    const img = originalImageRef.current;
-    if (!drawCanvas || !img) return null;
+    const baseCanvas = baseCanvasRef.current;
+    if (!drawCanvas || !baseCanvas) return null;
 
     const offscreen = document.createElement("canvas");
-    offscreen.width = img.naturalWidth;
-    offscreen.height = img.naturalHeight;
+    offscreen.width = baseCanvas.width;
+    offscreen.height = baseCanvas.height;
     const ctx = offscreen.getContext("2d")!;
     ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(baseCanvas, 0, 0);
     ctx.filter = "none";
     ctx.drawImage(drawCanvas, 0, 0);
 
