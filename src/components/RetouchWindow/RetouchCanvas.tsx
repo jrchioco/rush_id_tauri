@@ -99,8 +99,8 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
+      if (!e.ctrlKey && !e.metaKey) return;
 
       const rect = container.getBoundingClientRect();
       const cursorX = e.clientX - rect.left;
