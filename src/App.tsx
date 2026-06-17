@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, Scan, Layers, Sparkles, IdCard, Settings } from "lucide-react";
+import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -10,13 +10,15 @@ import SingleClient from "./SingleClient";
 import MultiClient from "./MultiClient";
 import GeminiTab from "./GeminiTab";
 import PassportClient from "./PassportClient";
+import PolaroidClient from "./PolaroidClient";
 
-type Tab = "single" | "multi" | "passport" | "gemini";
+type Tab = "single" | "multi" | "passport" | "polaroid" | "gemini";
 
 const TABS: { key: Tab; label: string; icon: typeof Scan }[] = [
   { key: "single", label: "Single", icon: Scan },
   { key: "multi", label: "Multi", icon: Layers },
   { key: "passport", label: "Passport", icon: IdCard },
+  { key: "polaroid", label: "Polaroid", icon: Camera },
   { key: "gemini", label: "Gemini", icon: Sparkles },
 ];
 
@@ -210,6 +212,7 @@ export default function App() {
       {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} /></ErrorBoundary>}
       {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} /></ErrorBoundary>}
       {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} /></ErrorBoundary>}
+      {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} /></ErrorBoundary>}
       {activeTab === "gemini" && <ErrorBoundary><GeminiTab key={configVersion} /></ErrorBoundary>}
 
       <SettingsModal

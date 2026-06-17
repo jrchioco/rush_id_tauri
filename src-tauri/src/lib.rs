@@ -189,6 +189,7 @@ fn get_svg_templates(app_handle: tauri::AppHandle) -> Result<Vec<SvgTemplate>, S
             let path = entry.path();
             if path.extension().is_some_and(|e| e == "svg") {
                 let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                if stem.starts_with("Polaroid") { continue; }
                 if !config.svg_files.contains_key(&stem) {
                     let rel = path.strip_prefix(&res).unwrap_or(&path).to_string_lossy().to_string();
                     config.svg_files.insert(stem, rel);
@@ -489,6 +490,93 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
     Ok(msg.to_string())
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PolaroidSlot {
+    slot_index: usize,
+    image_base64: String,
+}
+
+#[tauri::command]
+fn composite_polaroid_pdf(
+    app_handle: tauri::AppHandle,
+    layout: String,
+    slots: Vec<PolaroidSlot>,
+    save_path: Option<String>,
+) -> Result<String, String> {
+    let d = data_dir(&app_handle);
+    let tmp_dir = d.join("tmp");
+    fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
+
+    if let Ok(entries) = fs::read_dir(&d) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("polaroid_") && name_str.ends_with(".png") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+
+    let res = resource_dir(&app_handle);
+    let svg_name = match layout.as_str() {
+        "10pcs" => "Polaroid 10pcs.svg",
+        _ => "Polaroid 5pcs.svg",
+    };
+    let svg_path = res.join("SVGs").join(svg_name);
+    let svg_raw = fs::read_to_string(&svg_path)
+        .map_err(|e| format!("Failed to read SVG template: {}", e))?;
+
+    let mut patched = svg_raw;
+    for slot in &slots {
+        let pic_name = format!("polaroid_{}.png", slot.slot_index);
+        let pic_path = d.join(&pic_name);
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(&slot.image_base64)
+            .map_err(|e| format!("Base64 decode error for slot {}: {}", slot.slot_index, e))?;
+        fs::write(&pic_path, &bytes).map_err(|e| format!("Failed to write {}: {}", pic_name, e))?;
+
+        let bare_href = format!("polaroid{}.png", slot.slot_index);
+        let rel_href = format!("../{}", pic_name);
+        patched = patched.replace(&format!("xlink:href=\"{}\"", bare_href), &format!("xlink:href=\"{}\"", rel_href));
+        patched = patched.replace(&format!("href=\"{}\"", bare_href), &format!("href=\"{}\"", rel_href));
+    }
+
+    let composite_path = tmp_dir.join("polaroid_composite.svg");
+    fs::write(&composite_path, &patched).map_err(|e| format!("Failed to write composite SVG: {}", e))?;
+
+    let pdf_path = match save_path {
+        Some(ref path) => {
+            let p = PathBuf::from(path);
+            if p.extension().is_none_or(|e| e != "pdf") { p.with_extension("pdf") } else { p }
+        }
+        None => {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+            std::env::temp_dir().join(format!("rush_id_print_{}.pdf", ts))
+        }
+    };
+
+    svg_to_pdf(&patched, &pdf_path, &tmp_dir)?;
+
+    if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(["/C", "start", "", pdf_path.to_string_lossy().as_ref()])
+            .spawn()
+            .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
+    } else {
+        Command::new("xdg-open")
+            .arg(&pdf_path)
+            .spawn()
+            .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
+    }
+
+    let msg = if save_path.is_some() { "PDF saved" } else { "Polaroid PDF opened in viewer. Press Ctrl+P to print." };
+    Ok(msg.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     cleanup_temp_pdfs();
@@ -509,6 +597,7 @@ pub fn run() {
             export_pdf,
             print_file,
             composite_multi_pdf,
+            composite_polaroid_pdf,
             get_key_count,
             open_file,
         ])
