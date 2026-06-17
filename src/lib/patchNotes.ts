@@ -5,6 +5,13 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.13.1": {
+    title: "What's New in v1.13.1",
+    date: "2026-06-17",
+    notes: [
+      "Fixed landscape image preview clipping in Polaroid slots",
+    ],
+  },
   "1.13.0": {
     title: "What's New in v1.13.0",
     date: "2026-06-17",

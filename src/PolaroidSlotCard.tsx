@@ -23,7 +23,8 @@ interface PolaroidSlotCardProps {
 export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: PolaroidSlotCardProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
-  const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null);
+  const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0, maxPanX: 0, maxPanY: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -63,15 +64,41 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
 
   const handlePanStart = useCallback(
     (e: React.MouseEvent) => {
-      if (isEmpty || slot.fitMode === "stretch") return;
+      if (isEmpty || slot.fitMode === "stretch" || !imgDims) return;
       e.preventDefault();
       setIsPanning(true);
-      panStart.current = { x: e.clientX, y: e.clientY, panX: slot.panX, panY: slot.panY };
+
+      let maxPanX = 0;
+      let maxPanY = 0;
+      const rect = cardRef.current?.getBoundingClientRect();
+      if (rect) {
+        const slotW = rect.width;
+        const slotH = rect.height;
+        const isRotated = slot.rotation === 90 || slot.rotation === 270;
+        const imgAspect = isRotated ? imgDims.h / imgDims.w : imgDims.w / imgDims.h;
+        const slotAspect = slotW / slotH;
+
+        if (imgAspect > slotAspect) {
+          const scaledW = slotH * imgAspect;
+          maxPanX = (scaledW - slotW) / 2;
+        } else {
+          const scaledH = slotW / imgAspect;
+          maxPanY = (scaledH - slotH) / 2;
+        }
+      }
+
+      panStart.current = { x: e.clientX, y: e.clientY, panX: slot.panX, panY: slot.panY, maxPanX, maxPanY };
 
       const handleMove = (ev: MouseEvent) => {
         const dx = ev.clientX - panStart.current.x;
         const dy = ev.clientY - panStart.current.y;
-        onUpdate({ panX: panStart.current.panX + dx, panY: panStart.current.panY + dy });
+        let newPanX = panStart.current.panX + dx;
+        let newPanY = panStart.current.panY + dy;
+
+        newPanX = Math.max(-panStart.current.maxPanX, Math.min(panStart.current.maxPanX, newPanX));
+        newPanY = Math.max(-panStart.current.maxPanY, Math.min(panStart.current.maxPanY, newPanY));
+
+        onUpdate({ panX: newPanX, panY: newPanY });
       };
 
       const handleUp = () => {
@@ -83,7 +110,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [isEmpty, slot.fitMode, slot.panX, slot.panY, onUpdate],
+    [isEmpty, slot.fitMode, slot.panX, slot.panY, slot.rotation, onUpdate, imgDims],
   );
 
   const cycleRotation = useCallback(() => {
@@ -146,6 +173,10 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
                 className="w-full h-full"
                 style={imageStyle}
                 draggable={false}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  setImgDims({ w: img.naturalWidth, h: img.naturalHeight });
+                }}
               />
             )}
           </div>
