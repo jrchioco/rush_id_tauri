@@ -10,6 +10,7 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
     date: "2026-06-17",
     notes: [
       "Fixed landscape image preview clipping in Polaroid slots",
+      "Added experimental feature warning banner to Polaroid tab",
     ],
   },
   "1.13.0": {
