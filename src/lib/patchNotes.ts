@@ -5,6 +5,17 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.13.0": {
+    title: "What's New in v1.13.0",
+    date: "2026-06-17",
+    notes: [
+      "Polaroid tab — load photos into Polaroid-frame slots, reposition/rotate, export to PDF",
+      "Two layouts: 5pcs (A5 landscape) and 10pcs (A4 portrait)",
+      "Drag-to-pan, per-slot rotation (0/90/180/270), cover/stretch fit modes",
+      "Global stretch toggle — apply stretch to all slots at once",
+      "Batch import — drop or paste multiple images to fill sequential slots",
+    ],
+  },
   "1.12.1": {
     title: "What's New in v1.12.1",
     date: "2026-06-17",
