@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Upload, X, RotateCw, StretchHorizontal } from "lucide-react";
 import { cn } from "./lib/utils";
 
@@ -23,12 +23,91 @@ interface PolaroidSlotCardProps {
 export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: PolaroidSlotCardProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
-  const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null);
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0, maxPanX: 0, maxPanY: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const isEmpty = slot.imageBase64 === null;
+
+  const redraw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img) return;
+
+    const canvasW = canvas.width;
+    const canvasH = canvas.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvasW, canvasH);
+    ctx.save();
+    ctx.translate(canvasW / 2, canvasH / 2);
+    ctx.rotate((slot.rotation * Math.PI) / 180);
+
+    const imgAspect = img.naturalWidth / img.naturalHeight;
+    const canvasAspect = canvasW / canvasH;
+
+    let drawW: number, drawH: number;
+    if (slot.fitMode === "stretch") {
+      drawW = canvasW;
+      drawH = canvasH;
+    } else {
+      if (imgAspect > canvasAspect) {
+        drawH = canvasH;
+        drawW = canvasH * imgAspect;
+      } else {
+        drawW = canvasW;
+        drawH = canvasW / imgAspect;
+      }
+    }
+
+    const panX = slot.panX * (drawW / canvasW);
+    const panY = slot.panY * (drawH / canvasH);
+
+    ctx.drawImage(img, -drawW / 2 + panX, -drawH / 2 + panY, drawW, drawH);
+    ctx.restore();
+  }, [slot.fitMode, slot.panX, slot.panY, slot.rotation]);
+
+  useEffect(() => {
+    if (!slot.imageBase64) {
+      imgRef.current = null;
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      imgRef.current = img;
+      redraw();
+    };
+    img.src = "data:image/png;base64," + slot.imageBase64;
+  }, [slot.imageBase64, redraw]);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    const canvas = canvasRef.current;
+    if (!card || !canvas) return;
+
+    const resize = () => {
+      const w = card.clientWidth;
+      const h = card.clientHeight;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        redraw();
+      }
+    };
+
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [redraw]);
 
   const handleClick = useCallback(() => {
     if (isEmpty) fileInputRef.current?.click();
@@ -64,7 +143,9 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
 
   const handlePanStart = useCallback(
     (e: React.MouseEvent) => {
-      if (isEmpty || slot.fitMode === "stretch" || !imgDims) return;
+      if (isEmpty || slot.fitMode === "stretch") return;
+      const img = imgRef.current;
+      if (!img) return;
       e.preventDefault();
       setIsPanning(true);
 
@@ -75,7 +156,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
         const slotW = rect.width;
         const slotH = rect.height;
         const isRotated = slot.rotation === 90 || slot.rotation === 270;
-        const imgAspect = isRotated ? imgDims.h / imgDims.w : imgDims.w / imgDims.h;
+        const imgAspect = isRotated ? img.naturalHeight / img.naturalWidth : img.naturalWidth / img.naturalHeight;
         const slotAspect = slotW / slotH;
 
         if (imgAspect > slotAspect) {
@@ -110,7 +191,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [isEmpty, slot.fitMode, slot.panX, slot.panY, slot.rotation, onUpdate, imgDims],
+    [isEmpty, slot.fitMode, slot.panX, slot.panY, slot.rotation, onUpdate],
   );
 
   const cycleRotation = useCallback(() => {
@@ -121,13 +202,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
     onUpdate({ fitMode: slot.fitMode === "cover" ? "stretch" : "cover", panX: 0, panY: 0 });
   }, [slot.fitMode, onUpdate]);
 
-  const dataUrl = slot.imageBase64 ? `data:image/png;base64,${slot.imageBase64}` : null;
-
-  const imageStyle: React.CSSProperties = {
-    transform: `rotate(${slot.rotation}deg) translate(${slot.panX}px, ${slot.panY}px)`,
-    objectFit: slot.fitMode === "cover" ? "cover" : "fill",
-    cursor: isEmpty || slot.fitMode === "stretch" ? "default" : isPanning ? "grabbing" : "grab",
-  };
+  const canvasCursor = isEmpty || slot.fitMode === "stretch" ? "default" : isPanning ? "grabbing" : "grab";
 
   return (
     <div
@@ -162,24 +237,11 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
         </div>
       ) : (
         <>
-          <div
-            className="absolute inset-0 overflow-hidden"
+          <canvas
+            ref={canvasRef}
+            className={cn("absolute inset-0 w-full h-full", canvasCursor)}
             onMouseDown={handlePanStart}
-          >
-            {dataUrl && (
-              <img
-                src={dataUrl}
-                alt={`Slot ${slot.id}`}
-                className="w-full h-full"
-                style={imageStyle}
-                draggable={false}
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  setImgDims({ w: img.naturalWidth, h: img.naturalHeight });
-                }}
-              />
-            )}
-          </div>
+          />
 
           <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 hover:opacity-100 transition-opacity">
             <button
