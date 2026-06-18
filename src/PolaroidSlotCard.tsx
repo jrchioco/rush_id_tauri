@@ -83,6 +83,12 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
     const img = new Image();
     img.onload = () => {
       imgRef.current = img;
+      const card = cardRef.current;
+      const canvas = canvasRef.current;
+      if (card && canvas && (canvas.width !== card.clientWidth || canvas.height !== card.clientHeight)) {
+        canvas.width = card.clientWidth;
+        canvas.height = card.clientHeight;
+      }
       redraw();
     };
     img.src = "data:image/png;base64," + slot.imageBase64;
