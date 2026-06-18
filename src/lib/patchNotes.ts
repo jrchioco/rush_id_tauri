@@ -5,6 +5,15 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.13.2": {
+    title: "What's New in v1.13.2",
+    date: "2026-06-19",
+    notes: [
+      "Polaroid preview rewritten — replaced CSS object-fit with canvas rendering for accurate preview",
+      "Preview now matches export exactly (uses same math as preprocessSlot)",
+      "Fixed images not center-fitting on initial drag-drop",
+    ],
+  },
   "1.13.1": {
     title: "What's New in v1.13.1",
     date: "2026-06-17",
