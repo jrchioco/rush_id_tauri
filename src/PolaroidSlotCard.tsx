@@ -70,12 +70,10 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       }
     }
 
-    // slot.panX/panY are stored in local (pre-rotation) drawing-space units,
-    // matching handlePanStart below — no extra rotation needed here.
-    const panX = slot.panX * (drawW / effCanvasW);
-    const panY = slot.panY * (drawH / effCanvasH);
-
-    ctx.drawImage(img, -drawW / 2 + panX, -drawH / 2 + panY, drawW, drawH);
+    // slot.panX/panY are accumulated in handlePanStart using the same
+    // cover-overflow math as drawW/drawH above, so they're already in the
+    // correct coordinate space for drawImage — no extra scaling needed.
+    ctx.drawImage(img, -drawW / 2 + slot.panX, -drawH / 2 + slot.panY, drawW, drawH);
     ctx.restore();
   }, [slot.fitMode, slot.panX, slot.panY, slot.rotation]);
 
