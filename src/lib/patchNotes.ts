@@ -5,6 +5,15 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.13.3": {
+    title: "What's New in v1.13.3",
+    date: "2026-06-19",
+    notes: [
+      "Fixed pan direction inverted at 90°/270° rotation in Polaroid slots",
+      "Fixed cover/stretch sizing ignoring rotation angle",
+      "Fixed over-panning that allowed dragging images past slot edges",
+    ],
+  },
   "1.13.2": {
     title: "What's New in v1.13.2",
     date: "2026-06-19",
