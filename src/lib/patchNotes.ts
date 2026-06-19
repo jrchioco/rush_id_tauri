@@ -5,6 +5,15 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.13.4": {
+    title: "What's New in v1.13.4",
+    date: "2026-06-19",
+    notes: [
+      "Fixed Polaroid preview aspect ratio not matching the actual SVG template slot dimensions",
+      "Fixed export zoomed in when rotation applied — preprocessSlot now matches preview rendering",
+      "Fixed pan offset mismatch between preview and export — pan is now resolution-independent",
+    ],
+  },
   "1.13.3": {
     title: "What's New in v1.13.3",
     date: "2026-06-19",
