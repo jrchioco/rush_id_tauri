@@ -67,7 +67,10 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       }
     }
 
-    ctx.drawImage(img, -drawW / 2 + slot.panX, -drawH / 2 + slot.panY, drawW, drawH);
+    const maxPanX = imgAspect > effCanvasAspect ? (drawW - effCanvasW) / 2 : 0;
+    const maxPanY = imgAspect <= effCanvasAspect ? (drawH - effCanvasH) / 2 : 0;
+
+    ctx.drawImage(img, -drawW / 2 + slot.panX * maxPanX, -drawH / 2 + slot.panY * maxPanY, drawW, drawH);
     ctx.restore();
   }, [slot.fitMode, slot.panX, slot.panY, slot.rotation]);
 
@@ -189,11 +192,14 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
         const ldx = dx * cos - dy * sin;
         const ldy = dx * sin + dy * cos;
 
-        let newPanX = panStart.current.panX + ldx;
-        let newPanY = panStart.current.panY + ldy;
+        let newPanX = panStart.current.panX;
+        let newPanY = panStart.current.panY;
 
-        newPanX = Math.max(-panStart.current.maxPanX, Math.min(panStart.current.maxPanX, newPanX));
-        newPanY = Math.max(-panStart.current.maxPanY, Math.min(panStart.current.maxPanY, newPanY));
+        if (panStart.current.maxPanX !== 0) newPanX = panStart.current.panX + ldx / panStart.current.maxPanX;
+        if (panStart.current.maxPanY !== 0) newPanY = panStart.current.panY + ldy / panStart.current.maxPanY;
+
+        newPanX = Math.max(-1, Math.min(1, newPanX));
+        newPanY = Math.max(-1, Math.min(1, newPanY));
 
         onUpdate({ panX: newPanX, panY: newPanY });
       };

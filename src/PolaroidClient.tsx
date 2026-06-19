@@ -65,7 +65,10 @@ async function preprocessSlot(slot: PolaroidSlotState): Promise<string> {
     }
   }
 
-  ctx.drawImage(img, -drawW / 2 + slot.panX, -drawH / 2 + slot.panY, drawW, drawH);
+  const maxPanX = imgAspect > effCanvasAspect ? (drawW - effCanvasW) / 2 : 0;
+  const maxPanY = imgAspect <= effCanvasAspect ? (drawH - effCanvasH) / 2 : 0;
+
+  ctx.drawImage(img, -drawW / 2 + slot.panX * maxPanX, -drawH / 2 + slot.panY * maxPanY, drawW, drawH);
 
   const dataUrl = canvas.toDataURL("image/png");
   return dataUrl.split(",")[1];
