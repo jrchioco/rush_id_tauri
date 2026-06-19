@@ -46,25 +46,34 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
     ctx.translate(canvasW / 2, canvasH / 2);
     ctx.rotate((slot.rotation * Math.PI) / 180);
 
+    // At 90/270 the rotated image's local width axis lands on the canvas's
+    // height axis (and vice versa), so cover/stretch sizing must use the
+    // canvas dims as seen in *local* (pre-rotation) space.
+    const isRotated = slot.rotation === 90 || slot.rotation === 270;
+    const effCanvasW = isRotated ? canvasH : canvasW;
+    const effCanvasH = isRotated ? canvasW : canvasH;
+
     const imgAspect = img.naturalWidth / img.naturalHeight;
-    const canvasAspect = canvasW / canvasH;
+    const effCanvasAspect = effCanvasW / effCanvasH;
 
     let drawW: number, drawH: number;
     if (slot.fitMode === "stretch") {
-      drawW = canvasW;
-      drawH = canvasH;
+      drawW = effCanvasW;
+      drawH = effCanvasH;
     } else {
-      if (imgAspect > canvasAspect) {
-        drawH = canvasH;
-        drawW = canvasH * imgAspect;
+      if (imgAspect > effCanvasAspect) {
+        drawH = effCanvasH;
+        drawW = effCanvasH * imgAspect;
       } else {
-        drawW = canvasW;
-        drawH = canvasW / imgAspect;
+        drawW = effCanvasW;
+        drawH = effCanvasW / imgAspect;
       }
     }
 
-    const panX = slot.panX * (drawW / canvasW);
-    const panY = slot.panY * (drawH / canvasH);
+    // slot.panX/panY are stored in local (pre-rotation) drawing-space units,
+    // matching handlePanStart below — no extra rotation needed here.
+    const panX = slot.panX * (drawW / effCanvasW);
+    const panY = slot.panY * (drawH / effCanvasH);
 
     ctx.drawImage(img, -drawW / 2 + panX, -drawH / 2 + panY, drawW, drawH);
     ctx.restore();
@@ -161,26 +170,41 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       if (rect) {
         const slotW = rect.width;
         const slotH = rect.height;
+        // Mirror redraw()'s local-space sizing: at 90/270 the slot's width
+        // and height axes are swapped relative to the image's local space.
         const isRotated = slot.rotation === 90 || slot.rotation === 270;
-        const imgAspect = isRotated ? img.naturalHeight / img.naturalWidth : img.naturalWidth / img.naturalHeight;
-        const slotAspect = slotW / slotH;
+        const effSlotW = isRotated ? slotH : slotW;
+        const effSlotH = isRotated ? slotW : slotH;
+        const imgAspect = img.naturalWidth / img.naturalHeight;
+        const effSlotAspect = effSlotW / effSlotH;
 
-        if (imgAspect > slotAspect) {
-          const scaledW = slotH * imgAspect;
-          maxPanX = (scaledW - slotW) / 2;
+        if (imgAspect > effSlotAspect) {
+          const scaledW = effSlotH * imgAspect;
+          maxPanX = (scaledW - effSlotW) / 2;
         } else {
-          const scaledH = slotW / imgAspect;
-          maxPanY = (scaledH - slotH) / 2;
+          const scaledH = effSlotW / imgAspect;
+          maxPanY = (scaledH - effSlotH) / 2;
         }
       }
 
       panStart.current = { x: e.clientX, y: e.clientY, panX: slot.panX, panY: slot.panY, maxPanX, maxPanY };
 
+      // Mouse deltas arrive in screen space, but panX/panY are stored in the
+      // image's local (pre-rotation) drawing space, so rotate the delta back
+      // by -rotation before accumulating it — otherwise dragging right at
+      // 90°/270° pans the image vertically instead of horizontally.
+      const rad = (-slot.rotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
       const handleMove = (ev: MouseEvent) => {
         const dx = ev.clientX - panStart.current.x;
         const dy = ev.clientY - panStart.current.y;
-        let newPanX = panStart.current.panX + dx;
-        let newPanY = panStart.current.panY + dy;
+        const ldx = dx * cos - dy * sin;
+        const ldy = dx * sin + dy * cos;
+
+        let newPanX = panStart.current.panX + ldx;
+        let newPanY = panStart.current.panY + ldy;
 
         newPanX = Math.max(-panStart.current.maxPanX, Math.min(panStart.current.maxPanX, newPanX));
         newPanY = Math.max(-panStart.current.maxPanY, Math.min(panStart.current.maxPanY, newPanY));
