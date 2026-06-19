@@ -46,9 +46,6 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
     ctx.translate(canvasW / 2, canvasH / 2);
     ctx.rotate((slot.rotation * Math.PI) / 180);
 
-    // At 90/270 the rotated image's local width axis lands on the canvas's
-    // height axis (and vice versa), so cover/stretch sizing must use the
-    // canvas dims as seen in *local* (pre-rotation) space.
     const isRotated = slot.rotation === 90 || slot.rotation === 270;
     const effCanvasW = isRotated ? canvasH : canvasW;
     const effCanvasH = isRotated ? canvasW : canvasH;
@@ -70,9 +67,6 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       }
     }
 
-    // slot.panX/panY are accumulated in handlePanStart using the same
-    // cover-overflow math as drawW/drawH above, so they're already in the
-    // correct coordinate space for drawImage — no extra scaling needed.
     ctx.drawImage(img, -drawW / 2 + slot.panX, -drawH / 2 + slot.panY, drawW, drawH);
     ctx.restore();
   }, [slot.fitMode, slot.panX, slot.panY, slot.rotation]);
@@ -168,8 +162,6 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       if (rect) {
         const slotW = rect.width;
         const slotH = rect.height;
-        // Mirror redraw()'s local-space sizing: at 90/270 the slot's width
-        // and height axes are swapped relative to the image's local space.
         const isRotated = slot.rotation === 90 || slot.rotation === 270;
         const effSlotW = isRotated ? slotH : slotW;
         const effSlotH = isRotated ? slotW : slotH;
@@ -187,10 +179,6 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
 
       panStart.current = { x: e.clientX, y: e.clientY, panX: slot.panX, panY: slot.panY, maxPanX, maxPanY };
 
-      // Mouse deltas arrive in screen space, but panX/panY are stored in the
-      // image's local (pre-rotation) drawing space, so rotate the delta back
-      // by -rotation before accumulating it — otherwise dragging right at
-      // 90°/270° pans the image vertically instead of horizontally.
       const rad = (-slot.rotation * Math.PI) / 180;
       const cos = Math.cos(rad);
       const sin = Math.sin(rad);
@@ -237,7 +225,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       ref={cardRef}
       className={cn(
         "relative rounded-lg overflow-hidden transition-colors",
-        "w-full aspect-[54/86]",
+        "w-full aspect-[45.693394/61.973392]",
         isEmpty
           ? "border-2 border-dashed border-[#c8881a]/40 bg-[#111110] hover:border-[#c8881a]/70 cursor-pointer"
           : "border border-[#2a2a28] bg-[#0c0c0b]",
