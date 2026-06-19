@@ -44,27 +44,28 @@ async function preprocessSlot(slot: PolaroidSlotState): Promise<string> {
   ctx.translate(canvasW / 2, canvasH / 2);
   ctx.rotate((slot.rotation * Math.PI) / 180);
 
+  const isRotated = slot.rotation === 90 || slot.rotation === 270;
+  const effCanvasW = isRotated ? canvasH : canvasW;
+  const effCanvasH = isRotated ? canvasW : canvasH;
+
   const imgAspect = img.naturalWidth / img.naturalHeight;
-  const canvasAspect = canvasW / canvasH;
+  const effCanvasAspect = effCanvasW / effCanvasH;
 
   let drawW: number, drawH: number;
   if (slot.fitMode === "stretch") {
-    drawW = canvasW;
-    drawH = canvasH;
+    drawW = effCanvasW;
+    drawH = effCanvasH;
   } else {
-    if (imgAspect > canvasAspect) {
-      drawH = canvasH;
-      drawW = canvasH * imgAspect;
+    if (imgAspect > effCanvasAspect) {
+      drawH = effCanvasH;
+      drawW = effCanvasH * imgAspect;
     } else {
-      drawW = canvasW;
-      drawH = canvasW / imgAspect;
+      drawW = effCanvasW;
+      drawH = effCanvasW / imgAspect;
     }
   }
 
-  const panX = slot.panX * (drawW / canvasW);
-  const panY = slot.panY * (drawH / canvasH);
-
-  ctx.drawImage(img, -drawW / 2 + panX, -drawH / 2 + panY, drawW, drawH);
+  ctx.drawImage(img, -drawW / 2 + slot.panX, -drawH / 2 + slot.panY, drawW, drawH);
 
   const dataUrl = canvas.toDataURL("image/png");
   return dataUrl.split(",")[1];
