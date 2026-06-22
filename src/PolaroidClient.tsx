@@ -6,9 +6,9 @@ import { cn, fmt } from "./lib/utils";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { PolaroidSlotCard, type FitMode, type PolaroidSlotState } from "./PolaroidSlotCard";
 
-type Layout = "5pcs" | "10pcs";
+type Layout = "2pcs" | "3pcs" | "5pcs" | "10pcs";
 
-const SLOT_COUNTS: Record<Layout, number> = { "5pcs": 5, "10pcs": 10 };
+const SLOT_COUNTS: Record<Layout, number> = { "2pcs": 2, "3pcs": 3, "5pcs": 5, "10pcs": 10 };
 const SLOT_ASPECT = 45.693394 / 61.973392;
 
 function freshSlot(id: number): PolaroidSlotState {
@@ -273,7 +273,11 @@ export default function PolaroidClient() {
   const statFooter = (
     <div className="border-t border-[#2a2a28] p-3 grid grid-cols-2 gap-2">
       {[
-        { label: "LAYOUT", value: layout === "5pcs" ? "A5 Landscape" : "A4 Portrait", accent: false },
+        {
+          label: "LAYOUT",
+          value: layout === "2pcs" ? "2pcs Strip" : layout === "3pcs" ? "3pcs Strip" : layout === "5pcs" ? "A5 Landscape" : "A4 Portrait",
+          accent: false,
+        },
         { label: "SLOTS", value: `${filledCount}/${slots.length}`, accent: filledCount > 0 },
       ].map(({ label, value, accent }) => (
         <div key={label} className="bg-[#111110] border border-[#2a2a28] rounded-md p-2">
@@ -295,7 +299,7 @@ export default function PolaroidClient() {
           </h2>
           <div className="flex items-center gap-3">
             <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
-              {(["5pcs", "10pcs"] as Layout[]).map((l) => (
+              {(["2pcs", "3pcs", "5pcs", "10pcs"] as Layout[]).map((l) => (
                 <button
                   key={l}
                   onClick={() => handleLayoutSwitch(l)}
@@ -341,11 +345,35 @@ export default function PolaroidClient() {
         <div
           className={cn(
             "grid gap-3",
-            layout === "5pcs"
-              ? "grid-cols-3"
-              : "grid-cols-5",
+            layout === "2pcs"
+              ? "grid-cols-2"
+              : layout === "3pcs"
+                ? "grid-cols-3"
+                : layout === "5pcs"
+                  ? "grid-cols-3"
+                  : "grid-cols-5",
           )}
         >
+          {layout === "2pcs" &&
+            slots.map((slot) => (
+              <PolaroidSlotCard
+                key={slot.id}
+                slot={slot}
+                onUpdate={(u) => updateSlot(slot.id, u)}
+                onClear={() => handleClearSlot(slot.id)}
+                onFileSelect={(f) => handleFileSelect(slot.id, f)}
+              />
+            ))}
+          {layout === "3pcs" &&
+            slots.map((slot) => (
+              <PolaroidSlotCard
+                key={slot.id}
+                slot={slot}
+                onUpdate={(u) => updateSlot(slot.id, u)}
+                onClear={() => handleClearSlot(slot.id)}
+                onFileSelect={(f) => handleFileSelect(slot.id, f)}
+              />
+            ))}
           {layout === "5pcs" && (
             <>
               {slots.slice(0, 3).map((slot) => (

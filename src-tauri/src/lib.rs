@@ -520,6 +520,8 @@ fn composite_polaroid_pdf(
 
     let res = resource_dir(&app_handle);
     let svg_name = match layout.as_str() {
+        "2pcs" => "Polaroid 2pcs.svg",
+        "3pcs" => "Polaroid 3pcs.svg",
         "10pcs" => "Polaroid 10pcs.svg",
         _ => "Polaroid 5pcs.svg",
     };
