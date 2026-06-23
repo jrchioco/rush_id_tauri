@@ -1,6 +1,6 @@
 [package]
 name = "rush_id_tauri"
-version = "1.13.5"
+version = "1.13.6"
 description = "Rush ID — Automated Image Processing & Printing"
 authors = ["J3FF PRINTING SERVICES"]
 edition = "2021"

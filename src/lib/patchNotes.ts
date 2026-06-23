@@ -5,6 +5,16 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.13.6": {
+    title: "What's New in v1.13.6",
+    date: "2026-06-23",
+    notes: [
+      "Setup screen is now skippable — \"Skip for now\" button lets you start using the app without API keys",
+      "Live/Test mode toggle added to Single tab — switch between live API calls and test mode",
+      "All tabs now show a \"No API keys — TEST MODE ONLY\" warning when no keys are configured",
+      "Multi and Passport tabs auto-enable test mode when no API keys are present",
+    ],
+  },
   "1.13.5": {
     title: "What's New in v1.13.5",
     date: "2026-06-23",

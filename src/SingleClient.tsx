@@ -48,6 +48,7 @@ export default function SingleClient() {
   const [nameLabel, setNameLabel] = useState("");
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [fontChoice, setFontChoice] = useState<FontChoice>("black");
+  const [testMode, setTestMode] = useState(false);
 
   const [retouchOpen, setRetouchOpen] = useState(false);
   const [retouchImageData, setRetouchImageData] = useState("");
@@ -58,6 +59,8 @@ export default function SingleClient() {
   const compositeIdRef = useRef(0);
 
   const { templates, keyCount, loading: templatesLoading } = useTemplates();
+  const noApiKeys = keyCount === 0;
+  const effectiveTestMode = testMode || noApiKeys;
   const cropperWrapRef = useCropperWheel({
     onRotate: (delta) => setRotation((r) => Math.max(-90, Math.min(90, r + delta))),
   });
@@ -268,8 +271,8 @@ export default function SingleClient() {
     try {
       const base64 = await cropImage(originalImage, croppedAreaPixels, rotation);
       let b64: string;
-      if (keyCount === 0) {
-        log("No API keys — using cropped image (test mode)");
+      if (effectiveTestMode) {
+        log("Test mode — using cropped image (no API call)");
         b64 = base64;
       } else {
         log("Removing background...");
@@ -288,7 +291,7 @@ export default function SingleClient() {
       setResultPath(dataUrl);
       await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
       setStep("done");
-      log(keyCount === 0 ? "✓ Cropped (test mode)" : "✓ Background removed");
+      log(effectiveTestMode ? "✓ Cropped (test mode)" : "✓ Background removed");
     } catch (e) {
       toast.error(String(e));
       log(`Error: ${e}`);
@@ -365,6 +368,29 @@ export default function SingleClient() {
   return (
     <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">
       <div className="space-y-4">
+
+        <div className="flex items-center justify-end">
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">
+              {noApiKeys ? "No API" : testMode ? "Test" : "Live"}
+            </span>
+            <div
+              onClick={() => !noApiKeys && setTestMode(!testMode)}
+              className={cn(
+                "w-7 h-4 rounded-full transition-colors relative",
+                effectiveTestMode ? "bg-[#c8881a]" : "bg-[#2a2a28]",
+                noApiKeys && "opacity-50 cursor-not-allowed",
+              )}
+            >
+              <div
+                className={cn(
+                  "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
+                  effectiveTestMode ? "translate-x-[14px]" : "translate-x-[2px]",
+                )}
+              />
+            </div>
+          </label>
+        </div>
 
         {step === "select" && (
           <div
@@ -445,7 +471,7 @@ export default function SingleClient() {
                 )}
               >
                 {loading ? <RotateCw className="w-4 h-4 animate-spin" /> : <Scissors className="w-4 h-4" />}
-                {loading ? "Processing..." : "Crop & Remove BG"}
+                {loading ? "Processing..." : effectiveTestMode ? "Crop (Test Mode)" : "Crop & Remove BG"}
               </button>
               <button
                 onClick={handleReset}
@@ -462,7 +488,7 @@ export default function SingleClient() {
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold text-[#888] font-mono tracking-widest uppercase">Result</h2>
               <span className="text-xs bg-[#0a1f12] text-[#4caf78] font-mono px-2 py-0.5 rounded border border-[#4caf78]/20">
-                ✓ BG Removed
+                {effectiveTestMode ? "✓ Cropped (Test)" : "✓ BG Removed"}
               </span>
             </div>
 
