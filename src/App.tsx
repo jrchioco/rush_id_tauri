@@ -68,6 +68,15 @@ export default function App() {
     }
   }
 
+  async function handleSkipConfig() {
+    try {
+      await invoke("save_config", { apiKeys: [] });
+      setConfigReady(true);
+    } catch (e) {
+      toast.error(String(e));
+    }
+  }
+
   if (configReady === null) {
     return (
       <div className="min-h-screen bg-[#111110] flex items-center justify-center">
@@ -133,6 +142,12 @@ export default function App() {
             className="w-full mt-6 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] disabled:cursor-not-allowed"
           >
             Save & Launch
+          </button>
+          <button
+            onClick={handleSkipConfig}
+            className="w-full mt-2 px-4 py-2 text-[#555] hover:text-[#888] text-xs font-mono transition-colors"
+          >
+            Skip for now
           </button>
         </div>
       </div>

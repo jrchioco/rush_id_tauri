@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
-import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown } from "lucide-react";
+import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
@@ -267,8 +267,14 @@ export default function SingleClient() {
 
     try {
       const base64 = await cropImage(originalImage, croppedAreaPixels, rotation);
-      log("Removing background...");
-      const b64 = await invoke<string>("remove_bg", { imageBase64: base64 });
+      let b64: string;
+      if (keyCount === 0) {
+        log("No API keys — using cropped image (test mode)");
+        b64 = base64;
+      } else {
+        log("Removing background...");
+        b64 = await invoke<string>("remove_bg", { imageBase64: base64 });
+      }
 
       setRawBase64(b64);
       setBgColor("#ffffff");
@@ -282,7 +288,7 @@ export default function SingleClient() {
       setResultPath(dataUrl);
       await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
       setStep("done");
-      log("✓ Background removed");
+      log(keyCount === 0 ? "✓ Cropped (test mode)" : "✓ Background removed");
     } catch (e) {
       toast.error(String(e));
       log(`Error: ${e}`);
@@ -347,7 +353,14 @@ export default function SingleClient() {
           </div>
         ))}
       </div>
-    ) : undefined;
+    ) : (
+      <div className="border-t border-[#2a2a28] p-3">
+        <div className="bg-[#1a1508] border border-[#c8881a]/30 rounded-md p-2 flex items-center gap-2">
+          <TriangleAlert className="w-3.5 h-3.5 text-[#c8881a] flex-shrink-0" />
+          <span className="text-[10px] text-[#c8881a] font-mono">No API keys — TEST MODE ONLY. Add keys in Settings.</span>
+        </div>
+      </div>
+    );
 
   return (
     <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">

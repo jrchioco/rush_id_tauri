@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
-import { Upload, Printer, Scissors, RotateCw, X } from "lucide-react";
+import { Upload, Printer, Scissors, RotateCw, X, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
@@ -95,6 +95,9 @@ export default function PassportClient() {
   const activeKeyIndex = useKeyUsed();
   const passportTemplates = useMemo(() => templates.filter((t) => t.key.toLowerCase().includes("passport")), [templates]);
   const displayTemplates = passportTemplates.length > 0 ? passportTemplates : templates;
+
+  const noApiKeys = keyCount === 0;
+  const effectiveTestMode = testMode || noApiKeys;
 
   const log = useCallback((text: string) => {
     setLogs((prev) => [...prev, { time: fmt(), text }]);
@@ -223,14 +226,14 @@ export default function PassportClient() {
       .filter(({ s }) => s.step === "crop" && s.croppedAreaPixels);
     if (pending.length === 0) return;
     setBusy(true);
-    log(`Processing ${pending.length} slot(s)${testMode ? " (test mode — no API calls)" : ""}...`);
+    log(`Processing ${pending.length} slot(s)${effectiveTestMode ? " (test mode — no API calls)" : ""}...`);
     try {
     const bgColors = pending.map(({ i }) => current[i].bgColor);
     const labelArgs = pending.map(({ s }) => labelArgsFor(s.labelMode, s.name, s.signatureDataUrl, s.fontChoice));
     const crops = await Promise.all(
       pending.map(({ s }) => cropImage(s.originalImage!, s.croppedAreaPixels!, s.rotation || 0)),
     );
-    const results = testMode
+    const results = effectiveTestMode
       ? crops
       : await Promise.all(crops.map((b64) => invoke<string>("remove_bg", { imageBase64: b64 })));
     const colorResults = await Promise.all(
@@ -249,7 +252,7 @@ export default function PassportClient() {
         }
         return next;
       });
-      log(`✓ Batch ${testMode ? "cropped" : "processing complete"}`);
+      log(`✓ Batch ${effectiveTestMode ? "cropped" : "processing complete"}`);
     } catch (e) {
       log(`Batch error: ${e}`);
       toast.error(String(e));
@@ -445,7 +448,14 @@ export default function PassportClient() {
           </div>
         ))}
       </div>
-    ) : undefined;
+    ) : (
+      <div className="border-t border-[#2a2a28] p-3">
+        <div className="bg-[#1a1508] border border-[#c8881a]/30 rounded-md p-2 flex items-center gap-2">
+          <TriangleAlert className="w-3.5 h-3.5 text-[#c8881a] flex-shrink-0" />
+          <span className="text-[10px] text-[#c8881a] font-mono">No API keys — TEST MODE ONLY. Add keys in Settings.</span>
+        </div>
+      </div>
+    );
 
   return (
     <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">
@@ -458,19 +468,20 @@ export default function PassportClient() {
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-1.5 cursor-pointer select-none">
               <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">
-                {testMode ? "Test" : "Live"}
+                {noApiKeys ? "No API" : testMode ? "Test" : "Live"}
               </span>
               <div
-                onClick={() => setTestMode(!testMode)}
+                onClick={() => !noApiKeys && setTestMode(!testMode)}
                 className={cn(
                   "w-7 h-4 rounded-full transition-colors relative",
-                  testMode ? "bg-[#c8881a]" : "bg-[#2a2a28]",
+                  effectiveTestMode ? "bg-[#c8881a]" : "bg-[#2a2a28]",
+                  noApiKeys && "opacity-50 cursor-not-allowed",
                 )}
               >
                 <div
                   className={cn(
                     "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
-                    testMode ? "translate-x-[14px]" : "translate-x-[2px]",
+                    effectiveTestMode ? "translate-x-[14px]" : "translate-x-[2px]",
                   )}
                 />
               </div>
