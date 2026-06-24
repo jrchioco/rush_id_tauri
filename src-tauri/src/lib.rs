@@ -113,6 +113,25 @@ fn svg_to_pdf(svg_content: &str, pdf_path: &Path, tmp_dir: &Path) -> Result<(), 
     Ok(())
 }
 
+const NO_API_MAX_PX: u32 = 600;
+
+fn resize_if_needed(bytes: &[u8]) -> Vec<u8> {
+    let img = match image::load_from_memory(bytes) {
+        Ok(i) => i,
+        Err(_) => return bytes.to_vec(),
+    };
+
+    if img.width() <= NO_API_MAX_PX && img.height() <= NO_API_MAX_PX {
+        return bytes.to_vec();
+    }
+
+    let resized = img.resize(NO_API_MAX_PX, NO_API_MAX_PX, image::imageops::FilterType::Lanczos3);
+    let mut buf = Vec::new();
+    let mut cursor = std::io::Cursor::new(&mut buf);
+    resized.write_to(&mut cursor, image::ImageFormat::Png).unwrap_or(());
+    if buf.is_empty() { bytes.to_vec() } else { buf }
+}
+
 #[derive(Debug, Serialize)]
 struct SvgTemplate {
     key: String,
@@ -272,6 +291,7 @@ fn write_picture(app_handle: tauri::AppHandle, image_base64: String) -> Result<S
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(&image_base64)
         .map_err(|e| format!("Base64 decode error: {}", e))?;
+    let bytes = resize_if_needed(&bytes);
     let output_path = data_dir(&app_handle).join("picture.png");
     fs::write(&output_path, &bytes).map_err(|e| format!("Failed to write picture.png: {}", e))?;
     Ok("ok".into())
@@ -402,6 +422,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(&client.image_base64)
             .map_err(|e| format!("Base64 decode error for client {}: {}", i, e))?;
+        let bytes = resize_if_needed(&bytes);
         fs::write(&pic_path, &bytes).map_err(|e| format!("Failed to write {}: {}", pic_name, e))?;
 
         let svg_raw = fs::read_to_string(&client.svg_path)
