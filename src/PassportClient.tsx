@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X, TriangleAlert } from "lucide-react";
@@ -69,7 +69,7 @@ function freshSlot(i: number, defaultTemplate = ""): SlotData {
   };
 }
 
-export default function PassportClient() {
+const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function PassportClient(_, ref) {
   const [slots, setSlots] = useState<SlotData[]>(() =>
     Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)),
   );
@@ -97,6 +97,10 @@ export default function PassportClient() {
   const displayTemplates = passportTemplates.length > 0 ? passportTemplates : templates;
 
   const noApiKeys = keyCount === 0;
+
+  useImperativeHandle(ref, () => ({
+    hasUnsavedWork: () => slots.some((s) => s.step !== "empty"),
+  }), [slots]);
   const effectiveTestMode = testMode || noApiKeys;
 
   const log = useCallback((text: string) => {
@@ -734,4 +738,6 @@ export default function PassportClient() {
       />
     </main>
   );
-}
+});
+
+export default PassportClient;

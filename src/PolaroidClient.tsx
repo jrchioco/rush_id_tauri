@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { Printer, RotateCw, Trash2, TriangleAlert } from "lucide-react";
@@ -83,7 +83,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export default function PolaroidClient() {
+const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function PolaroidClient(_, ref) {
   const [layout, setLayout] = useState<Layout>("5pcs");
   const [slots, setSlots] = useState<PolaroidSlotState[]>(() =>
     Array.from({ length: 5 }, (_, i) => freshSlot(i)),
@@ -94,6 +94,10 @@ export default function PolaroidClient() {
 
   const slotsRef = useRef(slots);
   slotsRef.current = slots;
+
+  useImperativeHandle(ref, () => ({
+    hasUnsavedWork: () => slots.some((s) => s.imageBase64 !== null),
+  }), [slots]);
 
   const log = useCallback((text: string) => {
     setLogs((prev) => [...prev, { time: fmt(), text }]);
@@ -470,7 +474,9 @@ export default function PolaroidClient() {
       </div>
     </main>
   );
-}
+});
+
+export default PolaroidClient;
 
 async function readFileAsDataUrlFromPath(path: string): Promise<string> {
   const { readFile } = await import("@tauri-apps/plugin-fs");

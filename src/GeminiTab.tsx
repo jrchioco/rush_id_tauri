@@ -1,6 +1,11 @@
+import { forwardRef, useImperativeHandle } from "react";
 import { Sparkles } from "lucide-react";
 
-export default function GeminiTab() {
+const GeminiTab = forwardRef<{ hasUnsavedWork: () => boolean }>(function GeminiTab(_, ref) {
+  useImperativeHandle(ref, () => ({
+    hasUnsavedWork: () => false,
+  }));
+
   return (
     <main className="max-w-6xl mx-auto p-6">
       <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-12 text-center">
@@ -30,4 +35,6 @@ export default function GeminiTab() {
       </div>
     </main>
   );
-}
+});
+
+export default GeminiTab;

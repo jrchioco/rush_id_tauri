@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown, TriangleAlert } from "lucide-react";
@@ -30,7 +30,7 @@ function labelArgsFor(
   return { name, signature, fontStack };
 }
 
-export default function SingleClient() {
+const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function SingleClient(_, ref) {
   const [step, setStep] = useState<Step>("select");
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [resultPath, setResultPath] = useState<string | null>(null);
@@ -67,6 +67,10 @@ export default function SingleClient() {
     onRotate: (delta) => setRotation((r) => Math.max(-90, Math.min(90, r + delta))),
   });
   const activeKeyIndex = useKeyUsed();
+
+  useImperativeHandle(ref, () => ({
+    hasUnsavedWork: () => originalImage !== null,
+  }), [originalImage]);
 
   const log = useCallback((text: string) => {
     setLogs((prev) => [...prev, { time: fmt(), text }]);
@@ -654,4 +658,6 @@ export default function SingleClient() {
       />
     </main>
   );
-}
+});
+
+export default SingleClient;

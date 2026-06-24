@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +32,21 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const tabRefs = useRef<Record<Tab, { hasUnsavedWork: () => boolean } | null>>({
+    single: null, multi: null, passport: null, polaroid: null, gemini: null,
+  });
+
+  const handleTabSwitch = useCallback((key: Tab) => {
+    if (key === activeTab) return;
+    const current = tabRefs.current[activeTab];
+    if (current?.hasUnsavedWork()) {
+      toast("Switching tabs will reset your progress. Continue?", {
+        action: { label: "Continue", onClick: () => setActiveTab(key) },
+      });
+    } else {
+      setActiveTab(key);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     invoke<boolean>("check_config").then((ready) => {
@@ -199,7 +214,7 @@ export default function App() {
               {TABS.map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
-                  onClick={() => setActiveTab(key)}
+                  onClick={() => handleTabSwitch(key)}
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-mono tracking-wide flex items-center gap-1.5 transition-colors",
                     activeTab === key
@@ -224,11 +239,11 @@ export default function App() {
         </div>
       </header>
 
-      {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} /></ErrorBoundary>}
-      {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} /></ErrorBoundary>}
-      {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} /></ErrorBoundary>}
-      {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} /></ErrorBoundary>}
-      {activeTab === "gemini" && <ErrorBoundary><GeminiTab key={configVersion} /></ErrorBoundary>}
+      {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} ref={(el) => { tabRefs.current.single = el; }} /></ErrorBoundary>}
+      {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} /></ErrorBoundary>}
+      {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} /></ErrorBoundary>}
+      {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} /></ErrorBoundary>}
+      {activeTab === "gemini" && <ErrorBoundary><GeminiTab key={configVersion} ref={(el) => { tabRefs.current.gemini = el; }} /></ErrorBoundary>}
 
       <SettingsModal
         open={settingsOpen}
