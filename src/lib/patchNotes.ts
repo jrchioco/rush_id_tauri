@@ -5,6 +5,16 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.14.0": {
+    title: "What's New in v1.14.0",
+    date: "2026-06-24",
+    notes: [
+      "Tab switch confirmation — switching tabs now warns if you have unsaved work",
+      "Single tab template filter — only shows 1x1, 2x2, and Mixed templates",
+      "Memory leak fixes — stale state updates no longer crash after navigating away",
+      "Image resize for PDF export — oversized images capped to 600×600px, reducing PDF file sizes by up to 10x",
+    ],
+  },
   "1.13.6": {
     title: "What's New in v1.13.6",
     date: "2026-06-23",
