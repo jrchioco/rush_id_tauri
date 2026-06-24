@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown, TriangleAlert } from "lucide-react";
@@ -59,6 +59,8 @@ export default function SingleClient() {
   const compositeIdRef = useRef(0);
 
   const { templates, keyCount, loading: templatesLoading } = useTemplates();
+  const singleTemplates = useMemo(() => templates.filter((t) => !t.key.startsWith("multi_") && !t.key.toLowerCase().includes("passport")), [templates]);
+  const displayTemplates = singleTemplates.length > 0 ? singleTemplates : templates;
   const noApiKeys = keyCount === 0;
   const effectiveTestMode = testMode || noApiKeys;
   const cropperWrapRef = useCropperWheel({
@@ -71,10 +73,10 @@ export default function SingleClient() {
   }, []);
 
   useEffect(() => {
-    if (templates.length > 0 && !selectedTemplate) {
-      setSelectedTemplate(templates[0].path);
+    if (displayTemplates.length > 0 && !selectedTemplate) {
+      setSelectedTemplate(displayTemplates[0].path);
     }
-  }, [templates, selectedTemplate]);
+  }, [displayTemplates, selectedTemplate]);
 
   const { isDragging } = useTauriDragDrop(async (paths) => {
     const filePath = paths[0];
@@ -346,7 +348,7 @@ export default function SingleClient() {
       <div className="border-t border-[#2a2a28] p-3 grid grid-cols-2 gap-2">
         {[
           { label: "API KEY", value: `Key ${activeKeyIndex + 1}/${keyCount}`, accent: true },
-          { label: "TEMPLATE", value: templates.find((t) => t.path === selectedTemplate)?.name ?? "—", accent: false },
+          { label: "TEMPLATE", value: displayTemplates.find((t) => t.path === selectedTemplate)?.name ?? "—", accent: false },
           { label: "SIZE", value: "2×2 in", accent: false },
           { label: "DPI", value: "300", accent: false },
         ].map(({ label, value, accent }) => (
@@ -587,14 +589,14 @@ export default function SingleClient() {
                       onClick={() => setTemplateOpen(!templateOpen)}
                       className="w-full mt-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] font-mono flex items-center justify-between focus:outline-none focus:border-[#c8881a]"
                     >
-                      <span>{templates.find((t) => t.path === selectedTemplate)?.name ?? "Select"}</span>
+                      <span>{displayTemplates.find((t) => t.path === selectedTemplate)?.name ?? "Select"}</span>
                       <ChevronDown
                         className={cn("w-4 h-4 text-[#555] transition-transform", templateOpen && "rotate-180")}
                       />
                     </button>
                     {templateOpen && (
                       <div className="absolute z-10 mt-1 w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg overflow-hidden shadow-xl">
-                        {templates.map((t) => (
+                        {displayTemplates.map((t) => (
                           <button
                             key={t.key}
                             onClick={() => {
