@@ -10,6 +10,7 @@ import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useCropperWheel } from "./lib/hooks/useCropperWheel";
+import { useIsMounted } from "./lib/hooks/useIsMounted";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
@@ -53,6 +54,8 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
   const [retouchOpen, setRetouchOpen] = useState(false);
   const [retouchImageData, setRetouchImageData] = useState("");
 
+  const isMounted = useIsMounted();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sigFileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -73,7 +76,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
   }), [originalImage]);
 
   const log = useCallback((text: string) => {
-    setLogs((prev) => [...prev, { time: fmt(), text }]);
+    setLogs((prev) => [...prev.slice(-199), { time: fmt(), text }]);
   }, []);
 
   useEffect(() => {
@@ -183,6 +186,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
     try {
       await compositeAndApply(rawBase64, color, name, signature, fontStack);
     } catch (e) {
+      if (!isMounted()) return;
       log(`Error: ${e}`);
     }
   }
@@ -222,6 +226,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
     try {
       await compositeAndApply(rawBase64, bgColor, name, sig);
     } catch (e) {
+      if (!isMounted()) return;
       log(`Error: ${e}`);
     }
   }
@@ -263,8 +268,10 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
     const { name, signature, fontStack } = labelArgs();
     try {
       await compositeAndApply(newRaw, bgColor, name, signature, fontStack);
+      if (!isMounted()) return;
       log("Retouch applied");
     } catch (e) {
+      if (!isMounted()) return;
       log(`Error: ${e}`);
     }
   }
@@ -276,6 +283,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
 
     try {
       const base64 = await cropImage(originalImage, croppedAreaPixels, rotation);
+      if (!isMounted()) return;
       let b64: string;
       if (effectiveTestMode) {
         log("Test mode — using cropped image (no API call)");
@@ -283,6 +291,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
       } else {
         log("Removing background...");
         b64 = await invoke<string>("remove_bg", { imageBase64: base64 });
+        if (!isMounted()) return;
       }
 
       setRawBase64(b64);
@@ -290,19 +299,20 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
       const { name, signature, fontStack } = labelArgs();
       const procId = ++compositeIdRef.current;
       const dataUrl = await compositeOnColor(b64, "#ffffff", name, signature, fontStack);
-      if (procId !== compositeIdRef.current) {
+      if (!isMounted() || procId !== compositeIdRef.current) {
         setLoading(false);
         return;
       }
       setResultPath(dataUrl);
       await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
+      if (!isMounted()) return;
       setStep("done");
       log(effectiveTestMode ? "✓ Cropped (test mode)" : "✓ Background removed");
     } catch (e) {
       toast.error(String(e));
       log(`Error: ${e}`);
     } finally {
-      setLoading(false);
+      if (isMounted()) setLoading(false);
     }
   }
 
@@ -311,6 +321,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
     try {
       log("Opening print dialog...");
       const msg = await invoke<string>("print_file", { svgPath: selectedTemplate });
+      if (!isMounted()) return;
       log(`✓ ${msg}`);
     } catch (e) {
       toast.error(String(e));
@@ -323,10 +334,12 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const savePath = await save({ filters: [{ name: "PDF", extensions: ["pdf"] }] });
-      if (!savePath) return;
+      if (!savePath || !isMounted()) return;
       log("Exporting PDF...");
       const pdfPath = await invoke<string>("export_pdf", { svgPath: selectedTemplate, savePath });
+      if (!isMounted()) return;
       await invoke("open_file", { path: pdfPath });
+      if (!isMounted()) return;
       log("✓ PDF saved — press Ctrl+P to print");
     } catch (e) {
       toast.error(String(e));

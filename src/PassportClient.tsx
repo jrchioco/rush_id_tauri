@@ -10,6 +10,7 @@ import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useCropperWheel } from "./lib/hooks/useCropperWheel";
+import { useIsMounted } from "./lib/hooks/useIsMounted";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
@@ -80,6 +81,8 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
   const [retouchSlotIndex, setRetouchSlotIndex] = useState(0);
   const [retouchImageData, setRetouchImageData] = useState("");
 
+  const isMounted = useIsMounted();
+
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const sigFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const compositeIdRefs = useRef<Map<number, number>>(new Map());
@@ -104,7 +107,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
   const effectiveTestMode = testMode || noApiKeys;
 
   const log = useCallback((text: string) => {
-    setLogs((prev) => [...prev, { time: fmt(), text }]);
+    setLogs((prev) => [...prev.slice(-199), { time: fmt(), text }]);
   }, []);
 
   const slotsRef = useRef<SlotData[]>(slots);
@@ -243,6 +246,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
     const colorResults = await Promise.all(
       results.map((b64, j) => compositeOnColor(b64, bgColors[j], labelArgs[j].name, labelArgs[j].signature, labelArgs[j].fontStack)),
     );
+      if (!isMounted()) return;
       setSlots((prev) => {
         const next = [...prev];
         for (let j = 0; j < pending.length; j++) {
@@ -284,12 +288,14 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
         clients,
         savePath: savePath ?? null,
       });
+      if (!isMounted()) return;
       log(`✓ ${msg}`);
     } catch (e) {
+      if (!isMounted()) return;
       log(`Error: ${e}`);
       toast.error(String(e));
     } finally {
-      setBusy(false);
+      if (isMounted()) setBusy(false);
     }
   }
 
@@ -410,8 +416,10 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
     const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
     try {
       await slotCompositeAndApply(i, newRaw, slot.bgColor, name, signature, fontStack);
+      if (!isMounted()) return;
       log(`Retouch applied to slot ${i + 1}`);
     } catch (e) {
+      if (!isMounted()) return;
       log(`Error: ${e}`);
       toast.error(String(e));
     }

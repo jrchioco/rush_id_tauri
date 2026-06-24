@@ -4,6 +4,7 @@ import { getVersion, getTauriVersion } from "@tauri-apps/api/app";
 import { X, Eye, EyeOff, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
+import { useIsMounted } from "../lib/hooks/useIsMounted";
 import { PatchNotesModal } from "./PatchNotesModal";
 import { LicenseModal } from "./LicenseModal";
 
@@ -16,6 +17,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
+  const isMounted = useIsMounted();
   const [tab, setTab] = useState<SettingsTab>("keys");
   const [keys, setKeys] = useState<string[]>([""]);
   const [revealed, setRevealed] = useState<boolean[]>([false]);
@@ -32,11 +34,12 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
     setFetching(true);
     invoke<string[]>("get_config")
       .then((apiKeys) => {
+        if (!isMounted()) return;
         setKeys(apiKeys.length > 0 ? apiKeys : [""]);
         setRevealed(apiKeys.length > 0 ? apiKeys.map(() => false) : [false]);
       })
       .catch((e) => toast.error(String(e)))
-      .finally(() => setFetching(false));
+      .finally(() => { if (isMounted()) setFetching(false); });
   }, [open]);
 
   useEffect(() => {
@@ -78,13 +81,14 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
     setLoading(true);
     try {
       await invoke("update_config", { apiKeys: filtered });
+      if (!isMounted()) return;
       toast.success("Settings saved");
       onSaved();
       onClose();
     } catch (e) {
       toast.error(String(e));
     } finally {
-      setLoading(false);
+      if (isMounted()) setLoading(false);
     }
   }
 

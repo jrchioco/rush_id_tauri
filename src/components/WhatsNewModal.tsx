@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { PATCH_NOTES } from "../lib/patchNotes";
+import { useIsMounted } from "../lib/hooks/useIsMounted";
 
 interface WhatsNewModalProps {
   open: boolean;
@@ -8,11 +9,12 @@ interface WhatsNewModalProps {
 }
 
 export function WhatsNewModal({ open, onClose }: WhatsNewModalProps) {
+  const isMounted = useIsMounted();
   const [version, setVersion] = useState("");
 
   useEffect(() => {
     if (!open) return;
-    getVersion().then(setVersion).catch(() => {});
+    getVersion().then((v) => { if (isMounted()) setVersion(v); }).catch(() => {});
   }, [open]);
 
   if (!open) return null;

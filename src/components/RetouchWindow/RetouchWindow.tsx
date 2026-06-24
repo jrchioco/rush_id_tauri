@@ -37,6 +37,11 @@ export function RetouchWindow({ isOpen, imageDataUrl, onClose, onSave }: Retouch
   }, [isOpen, imageDataUrl, state.loadSource]);
 
   useEffect(() => {
+    if (isOpen) return;
+    state.resetCanvas();
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

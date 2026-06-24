@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Printer, RotateCw, Trash2, TriangleAlert } from "lucide-react";
 import { cn, fmt } from "./lib/utils";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
+import { useIsMounted } from "./lib/hooks/useIsMounted";
 import { PolaroidSlotCard, type FitMode, type PolaroidSlotState } from "./PolaroidSlotCard";
 
 type Layout = "2pcs" | "3pcs" | "5pcs" | "10pcs";
@@ -92,6 +93,8 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
   const [busy, setBusy] = useState(false);
   const [logs, setLogs] = useState<{ time: string; text: string }[]>([]);
 
+  const isMounted = useIsMounted();
+
   const slotsRef = useRef(slots);
   slotsRef.current = slots;
 
@@ -100,7 +103,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
   }), [slots]);
 
   const log = useCallback((text: string) => {
-    setLogs((prev) => [...prev, { time: fmt(), text }]);
+    setLogs((prev) => [...prev.slice(-199), { time: fmt(), text }]);
   }, []);
 
   const handleLayoutSwitch = useCallback(
@@ -194,6 +197,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
               imageBase64: await preprocessSlot(s),
             })),
         );
+        if (!isMounted()) return;
 
         log("Compositing Polaroid PDF...");
         const msg = await invoke<string>("composite_polaroid_pdf", {
@@ -201,12 +205,14 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
           slots: processed,
           savePath: savePath ?? null,
         });
+        if (!isMounted()) return;
         log(`✓ ${msg}`);
       } catch (e) {
+        if (!isMounted()) return;
         log(`Error: ${e}`);
         toast.error(String(e));
       } finally {
-        setBusy(false);
+        if (isMounted()) setBusy(false);
       }
     },
     [layout, filledCount, log],

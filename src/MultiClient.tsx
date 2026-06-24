@@ -10,6 +10,7 @@ import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useCropperWheel } from "./lib/hooks/useCropperWheel";
+import { useIsMounted } from "./lib/hooks/useIsMounted";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
@@ -78,6 +79,8 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
   const [retouchSlotIndex, setRetouchSlotIndex] = useState(0);
   const [retouchImageData, setRetouchImageData] = useState("");
 
+  const isMounted = useIsMounted();
+
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const sigFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const compositeIdRefs = useRef<Map<number, number>>(new Map());
@@ -102,7 +105,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
   }), [slots]);
 
   const log = useCallback((text: string) => {
-    setLogs((prev) => [...prev, { time: fmt(), text }]);
+    setLogs((prev) => [...prev.slice(-199), { time: fmt(), text }]);
   }, []);
 
   const slotsRef = useRef<SlotData[]>(slots);
@@ -241,6 +244,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
     const colorResults = await Promise.all(
       results.map((b64, j) => compositeOnColor(b64, bgColors[j], labelArgs[j].name, labelArgs[j].signature, labelArgs[j].fontStack)),
     );
+      if (!isMounted()) return;
       setSlots((prev) => {
         const next = [...prev];
         for (let j = 0; j < pending.length; j++) {
@@ -282,12 +286,14 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
         clients,
         savePath: savePath ?? null,
       });
+      if (!isMounted()) return;
       log(`✓ ${msg}`);
     } catch (e) {
+      if (!isMounted()) return;
       log(`Error: ${e}`);
       toast.error(String(e));
     } finally {
-      setBusy(false);
+      if (isMounted()) setBusy(false);
     }
   }
 
@@ -409,8 +415,10 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
     const { name, signature, fontStack } = labelArgsFor(slot.labelMode, slot.name, slot.signatureDataUrl, slot.fontChoice);
     try {
       await slotCompositeAndApply(i, newRaw, slot.bgColor, name, signature, fontStack);
+      if (!isMounted()) return;
       log(`Retouch applied to slot ${i + 1}`);
     } catch (e) {
+      if (!isMounted()) return;
       log(`Error: ${e}`);
       toast.error(String(e));
     }
