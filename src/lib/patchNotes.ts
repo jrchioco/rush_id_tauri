@@ -5,6 +5,15 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.14.1": {
+    title: "What's New in v1.14.1",
+    date: "2026-06-26",
+    notes: [
+      "Dev SVG templates — 3 new layouts (Dev 1x1, Dev 2x2, Dev Mixed) added to Single tab",
+      "API key logging — LogsPanel now shows which key was used, HTTP status, response time, and errors",
+      "Code cleanup — extracted shared functions, consistent types across all tabs",
+    ],
+  },
   "1.14.0": {
     title: "What's New in v1.14.0",
     date: "2026-06-24",
