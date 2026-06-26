@@ -230,7 +230,15 @@ fn get_svg_templates(app_handle: tauri::AppHandle) -> Result<Vec<SvgTemplate>, S
         let name = full_path.file_stem().unwrap_or_default().to_string_lossy().to_string();
         templates.push(SvgTemplate { key: key.clone(), path: full_path.to_string_lossy().to_string(), name });
     }
-    templates.sort_by(|a, b| a.key.cmp(&b.key));
+    templates.sort_by(|a, b| {
+        let a_dev = a.key.to_lowercase().starts_with("dev");
+        let b_dev = b.key.to_lowercase().starts_with("dev");
+        match (a_dev, b_dev) {
+            (true, false) => std::cmp::Ordering::Greater,
+            (false, true) => std::cmp::Ordering::Less,
+            _ => a.key.cmp(&b.key),
+        }
+    });
     Ok(templates)
 }
 
