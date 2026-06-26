@@ -261,6 +261,7 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
 
     let client = reqwest::Client::new();
     for (i, api_key) in config.api_keys.iter().enumerate() {
+        let prefix: String = api_key.chars().take(5).collect();
         let file_part = reqwest::multipart::Part::bytes(bytes.clone())
             .file_name("image.png")
             .mime_str("image/png")
@@ -268,6 +269,7 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
         let form = reqwest::multipart::Form::new()
             .part("image_file", file_part)
             .text("size", "auto");
+        let start = std::time::Instant::now();
         let response = client
             .post("https://api.remove.bg/v1.0/removebg")
             .multipart(form)
@@ -275,20 +277,42 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
             .timeout(std::time::Duration::from_secs(30))
             .send()
             .await;
+        let elapsed = start.elapsed().as_millis() as u64;
 
         match response {
             Ok(resp) if resp.status() == 200 => {
                 let data = resp.bytes().await.map_err(|e| format!("Read response error: {}", e))?;
                 fs::write(&output_path, &data).map_err(|e| format!("Failed to write output: {}", e))?;
                 app_handle.emit("key_used", i).ok();
+                app_handle.emit("api_log", serde_json::json!({
+                    "key_prefix": format!("{}...", prefix),
+                    "ok": true,
+                    "status": 200,
+                    "elapsed_ms": elapsed,
+                    "error": null,
+                })).ok();
                 return Ok(base64::engine::general_purpose::STANDARD.encode(&data));
             }
             Ok(resp) => {
-                let status = resp.status();
+                let status = resp.status().as_u16();
                 let body = resp.text().await.unwrap_or_default();
-                eprintln!("API key failed ({}): {}", status, body);
+                app_handle.emit("api_log", serde_json::json!({
+                    "key_prefix": format!("{}...", prefix),
+                    "ok": false,
+                    "status": status,
+                    "elapsed_ms": elapsed,
+                    "error": body,
+                })).ok();
             }
-            Err(e) => eprintln!("Request error with key: {}", e),
+            Err(e) => {
+                app_handle.emit("api_log", serde_json::json!({
+                    "key_prefix": format!("{}...", prefix),
+                    "ok": false,
+                    "status": "error",
+                    "elapsed_ms": elapsed,
+                    "error": e.to_string(),
+                })).ok();
+            }
         }
     }
     Err("All API keys failed. Check your API keys and internet connection.".to_string())

@@ -11,6 +11,7 @@ import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { useIsMounted } from "./lib/hooks/useIsMounted";
+import { useApiLogs } from "./lib/hooks/useApiLogs";
 import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
@@ -107,6 +108,8 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
   const log = useCallback((text: string) => {
     setLogs((prev) => [...prev.slice(-199), { time: fmt(), text }]);
   }, []);
+
+  useApiLogs(log);
 
   const slotsRef = useRef<SlotData[]>(slots);
   slotsRef.current = slots;
