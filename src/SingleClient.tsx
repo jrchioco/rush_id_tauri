@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
-import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice } from "./lib/utils";
+import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice, labelArgsFor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
@@ -19,18 +19,6 @@ import { RetouchButton, RetouchWindow } from "./components/RetouchWindow";
 import type { LogEntry, LabelMode, FontChoice } from "./types";
 
 type Step = "select" | "crop" | "done";
-
-function labelArgsFor(
-  mode: LabelMode,
-  name: string,
-  signature: string | null,
-  fontChoice: FontChoice,
-): { name: string | undefined; signature: string | null; fontStack: string } {
-  const fontStack = getFontOption(fontChoice).stack;
-  if (mode === "off") return { name: undefined, signature: null, fontStack };
-  if (mode === "name") return { name, signature: null, fontStack };
-  return { name, signature, fontStack };
-}
 
 const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function SingleClient(_, ref) {
   const [step, setStep] = useState<Step>("select");

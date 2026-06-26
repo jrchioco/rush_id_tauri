@@ -2,9 +2,10 @@ import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHand
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { Printer, RotateCw, Trash2, TriangleAlert } from "lucide-react";
-import { cn, fmt } from "./lib/utils";
+import { cn, fmt, loadImage } from "./lib/utils";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useIsMounted } from "./lib/hooks/useIsMounted";
+import type { LogEntry } from "./types";
 import { PolaroidSlotCard, type FitMode, type PolaroidSlotState } from "./PolaroidSlotCard";
 
 type Layout = "2pcs" | "3pcs" | "5pcs" | "10pcs";
@@ -75,15 +76,6 @@ async function preprocessSlot(slot: PolaroidSlotState): Promise<string> {
   return dataUrl.split(",")[1];
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Failed to load image"));
-    img.src = src;
-  });
-}
-
 const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function PolaroidClient(_, ref) {
   const [layout, setLayout] = useState<Layout>("5pcs");
   const [slots, setSlots] = useState<PolaroidSlotState[]>(() =>
@@ -91,7 +83,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
   );
   const [globalStretch, setGlobalStretch] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [logs, setLogs] = useState<{ time: string; text: string }[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const isMounted = useIsMounted();
 

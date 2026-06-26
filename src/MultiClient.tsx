@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
-import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice } from "./lib/utils";
+import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice, labelArgsFor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
@@ -16,7 +16,7 @@ import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
 import { RetouchButton, RetouchWindow } from "./components/RetouchWindow";
-import type { LabelMode, FontChoice } from "./types";
+import type { LogEntry, LabelMode, FontChoice } from "./types";
 
 interface SlotData {
   step: "empty" | "crop" | "done";
@@ -33,18 +33,6 @@ interface SlotData {
   labelMode: LabelMode;
   signatureDataUrl: string | null;
   fontChoice: FontChoice;
-}
-
-function labelArgsFor(
-  mode: LabelMode,
-  name: string,
-  signature: string | null,
-  fontChoice: FontChoice,
-): { name: string | undefined; signature: string | null; fontStack: string } {
-  const fontStack = getFontOption(fontChoice).stack;
-  if (mode === "off") return { name: undefined, signature: null, fontStack };
-  if (mode === "name") return { name, signature: null, fontStack };
-  return { name, signature, fontStack };
 }
 
 const SLOT_COUNT = 5;
@@ -73,7 +61,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
   const [slots, setSlots] = useState<SlotData[]>(() =>
     Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)),
   );
-  const [logs, setLogs] = useState<{ time: string; text: string }[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [testMode, setTestMode] = useState(false);
   const [retouchOpen, setRetouchOpen] = useState(false);

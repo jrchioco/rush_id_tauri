@@ -21,6 +21,8 @@ const LABEL_FONT = '"Arial Black", "Arial Narrow Bold", "Arial Narrow", "Open Sa
 
 export type FontChoice = "black" | "narrow-bold" | "narrow" | "impact";
 
+export type LabelMode = "off" | "name" | "name-sig";
+
 interface FontOption {
   id: FontChoice;
   label: [string] | [string, string];
@@ -41,6 +43,18 @@ export function getFontOption(id: FontChoice): FontOption {
 export function getNextFontChoice(id: FontChoice): FontChoice {
   const idx = FONT_OPTIONS.findIndex((f) => f.id === id);
   return FONT_OPTIONS[(idx + 1) % FONT_OPTIONS.length].id;
+}
+
+export function labelArgsFor(
+  mode: LabelMode,
+  name: string,
+  signature: string | null,
+  fontChoice: FontChoice,
+): { name: string | undefined; signature: string | null; fontStack: string } {
+  const fontStack = getFontOption(fontChoice).stack;
+  if (mode === "off") return { name: undefined, signature: null, fontStack };
+  if (mode === "name") return { name, signature: null, fontStack };
+  return { name, signature, fontStack };
 }
 
 const LABEL_MIN_FONT_RATIO = 0.20;
@@ -86,7 +100,7 @@ function fitText(
   return { fontSize: minFontSize, text: text.slice(0, lo).trimEnd() + LABEL_ELLIPSIS };
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
