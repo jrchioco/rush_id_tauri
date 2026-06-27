@@ -205,39 +205,11 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
             ) : (
               <>
                 <div>
-                  <p className="text-[10px] text-[#4a9a4a] font-mono mb-2 uppercase tracking-widest">
-                    poof.bg — Primary
-                  </p>
-                  <p className="text-[10px] text-[#555] font-mono mb-2">
-                    100 free credits/month per account. Iterated first.
-                  </p>
-                  <div className="space-y-2">
-                    {poofKeys.map((key, i) => (
-                      <KeyRow
-                        key={i}
-                        value={key}
-                        revealed={poofRevealed[i]}
-                        onChange={(v) => updatePoofKey(i, v)}
-                        onToggle={() => togglePoofReveal(i)}
-                        onRemove={poofKeys.length > 1 ? () => removePoofKey(i) : undefined}
-                        placeholder="pk_f..."
-                      />
-                    ))}
-                    <button
-                      onClick={addPoofKey}
-                      className="text-xs text-[#4a9a4a] hover:text-[#6aba6a] font-mono transition-colors flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" /> add poof.bg key
-                    </button>
-                  </div>
-                </div>
-
-                <div className="border-t border-[#2a2a28] pt-4">
                   <p className="text-[10px] text-[#4a6aaa] font-mono mb-2 uppercase tracking-widest">
-                    remove.bg — Fallback
+                    remove.bg — Primary
                   </p>
                   <p className="text-[10px] text-[#555] font-mono mb-2">
-                    50 free credits/month per account. Used when poof.bg credits run out.
+                    50 free credits/month per account. Iterated first.
                   </p>
                   <div className="space-y-2">
                     {removebgKeys.map((key, i) => (
@@ -256,6 +228,34 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
                       className="text-xs text-[#4a6aaa] hover:text-[#6a8aca] font-mono transition-colors flex items-center gap-1"
                     >
                       <Plus className="w-3 h-3" /> add remove.bg key
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#2a2a28] pt-4">
+                  <p className="text-[10px] text-[#4a9a4a] font-mono mb-2 uppercase tracking-widest">
+                    poof.bg — Fallback
+                  </p>
+                  <p className="text-[10px] text-[#555] font-mono mb-2">
+                    100 free credits/month per account. Used when remove.bg credits run out.
+                  </p>
+                  <div className="space-y-2">
+                    {poofKeys.map((key, i) => (
+                      <KeyRow
+                        key={i}
+                        value={key}
+                        revealed={poofRevealed[i]}
+                        onChange={(v) => updatePoofKey(i, v)}
+                        onToggle={() => togglePoofReveal(i)}
+                        onRemove={poofKeys.length > 1 ? () => removePoofKey(i) : undefined}
+                        placeholder="pk_f..."
+                      />
+                    ))}
+                    <button
+                      onClick={addPoofKey}
+                      className="text-xs text-[#4a9a4a] hover:text-[#6aba6a] font-mono transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> add poof.bg key
                     </button>
                   </div>
                 </div>

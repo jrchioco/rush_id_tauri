@@ -5,6 +5,17 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.15.0": {
+    title: "What's New in v1.15.0",
+    date: "2026-06-28",
+    notes: [
+      "Multi-provider background removal — remove.bg (primary) + poof.bg (fallback)",
+      "API keys refactored to provider-keyed dictionary — eliminates ordering bugs",
+      "Settings UI split into two sections — remove.bg and poof.bg managed independently",
+      "Auto-migration — old flat api_keys config converted automatically on first launch",
+      "Detailed API timing logs — breakdown shows send, download, and write times per request",
+    ],
+  },
   "1.14.1": {
     title: "What's New in v1.14.1",
     date: "2026-06-26",

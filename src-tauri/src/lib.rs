@@ -307,13 +307,13 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
     let output_path = output_dir.join("picture.png");
 
     let client = reqwest::Client::new();
-    let all_keys: Vec<(&str, &str, &str, &str)> = config.api_keys.poof
+    let all_keys: Vec<(&str, &str, &str, &str)> = config.api_keys.removebg
         .iter()
-        .map(|k| (k.as_str(), "https://api.poof.bg/v1/remove", "x-api-key", "preview"))
+        .map(|k| (k.as_str(), "https://api.remove.bg/v1.0/removebg", "X-Api-Key", "auto"))
         .chain(
-            config.api_keys.removebg
+            config.api_keys.poof
                 .iter()
-                .map(|k| (k.as_str(), "https://api.remove.bg/v1.0/removebg", "X-Api-Key", "auto"))
+                .map(|k| (k.as_str(), "https://api.poof.bg/v1/remove", "x-api-key", "preview"))
         )
         .collect();
 
