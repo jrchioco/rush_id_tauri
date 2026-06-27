@@ -6,11 +6,17 @@ use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use tauri::{Emitter, Manager};
 
+#[derive(Debug, Deserialize, Serialize, Default)]
+struct ApiKeys {
+    poof: Vec<String>,
+    removebg: Vec<String>,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct Config {
     input_folder_path: String,
     output_folder_path: String,
-    api_keys: Vec<String>,
+    api_keys: ApiKeys,
     svg_files: HashMap<String, String>,
 }
 
@@ -42,7 +48,34 @@ fn load_config(app: &tauri::AppHandle) -> Result<Config, String> {
     let config_path = data_dir(app).join("config.json");
     let content = fs::read_to_string(&config_path)
         .map_err(|e| format!("Failed to read config.json at {:?}: {}", config_path, e))?;
-    serde_json::from_str(&content).map_err(|e| format!("Invalid config.json: {}", e))
+
+    // Try new format first
+    if let Ok(config) = serde_json::from_str::<Config>(&content) {
+        return Ok(config);
+    }
+
+    // Migration: old flat api_keys array → provider-keyed dictionary
+    let mut json: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Invalid config.json: {}", e))?;
+
+    if let Some(keys) = json.get("api_keys").and_then(|v| v.as_array()) {
+        let mut poof = Vec::new();
+        let mut removebg = Vec::new();
+        for k in keys {
+            if let Some(s) = k.as_str() {
+                if s.starts_with("pk_f") {
+                    poof.push(s.to_string());
+                } else {
+                    removebg.push(s.to_string());
+                }
+            }
+        }
+        json["api_keys"] = serde_json::json!({ "poof": poof, "removebg": removebg });
+
+        let _ = fs::write(&config_path, serde_json::to_string_pretty(&json).unwrap_or_default());
+    }
+
+    serde_json::from_value(json).map_err(|e| format!("Invalid config.json after migration: {}", e))
 }
 
 fn normalize_path(path: &Path) -> PathBuf {
@@ -145,7 +178,11 @@ fn check_config(app_handle: tauri::AppHandle) -> bool {
 }
 
 #[tauri::command]
-fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<(), String> {
+fn save_config(
+    app_handle: tauri::AppHandle,
+    poof_keys: Vec<String>,
+    removebg_keys: Vec<String>,
+) -> Result<(), String> {
     let res = resource_dir(&app_handle);
     let mut svg_files = HashMap::new();
 
@@ -169,7 +206,10 @@ fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<()
     let config = Config {
         input_folder_path: "input".into(),
         output_folder_path: ".".into(),
-        api_keys,
+        api_keys: ApiKeys {
+            poof: poof_keys,
+            removebg: removebg_keys,
+        },
         svg_files,
     };
 
@@ -181,15 +221,22 @@ fn save_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<()
 }
 
 #[tauri::command]
-fn get_config(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
+fn get_config(app_handle: tauri::AppHandle) -> Result<ApiKeys, String> {
     let config = load_config(&app_handle)?;
     Ok(config.api_keys)
 }
 
 #[tauri::command]
-fn update_config(app_handle: tauri::AppHandle, api_keys: Vec<String>) -> Result<(), String> {
+fn update_config(
+    app_handle: tauri::AppHandle,
+    poof_keys: Vec<String>,
+    removebg_keys: Vec<String>,
+) -> Result<(), String> {
     let mut config = load_config(&app_handle)?;
-    config.api_keys = api_keys;
+    config.api_keys = ApiKeys {
+        poof: poof_keys,
+        removebg: removebg_keys,
+    };
     let json = serde_json::to_string_pretty(&config).map_err(|e| format!("Serialize error: {}", e))?;
     let config_path = data_dir(&app_handle).join("config.json");
     fs::write(&config_path, &json).map_err(|e| format!("Failed to write config: {}", e))?;
@@ -260,22 +307,18 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
     let output_path = output_dir.join("picture.png");
 
     let client = reqwest::Client::new();
-    for (i, api_key) in config.api_keys.iter().enumerate() {
-        let prefix: String = api_key.chars().take(5).collect();
+    let all_keys: Vec<(&str, &str, &str, &str)> = config.api_keys.poof
+        .iter()
+        .map(|k| (k.as_str(), "https://api.poof.bg/v1/remove", "x-api-key", "preview"))
+        .chain(
+            config.api_keys.removebg
+                .iter()
+                .map(|k| (k.as_str(), "https://api.remove.bg/v1.0/removebg", "X-Api-Key", "auto"))
+        )
+        .collect();
 
-        let (endpoint, auth_header, size_param) = if api_key.starts_with("pk_f") {
-            (
-                "https://api.poof.bg/v1/remove",
-                "x-api-key",
-                "medium",
-            )
-        } else {
-            (
-                "https://api.remove.bg/v1.0/removebg",
-                "X-Api-Key",
-                "auto",
-            )
-        };
+    for (i, (api_key, endpoint, auth_header, size_param)) in all_keys.iter().enumerate() {
+        let prefix: String = api_key.chars().take(5).collect();
 
         let file_part = reqwest::multipart::Part::bytes(bytes.clone())
             .file_name("image.png")
@@ -283,27 +326,38 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
             .map_err(|e| format!("Mime error: {}", e))?;
         let form = reqwest::multipart::Form::new()
             .part("image_file", file_part)
-            .text("size", size_param);
-        let start = std::time::Instant::now();
+            .text("size", *size_param);
+        let total_start = std::time::Instant::now();
         let response = client
-            .post(endpoint)
+            .post(*endpoint)
             .multipart(form)
-            .header(auth_header, api_key)
+            .header(*auth_header, *api_key)
             .timeout(std::time::Duration::from_secs(30))
             .send()
             .await;
-        let elapsed = start.elapsed().as_millis() as u64;
+        let send_ms = total_start.elapsed().as_millis() as u64;
 
         match response {
             Ok(resp) if resp.status() == 200 => {
+                let bytes_start = std::time::Instant::now();
                 let data = resp.bytes().await.map_err(|e| format!("Read response error: {}", e))?;
+                let bytes_ms = bytes_start.elapsed().as_millis() as u64;
+
+                let write_start = std::time::Instant::now();
                 fs::write(&output_path, &data).map_err(|e| format!("Failed to write output: {}", e))?;
+                let write_ms = write_start.elapsed().as_millis() as u64;
+                let total_ms = total_start.elapsed().as_millis() as u64;
+
                 app_handle.emit("key_used", i).ok();
                 app_handle.emit("api_log", serde_json::json!({
                     "key_prefix": format!("{}...", prefix),
                     "ok": true,
                     "status": 200,
-                    "elapsed_ms": elapsed,
+                    "send_ms": send_ms,
+                    "bytes_ms": bytes_ms,
+                    "write_ms": write_ms,
+                    "total_ms": total_ms,
+                    "endpoint": endpoint,
                     "error": null,
                 })).ok();
                 return Ok(base64::engine::general_purpose::STANDARD.encode(&data));
@@ -311,20 +365,30 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
             Ok(resp) => {
                 let status = resp.status().as_u16();
                 let body = resp.text().await.unwrap_or_default();
+                let total_ms = total_start.elapsed().as_millis() as u64;
                 app_handle.emit("api_log", serde_json::json!({
                     "key_prefix": format!("{}...", prefix),
                     "ok": false,
                     "status": status,
-                    "elapsed_ms": elapsed,
+                    "send_ms": send_ms,
+                    "bytes_ms": 0,
+                    "write_ms": 0,
+                    "total_ms": total_ms,
+                    "endpoint": endpoint,
                     "error": body,
                 })).ok();
             }
             Err(e) => {
+                let total_ms = total_start.elapsed().as_millis() as u64;
                 app_handle.emit("api_log", serde_json::json!({
                     "key_prefix": format!("{}...", prefix),
                     "ok": false,
                     "status": "error",
-                    "elapsed_ms": elapsed,
+                    "send_ms": send_ms,
+                    "bytes_ms": 0,
+                    "write_ms": 0,
+                    "total_ms": total_ms,
+                    "endpoint": endpoint,
                     "error": e.to_string(),
                 })).ok();
             }
@@ -381,7 +445,7 @@ fn cleanup_temp_pdfs() {
 #[tauri::command]
 fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
     let config = load_config(&app_handle)?;
-    Ok(config.api_keys.len())
+    Ok(config.api_keys.poof.len() + config.api_keys.removebg.len())
 }
 
 #[tauri::command]

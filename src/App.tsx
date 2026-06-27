@@ -74,9 +74,10 @@ export default function App() {
 
   async function handleSaveConfig() {
     try {
-      await invoke("save_config", {
-        apiKeys: setupKeys.filter((k) => k.trim()),
-      });
+      const filtered = setupKeys.filter((k) => k.trim());
+      const poofKeys = filtered.filter((k) => k.startsWith("pk_f"));
+      const removebgKeys = filtered.filter((k) => !k.startsWith("pk_f"));
+      await invoke("save_config", { poofKeys, removebgKeys });
       setConfigReady(true);
     } catch (e) {
       toast.error(String(e));
@@ -85,7 +86,7 @@ export default function App() {
 
   async function handleSkipConfig() {
     try {
-      await invoke("save_config", { apiKeys: [] });
+      await invoke("save_config", { poofKeys: [], removebgKeys: [] });
       setConfigReady(true);
     } catch (e) {
       toast.error(String(e));

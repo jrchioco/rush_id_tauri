@@ -16,11 +16,56 @@ interface SettingsModalProps {
   onSaved: () => void;
 }
 
+function KeyRow({
+  value,
+  revealed,
+  onChange,
+  onToggle,
+  onRemove,
+  placeholder,
+}: {
+  value: string;
+  revealed: boolean;
+  onChange: (v: string) => void;
+  onToggle: () => void;
+  onRemove?: () => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex gap-1.5">
+      <input
+        type={revealed ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? "Paste API key..."}
+        className="flex-1 min-w-0 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] placeholder-[#444] font-mono focus:outline-none focus:border-[#c8881a]"
+      />
+      <button
+        onClick={onToggle}
+        className="px-2 text-[#555] hover:text-[#888] transition-colors flex-shrink-0"
+        title={revealed ? "Hide key" : "Reveal key"}
+      >
+        {revealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          className="px-2 text-[#555] hover:text-red-400 transition-colors flex-shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
   const isMounted = useIsMounted();
   const [tab, setTab] = useState<SettingsTab>("keys");
-  const [keys, setKeys] = useState<string[]>([""]);
-  const [revealed, setRevealed] = useState<boolean[]>([false]);
+  const [poofKeys, setPoofKeys] = useState<string[]>([""]);
+  const [poofRevealed, setPoofRevealed] = useState<boolean[]>([false]);
+  const [removebgKeys, setRemovebgKeys] = useState<string[]>([""]);
+  const [removebgRevealed, setRemovebgRevealed] = useState<boolean[]>([false]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
 
@@ -32,14 +77,18 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
   useEffect(() => {
     if (!open) return;
     setFetching(true);
-    invoke<string[]>("get_config")
-      .then((apiKeys) => {
+    invoke<{ poof: string[]; removebg: string[] }>("get_config")
+      .then(({ poof, removebg }) => {
         if (!isMounted()) return;
-        setKeys(apiKeys.length > 0 ? apiKeys : [""]);
-        setRevealed(apiKeys.length > 0 ? apiKeys.map(() => false) : [false]);
+        setPoofKeys(poof.length > 0 ? poof : [""]);
+        setPoofRevealed(poof.length > 0 ? poof.map(() => false) : [false]);
+        setRemovebgKeys(removebg.length > 0 ? removebg : [""]);
+        setRemovebgRevealed(removebg.length > 0 ? removebg.map(() => false) : [false]);
       })
       .catch((e) => toast.error(String(e)))
-      .finally(() => { if (isMounted()) setFetching(false); });
+      .finally(() => {
+        if (isMounted()) setFetching(false);
+      });
   }, [open]);
 
   useEffect(() => {
@@ -50,37 +99,63 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
 
   if (!open) return null;
 
-  function addKey() {
-    setKeys([...keys, ""]);
-    setRevealed([...revealed, false]);
+  function addPoofKey() {
+    setPoofKeys([...poofKeys, ""]);
+    setPoofRevealed([...poofRevealed, false]);
   }
 
-  function removeKey(i: number) {
-    setKeys(keys.filter((_, j) => j !== i));
-    setRevealed(revealed.filter((_, j) => j !== i));
+  function removePoofKey(i: number) {
+    setPoofKeys(poofKeys.filter((_, j) => j !== i));
+    setPoofRevealed(poofRevealed.filter((_, j) => j !== i));
   }
 
-  function updateKey(i: number, value: string) {
-    const next = [...keys];
+  function updatePoofKey(i: number, value: string) {
+    const next = [...poofKeys];
     next[i] = value;
-    setKeys(next);
+    setPoofKeys(next);
   }
 
-  function toggleReveal(i: number) {
-    const next = [...revealed];
+  function togglePoofReveal(i: number) {
+    const next = [...poofRevealed];
     next[i] = !next[i];
-    setRevealed(next);
+    setPoofRevealed(next);
+  }
+
+  function addRemovebgKey() {
+    setRemovebgKeys([...removebgKeys, ""]);
+    setRemovebgRevealed([...removebgRevealed, false]);
+  }
+
+  function removeRemovebgKey(i: number) {
+    setRemovebgKeys(removebgKeys.filter((_, j) => j !== i));
+    setRemovebgRevealed(removebgRevealed.filter((_, j) => j !== i));
+  }
+
+  function updateRemovebgKey(i: number, value: string) {
+    const next = [...removebgKeys];
+    next[i] = value;
+    setRemovebgKeys(next);
+  }
+
+  function toggleRemovebgReveal(i: number) {
+    const next = [...removebgRevealed];
+    next[i] = !next[i];
+    setRemovebgRevealed(next);
   }
 
   async function handleSave() {
-    const filtered = keys.filter((k) => k.trim());
-    if (filtered.length === 0) {
+    const filteredPoof = poofKeys.filter((k) => k.trim());
+    const filteredRemovebg = removebgKeys.filter((k) => k.trim());
+    if (filteredPoof.length === 0 && filteredRemovebg.length === 0) {
       toast.error("At least one API key is required");
       return;
     }
     setLoading(true);
     try {
-      await invoke("update_config", { apiKeys: filtered });
+      await invoke("update_config", {
+        poofKeys: filteredPoof,
+        removebgKeys: filteredRemovebg,
+      });
       if (!isMounted()) return;
       toast.success("Settings saved");
       onSaved();
@@ -124,51 +199,68 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
         </div>
 
         {tab === "keys" && (
-          <div className="px-6 py-5 space-y-4">
-            <div>
-              <p className="text-[10px] text-[#555] font-mono mb-3">
-                Multiple keys supported — app iterates when one runs out of credits.
-              </p>
-
-              {fetching ? (
-                <div className="text-xs text-[#555] font-mono py-4 text-center">Loading...</div>
-              ) : (
-                <div className="space-y-2">
-                  {keys.map((key, i) => (
-                    <div key={i} className="flex gap-1.5">
-                      <input
-                        type={revealed[i] ? "text" : "password"}
+          <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+            {fetching ? (
+              <div className="text-xs text-[#555] font-mono py-4 text-center">Loading...</div>
+            ) : (
+              <>
+                <div>
+                  <p className="text-[10px] text-[#4a9a4a] font-mono mb-2 uppercase tracking-widest">
+                    poof.bg — Primary
+                  </p>
+                  <p className="text-[10px] text-[#555] font-mono mb-2">
+                    100 free credits/month per account. Iterated first.
+                  </p>
+                  <div className="space-y-2">
+                    {poofKeys.map((key, i) => (
+                      <KeyRow
+                        key={i}
                         value={key}
-                        onChange={(e) => updateKey(i, e.target.value)}
-                        placeholder="Paste API key..."
-                        className="flex-1 min-w-0 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] placeholder-[#444] font-mono focus:outline-none focus:border-[#c8881a]"
+                        revealed={poofRevealed[i]}
+                        onChange={(v) => updatePoofKey(i, v)}
+                        onToggle={() => togglePoofReveal(i)}
+                        onRemove={poofKeys.length > 1 ? () => removePoofKey(i) : undefined}
+                        placeholder="pk_f..."
                       />
-                      <button
-                        onClick={() => toggleReveal(i)}
-                        className="px-2 text-[#555] hover:text-[#888] transition-colors flex-shrink-0"
-                        title={revealed[i] ? "Hide key" : "Reveal key"}
-                      >
-                        {revealed[i] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                      {keys.length > 1 && (
-                        <button
-                          onClick={() => removeKey(i)}
-                          className="px-2 text-[#555] hover:text-red-400 transition-colors flex-shrink-0"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    onClick={addKey}
-                    className="text-xs text-[#c8881a] hover:text-[#e8a030] font-mono transition-colors flex items-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" /> add another key
-                  </button>
+                    ))}
+                    <button
+                      onClick={addPoofKey}
+                      className="text-xs text-[#4a9a4a] hover:text-[#6aba6a] font-mono transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> add poof.bg key
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div className="border-t border-[#2a2a28] pt-4">
+                  <p className="text-[10px] text-[#4a6aaa] font-mono mb-2 uppercase tracking-widest">
+                    remove.bg — Fallback
+                  </p>
+                  <p className="text-[10px] text-[#555] font-mono mb-2">
+                    50 free credits/month per account. Used when poof.bg credits run out.
+                  </p>
+                  <div className="space-y-2">
+                    {removebgKeys.map((key, i) => (
+                      <KeyRow
+                        key={i}
+                        value={key}
+                        revealed={removebgRevealed[i]}
+                        onChange={(v) => updateRemovebgKey(i, v)}
+                        onToggle={() => toggleRemovebgReveal(i)}
+                        onRemove={removebgKeys.length > 1 ? () => removeRemovebgKey(i) : undefined}
+                        placeholder="Paste remove.bg key..."
+                      />
+                    ))}
+                    <button
+                      onClick={addRemovebgKey}
+                      className="text-xs text-[#4a6aaa] hover:text-[#6a8aca] font-mono transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> add remove.bg key
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -227,10 +319,10 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
             </button>
             <button
               onClick={handleSave}
-              disabled={loading || fetching || keys.every((k) => !k.trim())}
+              disabled={loading || fetching || (poofKeys.every((k) => !k.trim()) && removebgKeys.every((k) => !k.trim()))}
               className={cn(
                 "flex-1 px-4 py-2 rounded-lg font-bold text-sm tracking-wide transition-colors",
-                loading || keys.every((k) => !k.trim())
+                loading || (poofKeys.every((k) => !k.trim()) && removebgKeys.every((k) => !k.trim()))
                   ? "bg-[#2a2a28] text-[#555] cursor-not-allowed"
                   : "bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030]"
               )}
