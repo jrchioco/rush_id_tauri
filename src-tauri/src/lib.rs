@@ -262,18 +262,33 @@ async fn remove_bg(app_handle: tauri::AppHandle, image_base64: String) -> Result
     let client = reqwest::Client::new();
     for (i, api_key) in config.api_keys.iter().enumerate() {
         let prefix: String = api_key.chars().take(5).collect();
+
+        let (endpoint, auth_header, size_param) = if api_key.starts_with("pk_f") {
+            (
+                "https://api.poof.bg/v1/remove",
+                "x-api-key",
+                "medium",
+            )
+        } else {
+            (
+                "https://api.remove.bg/v1.0/removebg",
+                "X-Api-Key",
+                "auto",
+            )
+        };
+
         let file_part = reqwest::multipart::Part::bytes(bytes.clone())
             .file_name("image.png")
             .mime_str("image/png")
             .map_err(|e| format!("Mime error: {}", e))?;
         let form = reqwest::multipart::Form::new()
             .part("image_file", file_part)
-            .text("size", "auto");
+            .text("size", size_param);
         let start = std::time::Instant::now();
         let response = client
-            .post("https://api.remove.bg/v1.0/removebg")
+            .post(endpoint)
             .multipart(form)
-            .header("X-Api-Key", api_key)
+            .header(auth_header, api_key)
             .timeout(std::time::Duration::from_secs(30))
             .send()
             .await;
