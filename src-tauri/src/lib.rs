@@ -502,6 +502,26 @@ struct ClientSlot {
     svg_path: String,
 }
 
+fn fix_page_mediabox(pdf_bytes: &[u8], width_mm: f64, height_mm: f64) -> Result<Vec<u8>, String> {
+    use lopdf::{Document, Object};
+    let mut doc = Document::load_mem(pdf_bytes).map_err(|e| e.to_string())?;
+    let w = (width_mm * 72.0 / 25.4) as f32;
+    let h = (height_mm * 72.0 / 25.4) as f32;
+    for (_page_num, page_id) in doc.get_pages() {
+        if let Some(obj) = doc.objects.get_mut(&page_id) {
+            if let Ok(dict) = obj.as_dict_mut() {
+                dict.set("MediaBox", Object::Array(vec![
+                    Object::Real(0.0), Object::Real(0.0),
+                    Object::Real(w), Object::Real(h),
+                ]));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    doc.save_to(&mut out).map_err(|e| e.to_string())?;
+    Ok(out)
+}
+
 fn merge_pdfs(pages: Vec<Vec<u8>>) -> Result<Vec<u8>, String> {
     use lopdf::{Document, Object, ObjectId, dictionary};
     use std::collections::BTreeMap;
@@ -599,14 +619,11 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         }
     }
 
-    // Determine which template is being used for slot height calculation
-    let template_path = clients.first()
-        .map(|c| c.svg_path.clone())
-        .ok_or_else(|| "No clients provided".to_string())?;
-    let template_svg = fs::read_to_string(&template_path)
-        .map_err(|e| format!("Failed to read template SVG: {}", e))?;
-    let slot_height_mm = parse_svg_height(&template_svg);
-    let slots_per_page = ((297.0 / slot_height_mm).floor() as usize).max(1);
+    // Determine per-client slot heights from their individual template SVGs
+    let slot_heights: Vec<f64> = clients.iter().map(|c| {
+        let svg = fs::read_to_string(&c.svg_path).unwrap_or_default();
+        parse_svg_height(&svg)
+    }).collect();
 
     // Phase 1: Resize all client images and patch SVGs (unchanged, runs over ALL clients)
     for (i, client) in clients.iter().enumerate() {
@@ -626,17 +643,30 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         fs::write(&temp_svg, &patched).map_err(|e| format!("Failed to write client SVG {}: {}", i, e))?;
     }
 
-    // Phase 2: Chunk clients by slots_per_page and render each chunk as a separate PDF
+    // Phase 2: Dynamically chunk clients by A4 height, render each chunk as a separate PDF
     let mut page_bytes: Vec<Vec<u8>> = Vec::new();
 
-    for (chunk_idx, chunk) in clients.chunks(slots_per_page).enumerate() {
-        let chunk_height_mm = chunk.len() as f64 * slot_height_mm;
+    let mut chunk_indices: Vec<usize> = Vec::new();
+    let mut chunk_height_mm = 0.0_f64;
+    let mut all_chunks: Vec<(Vec<usize>, f64)> = Vec::new();
+
+    for (i, &h) in slot_heights.iter().enumerate() {
+        if !chunk_indices.is_empty() && chunk_height_mm + h > 297.0 {
+            all_chunks.push((std::mem::take(&mut chunk_indices), chunk_height_mm));
+            chunk_height_mm = 0.0;
+        }
+        chunk_indices.push(i);
+        chunk_height_mm += h;
+    }
+    if !chunk_indices.is_empty() {
+        all_chunks.push((chunk_indices, chunk_height_mm));
+    }
+
+    for (chunk_idx, (chunk, chunk_h)) in all_chunks.iter().enumerate() {
         let mut inner = String::new();
         let mut y_mm = 0.0_f64;
 
-        for (local_i, _client) in chunk.iter().enumerate() {
-            let global_i = chunk_idx * slots_per_page + local_i;
-
+        for &global_i in chunk {
             let temp_svg = tmp_dir.join(format!("client_{}.svg", global_i));
             let raw = fs::read_to_string(&temp_svg)
                 .map_err(|e| format!("Failed to read patched SVG: {}", e))?;
@@ -662,12 +692,12 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
             let slot_with_y = format!("{} y=\"{:.1}mm\"{}", &slot[..insert_at], y_mm, &slot[insert_at..]);
 
             inner.push_str(&slot_with_y);
-            y_mm += slot_height_mm;
+            y_mm += parse_svg_height(&raw);
         }
 
         let composite = format!(
             r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="210mm" height="{:.1}mm">{}</svg>"#, chunk_height_mm,
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="210mm" height="{:.1}mm">{}</svg>"#, chunk_h,
             inner
         );
 
@@ -675,6 +705,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         fs::write(&composite_path, &composite).map_err(|e| format!("Failed to write composite SVG: {}", e))?;
 
         let pdf_bytes = svg_to_pdf(&composite, &tmp_dir)?;
+        let pdf_bytes = fix_page_mediabox(&pdf_bytes, 210.0, *chunk_h)?;
         let debug_path = tmp_dir.join(format!("chunk_{}.pdf", chunk_idx));
         fs::write(&debug_path, &pdf_bytes).map_err(|e| format!("Failed to write debug chunk PDF: {}", e))?;
         page_bytes.push(pdf_bytes);
