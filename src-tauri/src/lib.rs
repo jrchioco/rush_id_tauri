@@ -502,26 +502,6 @@ struct ClientSlot {
     svg_path: String,
 }
 
-fn fix_page_mediabox(pdf_bytes: &[u8], width_mm: f64, height_mm: f64) -> Result<Vec<u8>, String> {
-    use lopdf::{Document, Object};
-    let mut doc = Document::load_mem(pdf_bytes).map_err(|e| e.to_string())?;
-    let w = (width_mm * 72.0 / 25.4) as f32;
-    let h = (height_mm * 72.0 / 25.4) as f32;
-    for (_page_num, page_id) in doc.get_pages() {
-        if let Some(obj) = doc.objects.get_mut(&page_id) {
-            if let Ok(dict) = obj.as_dict_mut() {
-                dict.set("MediaBox", Object::Array(vec![
-                    Object::Real(0.0), Object::Real(0.0),
-                    Object::Real(w), Object::Real(h),
-                ]));
-            }
-        }
-    }
-    let mut out = Vec::new();
-    doc.save_to(&mut out).map_err(|e| e.to_string())?;
-    Ok(out)
-}
-
 fn merge_pdfs(pages: Vec<Vec<u8>>) -> Result<Vec<u8>, String> {
     use lopdf::{Document, Object, ObjectId, dictionary};
     use std::collections::BTreeMap;
@@ -662,7 +642,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         all_chunks.push((chunk_indices, chunk_height_mm));
     }
 
-    for (chunk_idx, (chunk, chunk_h)) in all_chunks.iter().enumerate() {
+    for (_chunk_idx, (chunk, chunk_h)) in all_chunks.iter().enumerate() {
         let mut inner = String::new();
         let mut y_mm = 0.0_f64;
 
@@ -705,9 +685,6 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         fs::write(&composite_path, &composite).map_err(|e| format!("Failed to write composite SVG: {}", e))?;
 
         let pdf_bytes = svg_to_pdf(&composite, &tmp_dir)?;
-        let pdf_bytes = fix_page_mediabox(&pdf_bytes, 210.0, *chunk_h)?;
-        let debug_path = tmp_dir.join(format!("chunk_{}.pdf", chunk_idx));
-        fs::write(&debug_path, &pdf_bytes).map_err(|e| format!("Failed to write debug chunk PDF: {}", e))?;
         page_bytes.push(pdf_bytes);
     }
 
