@@ -5,6 +5,15 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.16.0": {
+    title: "What's New in v1.16.0",
+    date: "2026-06-29",
+    notes: [
+      "Multi-page PDF overflow — composite output now splits across multiple A4 pages when content exceeds page height",
+      "PDF merging via lopdf — new dependency for combining single-page renders into multi-page documents",
+      "Dynamic page chunking — slots grouped by actual template heights instead of fixed counts",
+    ],
+  },
   "1.15.0": {
     title: "What's New in v1.15.0",
     date: "2026-06-28",
