@@ -1,10 +1,63 @@
 # Rush ID
 
+> Crop, remove backgrounds, and print ID photos. Fast.
+
+[![Version](https://img.shields.io/badge/version-1.15.0-blue)](https://github.com/jrchioco/rush_id_tauri/releases)
+[![License](https://img.shields.io/badge/license-source--available-green)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)]()
+
 This project is source-available, not open source. See the [LICENSE](LICENSE) file for details.
 
-Crop ID photos, remove backgrounds via the RemoveBG API, overlay onto SVG templates, then print or export PDF.
+Crop ID photos, remove backgrounds via remove.bg or poof.bg, overlay onto SVG templates, then print or export PDF. Built with **Tauri v2 + React 19 + TypeScript + Tailwind CSS**.
 
-Built with **Tauri v2 + React 19 + TypeScript + Tailwind CSS**.
+## What is this?
+
+Rush ID is a desktop app for processing ID photos. Drop in your images, crop them to the right size, remove the background, overlay them onto templates, and export to PDF. It handles batch workflows too, so you can process multiple clients without switching apps.
+
+## Features
+
+### Image Input
+
+- **Drag-and-drop, file picker, or clipboard paste**: whatever's fastest for you
+- **1:1 crop** for ID photos and **35x45mm crop** for passport photos
+- **Face guide overlay**: helps position the face correctly in the frame
+- **Rotation control**: slider, numeric input, or Alt+scroll wheel for fine-tuning
+
+### Background Removal
+
+- **Multi-provider support**: remove.bg (primary) with poof.bg (fallback) for reliability
+- **Key rotation**: multiple API keys per provider for higher throughput
+- **Background color picker**: White, Blue, Red, Yellow, Gray, or custom hex
+
+### Templates & Export
+
+- **SVG template selection**: 1x1, 2x2, Mixed, passport, and Polaroid layouts
+- **Batch processing**: up to 5 clients simultaneously
+- **PDF export**: pure Rust rendering via svg2pdf, no external dependencies
+- **Print via OS dialog**: opens PDF, you press Ctrl+P
+
+### Editing
+
+- **Retouch window**: clone stamp, eraser, brightness and contrast adjustments
+- **Name & signature overlay**: 4 fonts, 3 label modes (Off, Name, Name+Sig)
+- **Rotation control**: slider, numeric input, or Alt+scroll wheel
+
+### Workflow
+
+- **Test mode**: toggle between live API calls and test mode for pre-cleared photos
+- **Tab switch confirmation**: warns if you have unsaved work before switching
+- **Auto-updater**: silent install with signed releases
+- **Settings modal**: manage API keys from within the app
+
+## Tabs
+
+| Tab | Description |
+|---|---|
+| **Single** | Process one photo at a time |
+| **Multi** | Batch workflow with up to 5 clients (1:1 ID photos) |
+| **Passport** | Batch workflow with up to 5 clients (35x45mm passport photos) |
+| **Polaroid** | Load photos into Polaroid-frame slots, reposition, rotate, export to PDF |
+| **Gemini** | AI image generation (coming soon) |
 
 ## Screenshots
 
@@ -13,42 +66,21 @@ Built with **Tauri v2 + React 19 + TypeScript + Tailwind CSS**.
 ![Template selection and batch export](screenshots/multi-template.webp)
 ![PDF output](screenshots/pdf-output.webp)
 
-## Features
-
-- Drag-and-drop, file picker, or clipboard paste (Ctrl+V) for image input
-- 1:1 crop with `react-easy-crop` (ID photos) and 35×45mm crop (passport photos)
-- Face guide overlay for positioning
-- Rotation control with slider, numeric input, and Alt+scroll wheel
-- Background removal via RemoveBG API (with key rotation across multiple API keys)
-- Background color picker (White, Blue, Red, Yellow, Gray, or custom hex)
-- Name label and signature overlay with font selection (Arial Black, Narrow Bold, Arial Narrow, Impact)
-- SVG template selection for ID photo layouts (1x1, 2x2, Mixed, passport)
-- Batch processing — up to 5 clients simultaneously
-- Print via OS dialog (opens PDF, user presses Ctrl+P)
-- PDF export via svg2pdf (pure Rust, no external dependencies)
-- Auto-updater with signed releases
-- Settings modal to manage API keys
-
-## Tabs
-
-- **Single** — Process one photo at a time
-- **Multi** — Batch workflow with up to 5 clients (1:1 ID photos)
-- **Passport** — Batch workflow with up to 5 clients (35×45mm passport photos)
-- **Gemini** — AI image generation (coming soon)
-
 ## Prerequisites
 
-- Windows 10 or later (WebView2 pre-installed) or Linux (Debian/Ubuntu)
-- A RemoveBG API key
+- **Windows 10+** (WebView2 pre-installed) or **Linux** (Debian/Ubuntu)
+- A **remove.bg** or **poof.bg** API key
 
 ## Installation
 
 Download the latest installer from the [Releases](https://github.com/jrchioco/rush_id_tauri/releases) page.
 
-- **Windows:** `.msi` installer
-- **Linux:** `.deb` package
+| Platform | Format |
+|---|---|
+| Windows | `.msi` installer |
+| Linux | `.deb` package |
 
-On first launch, you'll be prompted to enter your RemoveBG API key(s). Everything else is auto-configured.
+On first launch, you'll be prompted to enter your remove.bg or poof.bg API key(s). Everything else is auto-configured.
 
 ## Development
 
@@ -74,8 +106,8 @@ For signed builds (required for auto-updater), set the signing key and password 
 Tag a version to trigger the CI/CD pipeline:
 
 ```bash
-git tag v1.9.0
-git push origin v1.9.0
+git tag v1.15.0
+git push origin v1.15.0
 ```
 
 This builds, signs, creates a GitHub Release, and uploads the installers + update manifest.
@@ -89,5 +121,5 @@ This builds, signs, creates a GitHub Release, and uploads the installers + updat
 | Crop | react-easy-crop |
 | Icons | lucide-react |
 | Notifications | sonner |
-| API | RemoveBG (multipart POST) |
+| API | remove.bg / poof.bg (multipart POST) |
 | PDF / Print | svg2pdf (pure Rust) |
