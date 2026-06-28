@@ -515,24 +515,31 @@ fn merge_pdfs(pages: Vec<Vec<u8>>) -> Result<Vec<u8>, String> {
         .map(|bytes| Document::load_mem(&bytes).map_err(|e| e.to_string()))
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut max_id: u32 = 1;
+    let mut merged = Document::with_version("1.5");
+    let pages_id = merged.new_object_id();
+
+    let mut max_id = pages_id.0;
     let mut pages_kids: Vec<Object> = Vec::new();
     let mut all_page_objects: BTreeMap<ObjectId, Object> = BTreeMap::new();
     let mut all_other_objects: BTreeMap<ObjectId, Object> = BTreeMap::new();
 
     for mut doc in documents {
-        doc.renumber_objects_with(max_id);
+        doc.renumber_objects_with(max_id + 1);
         max_id = doc.max_id + 1;
 
-        for (_page_num, id) in doc.get_pages() {
-            pages_kids.push(Object::Reference(id));
-            all_page_objects.insert(id, doc.objects.get(&id).unwrap().clone());
-        }
+        let page_ids: Vec<ObjectId> = doc.get_pages().into_values().collect();
+
         all_other_objects.extend(doc.objects);
+
+        for id in page_ids {
+            pages_kids.push(Object::Reference(id));
+            if let Some(obj) = all_other_objects.remove(&id) {
+                all_page_objects.insert(id, obj);
+            }
+        }
     }
 
-    let mut merged = Document::with_version("1.5");
-    let pages_id = merged.new_object_id();
+    merged.max_id = max_id;
 
     for (id, mut obj) in all_page_objects {
         if let Ok(dict) = obj.as_dict_mut() {
@@ -542,7 +549,7 @@ fn merge_pdfs(pages: Vec<Vec<u8>>) -> Result<Vec<u8>, String> {
     }
 
     for (id, obj) in all_other_objects {
-        merged.objects.entry(id).or_insert(obj);
+        merged.objects.insert(id, obj);
     }
 
     let count = pages_kids.len() as i64;
