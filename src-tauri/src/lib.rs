@@ -675,6 +675,8 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         fs::write(&composite_path, &composite).map_err(|e| format!("Failed to write composite SVG: {}", e))?;
 
         let pdf_bytes = svg_to_pdf(&composite, &tmp_dir)?;
+        let debug_path = tmp_dir.join(format!("chunk_{}.pdf", chunk_idx));
+        fs::write(&debug_path, &pdf_bytes).map_err(|e| format!("Failed to write debug chunk PDF: {}", e))?;
         page_bytes.push(pdf_bytes);
     }
 
