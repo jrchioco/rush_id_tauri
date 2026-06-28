@@ -61,10 +61,16 @@ Rush ID is a desktop app for processing ID photos. Drop in your images, crop the
 
 ## Screenshots
 
-![Batch cropping with rotation and face guide](screenshots/multi-crop.webp)
-![Background color selection](screenshots/multi-color.webp)
-![Template selection and batch export](screenshots/multi-template.webp)
-![PDF output](screenshots/pdf-output.webp)
+<table>
+  <tr>
+    <td><img src="screenshots/multi-crop.webp" width="400"></td>
+    <td><img src="screenshots/multi-color.webp" width="400"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/multi-template.webp" width="400"></td>
+    <td><img src="screenshots/pdf-output.webp" width="400"></td>
+  </tr>
+</table>
 
 ## Prerequisites
 
