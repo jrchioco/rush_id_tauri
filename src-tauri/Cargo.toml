@@ -25,3 +25,4 @@ reqwest = { version = "0.12", features = ["multipart", "native-tls-vendored"] }
 base64 = "0.22"
 image = { version = "0.25", features = ["png"] }
 svg2pdf = "0.13"
+lopdf = "0.41"

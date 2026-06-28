@@ -127,7 +127,7 @@ fn resolve_data(app: &tauri::AppHandle, path: &str) -> PathBuf {
     normalize_path(&resolved)
 }
 
-fn svg_to_pdf(svg_content: &str, pdf_path: &Path, tmp_dir: &Path) -> Result<(), String> {
+fn svg_to_pdf(svg_content: &str, tmp_dir: &Path) -> Result<Vec<u8>, String> {
     let mut options = svg2pdf::usvg::Options::default();
     options.dpi = 72.0;
     options.resources_dir = Some(tmp_dir.to_path_buf());
@@ -142,8 +142,7 @@ fn svg_to_pdf(svg_content: &str, pdf_path: &Path, tmp_dir: &Path) -> Result<(), 
         svg2pdf::PageOptions::default(),
     ).map_err(|e| format!("PDF conversion error: {}", e))?;
 
-    fs::write(pdf_path, &pdf_bytes).map_err(|e| format!("Failed to write PDF: {}", e))?;
-    Ok(())
+    Ok(pdf_bytes)
 }
 
 const NO_API_MAX_PX: u32 = 600;
@@ -420,7 +419,8 @@ fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String)
         pdf_path.set_extension("pdf");
     }
 
-    svg_to_pdf(&svg_content, &pdf_path, &tmp_dir)?;
+    let pdf_bytes = svg_to_pdf(&svg_content, &tmp_dir)?;
+    fs::write(&pdf_path, &pdf_bytes).map_err(|e| format!("Failed to write PDF: {}", e))?;
 
     if pdf_path.exists() {
         Ok(pdf_path.to_string_lossy().to_string())
@@ -477,7 +477,8 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, 
         .as_millis();
     let temp_pdf = std::env::temp_dir().join(format!("rush_id_print_{}.pdf", ts));
 
-    svg_to_pdf(&svg_content, &temp_pdf, &tmp_dir)?;
+    let pdf_bytes = svg_to_pdf(&svg_content, &tmp_dir)?;
+    fs::write(&temp_pdf, &pdf_bytes).map_err(|e| format!("Failed to write temp PDF: {}", e))?;
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
@@ -499,6 +500,70 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, 
 struct ClientSlot {
     image_base64: String,
     svg_path: String,
+}
+
+fn merge_pdfs(pages: Vec<Vec<u8>>) -> Result<Vec<u8>, String> {
+    use lopdf::{Document, Object, ObjectId, dictionary};
+    use std::collections::BTreeMap;
+
+    if pages.len() == 1 {
+        return Ok(pages.into_iter().next().unwrap());
+    }
+
+    let documents: Vec<Document> = pages
+        .into_iter()
+        .map(|bytes| Document::load_mem(&bytes).map_err(|e| e.to_string()))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut max_id: u32 = 1;
+    let mut pages_kids: Vec<Object> = Vec::new();
+    let mut all_page_objects: BTreeMap<ObjectId, Object> = BTreeMap::new();
+    let mut all_other_objects: BTreeMap<ObjectId, Object> = BTreeMap::new();
+
+    for mut doc in documents {
+        doc.renumber_objects_with(max_id);
+        max_id = doc.max_id + 1;
+
+        for (_page_num, id) in doc.get_pages() {
+            pages_kids.push(Object::Reference(id));
+            all_page_objects.insert(id, doc.objects.get(&id).unwrap().clone());
+        }
+        all_other_objects.extend(doc.objects);
+    }
+
+    let mut merged = Document::with_version("1.5");
+    let pages_id = merged.new_object_id();
+
+    for (id, mut obj) in all_page_objects {
+        if let Ok(dict) = obj.as_dict_mut() {
+            dict.set("Parent", Object::Reference(pages_id));
+        }
+        merged.objects.insert(id, obj);
+    }
+
+    for (id, obj) in all_other_objects {
+        merged.objects.entry(id).or_insert(obj);
+    }
+
+    let count = pages_kids.len() as i64;
+    merged.objects.insert(
+        pages_id,
+        Object::Dictionary(dictionary! {
+            "Type"  => "Pages",
+            "Kids"  => pages_kids,
+            "Count" => count,
+        }),
+    );
+
+    let catalog_id = merged.add_object(dictionary! {
+        "Type"  => "Catalog",
+        "Pages" => Object::Reference(pages_id),
+    });
+    merged.trailer.set("Root", Object::Reference(catalog_id));
+
+    let mut out: Vec<u8> = Vec::new();
+    merged.save_to(&mut out).map_err(|e| e.to_string())?;
+    Ok(out)
 }
 
 #[tauri::command]
@@ -527,6 +592,16 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         }
     }
 
+    // Determine which template is being used for slot height calculation
+    let template_path = clients.first()
+        .map(|c| c.svg_path.clone())
+        .ok_or_else(|| "No clients provided".to_string())?;
+    let template_svg = fs::read_to_string(&template_path)
+        .map_err(|e| format!("Failed to read template SVG: {}", e))?;
+    let slot_height_mm = parse_svg_height(&template_svg);
+    let slots_per_page = ((297.0 / slot_height_mm).floor() as usize).max(1);
+
+    // Phase 1: Resize all client images and patch SVGs (unchanged, runs over ALL clients)
     for (i, client) in clients.iter().enumerate() {
         let pic_name = format!("client_{}.png", i);
         let pic_path = d.join(&pic_name);
@@ -544,46 +619,60 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         fs::write(&temp_svg, &patched).map_err(|e| format!("Failed to write client SVG {}: {}", i, e))?;
     }
 
-    let mut inner = String::new();
-    let mut y_mm = 0.0_f64;
+    // Phase 2: Chunk clients by slots_per_page and render each chunk as a separate PDF
+    let mut page_bytes: Vec<Vec<u8>> = Vec::new();
 
-    for i in 0..clients.len() {
-        let temp_svg = tmp_dir.join(format!("client_{}.svg", i));
-        let raw = fs::read_to_string(&temp_svg)
-            .map_err(|e| format!("Failed to read patched SVG: {}", e))?;
+    for (chunk_idx, chunk) in clients.chunks(slots_per_page).enumerate() {
+        let chunk_height_mm = chunk.len() as f64 * slot_height_mm;
+        let mut inner = String::new();
+        let mut y_mm = 0.0_f64;
 
-        let mut slot = raw.trim().to_string();
-        while let Some(cs) = slot.find("<!--") {
-            if let Some(ce) = slot[cs..].find("-->") {
-                slot.drain(cs..=cs + ce + 2);
-            } else {
-                break;
+        for (local_i, _client) in chunk.iter().enumerate() {
+            let global_i = chunk_idx * slots_per_page + local_i;
+
+            let temp_svg = tmp_dir.join(format!("client_{}.svg", global_i));
+            let raw = fs::read_to_string(&temp_svg)
+                .map_err(|e| format!("Failed to read patched SVG: {}", e))?;
+
+            let mut slot = raw.trim().to_string();
+            while let Some(cs) = slot.find("<!--") {
+                if let Some(ce) = slot[cs..].find("-->") {
+                    slot.drain(cs..=cs + ce + 2);
+                } else {
+                    break;
+                }
             }
-        }
-        if let Some(start) = slot.find("<?xml") {
-            if let Some(end) = slot[start..].find("?>") {
-                slot.drain(start..=start + end + 2);
+            if let Some(start) = slot.find("<?xml") {
+                if let Some(end) = slot[start..].find("?>") {
+                    slot.drain(start..=start + end + 2);
+                }
             }
+
+            let open_tag = slot.find("<svg").unwrap_or(0);
+            let after_open = &slot[open_tag..];
+            let close_angle = after_open.find('>').unwrap_or(0);
+            let insert_at = open_tag + close_angle;
+            let slot_with_y = format!("{} y=\"{:.1}mm\"{}", &slot[..insert_at], y_mm, &slot[insert_at..]);
+
+            inner.push_str(&slot_with_y);
+            y_mm += slot_height_mm;
         }
 
-        let open_tag = slot.find("<svg").unwrap_or(0);
-        let after_open = &slot[open_tag..];
-        let close_angle = after_open.find('>').unwrap_or(0);
-        let insert_at = open_tag + close_angle;
-        let slot_with_y = format!("{} y=\"{:.1}mm\"{}", &slot[..insert_at], y_mm, &slot[insert_at..]);
+        let composite = format!(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="210mm" height="{:.1}mm">{}</svg>"#, chunk_height_mm,
+            inner
+        );
 
-        inner.push_str(&slot_with_y);
-        y_mm += parse_svg_height(&raw);
+        let composite_path = tmp_dir.join("composite_multi.svg");
+        fs::write(&composite_path, &composite).map_err(|e| format!("Failed to write composite SVG: {}", e))?;
+
+        let pdf_bytes = svg_to_pdf(&composite, &tmp_dir)?;
+        page_bytes.push(pdf_bytes);
     }
 
-    let composite = format!(
-        r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="210mm" height="{:.1}mm">{}</svg>"#, y_mm,
-        inner
-    );
-
-    let composite_path = tmp_dir.join("composite_multi.svg");
-    fs::write(&composite_path, &composite).map_err(|e| format!("Failed to write composite SVG: {}", e))?;
+    // Phase 3: Merge pages and output
+    let final_pdf = merge_pdfs(page_bytes)?;
 
     let pdf_path = match save_path {
         Some(ref path) => {
@@ -604,7 +693,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         }
     };
 
-    svg_to_pdf(&composite, &pdf_path, &tmp_dir)?;
+    fs::write(&pdf_path, &final_pdf).map_err(|e| format!("Failed to write PDF: {}", e))?;
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
@@ -693,7 +782,8 @@ fn composite_polaroid_pdf(
         }
     };
 
-    svg_to_pdf(&patched, &pdf_path, &tmp_dir)?;
+    let pdf_bytes = svg_to_pdf(&patched, &tmp_dir)?;
+    fs::write(&pdf_path, &pdf_bytes).map_err(|e| format!("Failed to write PDF: {}", e))?;
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
