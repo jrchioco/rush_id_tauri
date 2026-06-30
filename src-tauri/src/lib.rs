@@ -731,7 +731,6 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PolaroidSlot {
-    slot_index: usize,
     image_base64: String,
 }
 
