@@ -818,6 +818,175 @@ fn composite_polaroid_pdf(
     Ok(msg.to_string())
 }
 
+#[tauri::command]
+fn composite_other_pdf(
+    app_handle: tauri::AppHandle,
+    size: String,
+    _slot_count: usize,
+    slots: Vec<PolaroidSlot>,
+    save_path: Option<String>,
+) -> Result<String, String> {
+    let d = data_dir(&app_handle);
+    let res = resource_dir(&app_handle);
+    let tmp_dir = d.join("tmp");
+    fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
+
+    if let Ok(entries) = fs::read_dir(&d) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("other_") && name_str.ends_with(".png") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
+
+    let svg_name = format!("{}.svg", size);
+    let svg_path = res.join("SVGs").join(&svg_name);
+    if !svg_path.exists() {
+        return Err(format!("SVG template not found: {}", svg_name));
+    }
+    let svg_raw = fs::read_to_string(&svg_path)
+        .map_err(|e| format!("Failed to read SVG {}: {}", svg_name, e))?;
+
+    let slot_height = parse_svg_height(&svg_raw);
+
+    let images_per_svg = svg_raw.matches("xlink:href=\"").count();
+    if images_per_svg == 0 {
+        return Err("SVG template has no image references".to_string());
+    }
+
+    for (i, slot) in slots.iter().enumerate() {
+        let pic_name = format!("other_{}.png", i + 1);
+        let pic_path = d.join(&pic_name);
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(&slot.image_base64)
+            .map_err(|e| format!("Base64 decode error for slot {}: {}", i, e))?;
+        let bytes = resize_if_needed(&bytes);
+        fs::write(&pic_path, &bytes).map_err(|e| format!("Failed to write {}: {}", pic_name, e))?;
+    }
+
+    let mut all_svg_strings: Vec<String> = Vec::new();
+    for batch_start in (0..slots.len()).step_by(images_per_svg) {
+        let mut patched = svg_raw.clone();
+        for j in 0..images_per_svg {
+            let slot_idx = batch_start + j;
+            if slot_idx >= slots.len() {
+                break;
+            }
+            let bare_href = format!("{}{}.png", size, slot_idx + 1);
+            let rel_href = format!("../other_{}.png", slot_idx + 1);
+            patched = patched.replace(
+                &format!("xlink:href=\"{}\"", bare_href),
+                &format!("xlink:href=\"{}\"", rel_href),
+            );
+            patched = patched.replace(
+                &format!("href=\"{}\"", bare_href),
+                &format!("href=\"{}\"", rel_href),
+            );
+        }
+        all_svg_strings.push(patched);
+    }
+
+    let mut page_bytes: Vec<Vec<u8>> = Vec::new();
+    let mut chunk_indices: Vec<usize> = Vec::new();
+    let mut chunk_height_mm = 0.0_f64;
+    let mut all_chunks: Vec<(Vec<usize>, f64)> = Vec::new();
+
+    for (i, _) in all_svg_strings.iter().enumerate() {
+        if !chunk_indices.is_empty() && chunk_height_mm + slot_height > 297.0 {
+            all_chunks.push((std::mem::take(&mut chunk_indices), chunk_height_mm));
+            chunk_height_mm = 0.0;
+        }
+        chunk_indices.push(i);
+        chunk_height_mm += slot_height;
+    }
+    if !chunk_indices.is_empty() {
+        all_chunks.push((chunk_indices, chunk_height_mm));
+    }
+
+    for (_chunk_idx, (chunk, chunk_h)) in all_chunks.iter().enumerate() {
+        let mut inner = String::new();
+        let mut y_mm = 0.0_f64;
+
+        for &global_i in chunk {
+            let raw_svg = &all_svg_strings[global_i];
+            let mut slot_svg = raw_svg.trim().to_string();
+
+            while let Some(cs) = slot_svg.find("<!--") {
+                if let Some(ce) = slot_svg[cs..].find("-->") {
+                    slot_svg.drain(cs..=cs + ce + 2);
+                } else {
+                    break;
+                }
+            }
+            if let Some(start) = slot_svg.find("<?xml") {
+                if let Some(end) = slot_svg[start..].find("?>") {
+                    slot_svg.drain(start..=start + end + 2);
+                }
+            }
+
+            let open_tag = slot_svg.find("<svg").unwrap_or(0);
+            let after_open = &slot_svg[open_tag..];
+            let close_angle = after_open.find('>').unwrap_or(0);
+            let insert_at = open_tag + close_angle;
+            let slot_with_y = format!("{} y=\"{:.1}mm\"{}", &slot_svg[..insert_at], y_mm, &slot_svg[insert_at..]);
+
+            inner.push_str(&slot_with_y);
+            y_mm += slot_height;
+        }
+
+        let composite = format!(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="210mm" height="{:.1}mm">{}</svg>"#, chunk_h,
+            inner
+        );
+
+        let composite_path = tmp_dir.join("composite_other.svg");
+        fs::write(&composite_path, &composite).map_err(|e| format!("Failed to write composite SVG: {}", e))?;
+
+        let pdf_bytes = svg_to_pdf(&composite, &tmp_dir)?;
+        page_bytes.push(pdf_bytes);
+    }
+
+    let final_pdf = merge_pdfs(page_bytes)?;
+
+    let pdf_path = match save_path {
+        Some(ref path) => {
+            let p = PathBuf::from(path);
+            if p.extension().is_none_or(|e| e != "pdf") {
+                p.with_extension("pdf")
+            } else {
+                p
+            }
+        }
+        None => {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+            std::env::temp_dir().join(format!("rush_id_print_{}.pdf", ts))
+        }
+    };
+
+    fs::write(&pdf_path, &final_pdf).map_err(|e| format!("Failed to write PDF: {}", e))?;
+
+    if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(["/C", "start", "", pdf_path.to_string_lossy().as_ref()])
+            .spawn()
+            .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
+    } else {
+        Command::new("xdg-open")
+            .arg(&pdf_path)
+            .spawn()
+            .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
+    }
+
+    let msg = if save_path.is_some() { "PDF saved" } else { "Other PDF opened in viewer. Press Ctrl+P to print." };
+    Ok(msg.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     cleanup_temp_pdfs();
@@ -839,6 +1008,7 @@ pub fn run() {
             print_file,
             composite_multi_pdf,
             composite_polaroid_pdf,
+            composite_other_pdf,
             get_key_count,
             open_file,
         ])

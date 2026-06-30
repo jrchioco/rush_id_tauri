@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings } from "lucide-react";
+import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -11,14 +11,16 @@ import MultiClient from "./MultiClient";
 import GeminiTab from "./GeminiTab";
 import PassportClient from "./PassportClient";
 import PolaroidClient from "./PolaroidClient";
+import OtherClient from "./OtherClient";
 
-type Tab = "single" | "multi" | "passport" | "polaroid" | "gemini";
+type Tab = "single" | "multi" | "passport" | "polaroid" | "other" | "gemini";
 
 const TABS: { key: Tab; label: string; icon: typeof Scan }[] = [
   { key: "single", label: "Single", icon: Scan },
   { key: "multi", label: "Multi", icon: Layers },
   { key: "passport", label: "Passport", icon: IdCard },
   { key: "polaroid", label: "Polaroid", icon: Camera },
+  { key: "other", label: "Other", icon: Ruler },
   { key: "gemini", label: "Gemini", icon: Sparkles },
 ];
 
@@ -33,7 +35,7 @@ export default function App() {
   const [configVersion, setConfigVersion] = useState(0);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const tabRefs = useRef<Record<Tab, { hasUnsavedWork: () => boolean } | null>>({
-    single: null, multi: null, passport: null, polaroid: null, gemini: null,
+    single: null, multi: null, passport: null, polaroid: null, other: null, gemini: null,
   });
 
   const handleTabSwitch = useCallback((key: Tab) => {
@@ -244,6 +246,7 @@ export default function App() {
       {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} /></ErrorBoundary>}
       {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} /></ErrorBoundary>}
       {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} /></ErrorBoundary>}
+      {activeTab === "other" && <ErrorBoundary><OtherClient key={configVersion} ref={(el) => { tabRefs.current.other = el; }} /></ErrorBoundary>}
       {activeTab === "gemini" && <ErrorBoundary><GeminiTab key={configVersion} ref={(el) => { tabRefs.current.gemini = el; }} /></ErrorBoundary>}
 
       <SettingsModal
