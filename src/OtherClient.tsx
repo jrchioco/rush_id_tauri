@@ -116,7 +116,7 @@ async function preprocessSlot(slot: OtherSlotState, slotAspect: number): Promise
 
 const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function OtherClient(_, ref) {
   const [selectedSize, setSelectedSize] = useState<OtherSize | null>(null);
-  const [layout, setLayout] = useState<OtherLayout>("2pcs");
+  const [layout, setLayout] = useState<OtherLayout | number>("2pcs");
   const [slots, setSlots] = useState<OtherSlotState[]>(() =>
     Array.from({ length: 2 }, (_, i) => freshSlot(i)),
   );
@@ -145,8 +145,8 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
       return;
     }
     setSelectedSize(size);
-    setLayout("2pcs");
-    const slotCount = LAYOUT_SLOTS["2pcs"];
+    setLayout(size === "5r" ? 2 : "2pcs");
+    const slotCount = size === "5r" ? 2 : LAYOUT_SLOTS["2pcs"];
     setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i)));
     setLogs([]);
   }, []);
@@ -170,8 +170,9 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
   }, []);
 
   const handleLayoutSwitch = useCallback(
-    (newLayout: OtherLayout) => {
+    (newLayout: OtherLayout | number) => {
       if (newLayout === layout) return;
+      const newSlotCount = typeof newLayout === "number" ? newLayout : LAYOUT_SLOTS[newLayout];
       const hasImages = slotsRef.current.some((s) => s.imageBase64 !== null);
       if (hasImages) {
         toast("Switch layout will reset all slots. Continue?", {
@@ -179,14 +180,14 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
             label: "Reset",
             onClick: () => {
               setLayout(newLayout);
-              setSlots(Array.from({ length: LAYOUT_SLOTS[newLayout] }, (_, i) => freshSlot(i)));
+              setSlots(Array.from({ length: newSlotCount }, (_, i) => freshSlot(i)));
               setLogs([]);
             },
           },
         });
       } else {
         setLayout(newLayout);
-        setSlots(Array.from({ length: LAYOUT_SLOTS[newLayout] }, (_, i) => freshSlot(i)));
+        setSlots(Array.from({ length: newSlotCount }, (_, i) => freshSlot(i)));
       }
     },
     [layout, slots],
@@ -237,7 +238,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
       action: {
         label: "Clear",
         onClick: () => {
-          setSlots(Array.from({ length: LAYOUT_SLOTS[layout] }, (_, i) => freshSlot(i)));
+          setSlots(Array.from({ length: typeof layout === "number" ? layout : LAYOUT_SLOTS[layout] }, (_, i) => freshSlot(i)));
           setLogs([]);
         },
       },
@@ -269,7 +270,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
         log("Compositing PDF...");
         const msg = await invoke<string>("composite_other_pdf", {
           size: selectedSize,
-          slotCount: LAYOUT_SLOTS[layout],
+          slotCount: typeof layout === "number" ? layout : LAYOUT_SLOTS[layout],
           slots: processed,
           savePath: savePath ?? null,
         });
@@ -389,7 +390,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
     <div className="border-t border-[#2a2a28] p-3 grid grid-cols-3 gap-2">
       {[
         { label: "SIZE", value: sizeInfo.label, accent: false },
-        { label: "LAYOUT", value: layout, accent: false },
+        { label: "LAYOUT", value: typeof layout === "number" ? `${layout}pcs` : layout, accent: false },
         { label: "SLOTS", value: `${filledCount}/${slots.length}`, accent: filledCount > 0 },
       ].map(({ label, value, accent }) => (
         <div key={label} className="bg-[#111110] border border-[#2a2a28] rounded-md p-2">
@@ -403,14 +404,9 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
   );
 
   const gridConfig = (() => {
-    switch (layout) {
-      case "2pcs":  return { cols: "grid-cols-2", scale: "" };
-      case "4pcs":  return { cols: "grid-cols-4", scale: "" };
-      case "6pcs":  return { cols: "grid-cols-3", scale: "" };
-      case "8pcs":  return { cols: "grid-cols-4", scale: "" };
-      case "10pcs": return { cols: "grid-cols-5", scale: "" };
-      case "12pcs": return { cols: "grid-cols-4", scale: "" };
-    }
+    const numSlots = typeof layout === "number" ? layout : LAYOUT_SLOTS[layout];
+    const cols = numSlots <= 2 ? 2 : numSlots <= 4 ? 3 : numSlots <= 6 ? 3 : numSlots <= 8 ? 4 : 5;
+    return { cols: `grid-cols-${cols}`, scale: "" };
   })();
 
   return (
@@ -429,22 +425,34 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
-              {LAYOUTS.map((l) => (
-                <button
-                  key={l}
-                  onClick={() => handleLayoutSwitch(l)}
-                  className={cn(
-                    "px-3 py-1 rounded-md text-xs font-mono font-bold tracking-wide transition-colors",
-                    layout === l
-                      ? "bg-[#c8881a] text-[#0c0c0b]"
-                      : "text-[#555] hover:text-[#888]",
-                  )}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
+            {selectedSize === "5r" ? (
+              <select
+                value={typeof layout === "number" ? layout : 2}
+                onChange={(e) => handleLayoutSwitch(Number(e.target.value))}
+                className="bg-[#111110] border border-[#2a2a28] rounded-lg px-3 py-1 text-xs font-mono font-bold text-[#c8881a] tracking-wide cursor-pointer appearance-auto"
+              >
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>{n}pcs</option>
+                ))}
+              </select>
+            ) : (
+              <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
+                {LAYOUTS.map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => handleLayoutSwitch(l)}
+                    className={cn(
+                      "px-3 py-1 rounded-md text-xs font-mono font-bold tracking-wide transition-colors",
+                      layout === l
+                        ? "bg-[#c8881a] text-[#0c0c0b]"
+                        : "text-[#555] hover:text-[#888]",
+                    )}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            )}
             <label className="flex items-center gap-1.5 cursor-pointer select-none">
               <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">Stretch all</span>
               <div
