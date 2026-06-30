@@ -8,9 +8,9 @@ import { useIsMounted } from "./lib/hooks/useIsMounted";
 import type { LogEntry } from "./types";
 import { PolaroidSlotCard, type FitMode, type PolaroidSlotState } from "./PolaroidSlotCard";
 
-type Layout = "2pcs" | "3pcs" | "5pcs" | "10pcs";
+type Layout = "2pcs" | "3pcs" | "5pcs" | "10pcs" | "20pcs" | "30pcs";
 
-const SLOT_COUNTS: Record<Layout, number> = { "2pcs": 2, "3pcs": 3, "5pcs": 5, "10pcs": 10 };
+const SLOT_COUNTS: Record<Layout, number> = { "2pcs": 2, "3pcs": 3, "5pcs": 5, "10pcs": 10, "20pcs": 20, "30pcs": 30 };
 const SLOT_ASPECT = 45.693394 / 61.973392;
 
 function freshSlot(id: number): PolaroidSlotState {
@@ -277,7 +277,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
       {[
         {
           label: "LAYOUT",
-          value: layout === "2pcs" ? "2pcs Strip" : layout === "3pcs" ? "3pcs Strip" : layout === "5pcs" ? "A5 Landscape" : "A4 Portrait",
+          value: layout === "2pcs" ? "2pcs Strip" : layout === "3pcs" ? "3pcs Strip" : layout === "5pcs" ? "A5 Landscape" : layout === "10pcs" ? "A4 Portrait" : layout === "20pcs" ? "A4 Portrait ×2" : "A4 Portrait ×3",
           accent: false,
         },
         { label: "SLOTS", value: `${filledCount}/${slots.length}`, accent: filledCount > 0 },
@@ -301,7 +301,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
           </h2>
           <div className="flex items-center gap-3">
             <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
-              {(["2pcs", "3pcs", "5pcs", "10pcs"] as Layout[]).map((l) => (
+              {(["2pcs", "3pcs", "5pcs", "10pcs", "20pcs", "30pcs"] as Layout[]).map((l) => (
                 <button
                   key={l}
                   onClick={() => handleLayoutSwitch(l)}
@@ -403,7 +403,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
               ))}
             </div>
           )}
-          {layout === "10pcs" &&
+          {(layout === "10pcs" || layout === "20pcs" || layout === "30pcs") &&
             slots.map((slot) => (
               <PolaroidSlotCard
                 key={slot.id}
