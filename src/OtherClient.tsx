@@ -36,7 +36,11 @@ function getAspect(size: OtherSize): number {
 }
 
 function hasSvg(size: OtherSize): boolean {
-  return size === "3r" || size === "5r";
+  return size === "3r" || size === "5r" || size === "8r";
+}
+
+function hasDropdown(size: OtherSize): boolean {
+  return size === "5r" || size === "8r";
 }
 
 function freshSlot(id: number): OtherSlotState {
@@ -145,8 +149,8 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
       return;
     }
     setSelectedSize(size);
-    setLayout(size === "5r" ? 2 : "2pcs");
-    const slotCount = size === "5r" ? 2 : LAYOUT_SLOTS["2pcs"];
+    setLayout(hasDropdown(size) ? 2 : "2pcs");
+    const slotCount = hasDropdown(size) ? 2 : LAYOUT_SLOTS["2pcs"];
     setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i)));
     setLogs([]);
   }, []);
@@ -427,7 +431,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            {selectedSize === "5r" ? (
+            {hasDropdown(selectedSize) ? (
               <select
                 value={typeof layout === "number" ? layout : 2}
                 onChange={(e) => handleLayoutSwitch(Number(e.target.value))}
