@@ -9,7 +9,7 @@ import type { LogEntry } from "./types";
 import { OtherSlotCard, type FitMode, type OtherSlotState } from "./OtherSlotCard";
 
 type OtherSize = "wallet" | "3r" | "4r" | "5r" | "6r" | "8r";
-type OtherLayout = "2pcs" | "4pcs" | "6pcs" | "8pcs";
+type OtherLayout = "2pcs" | "4pcs" | "6pcs" | "8pcs" | "10pcs" | "12pcs";
 
 interface OtherSizeInfo {
   label: string;
@@ -19,7 +19,7 @@ interface OtherSizeInfo {
 }
 
 const OTHER_SIZES: Record<OtherSize, OtherSizeInfo> = {
-  wallet: { label: "Wallet", inches: '2×3"', widthMm: 51, heightMm: 76 },
+  wallet: { label: "Wallet", inches: '2.5×3.5"', widthMm: 63.5, heightMm: 88.9 },
   "3r": { label: "3R", inches: '3.5×5"', widthMm: 89, heightMm: 127 },
   "4r": { label: "4R", inches: '4×6"', widthMm: 102, heightMm: 152 },
   "5r": { label: "5R", inches: '5×7"', widthMm: 127, heightMm: 178 },
@@ -27,8 +27,8 @@ const OTHER_SIZES: Record<OtherSize, OtherSizeInfo> = {
   "8r": { label: "8R", inches: '8×10"', widthMm: 203, heightMm: 254 },
 };
 
-const LAYOUTS: OtherLayout[] = ["2pcs", "4pcs", "6pcs", "8pcs"];
-const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "4pcs": 4, "6pcs": 6, "8pcs": 8 };
+const LAYOUTS: OtherLayout[] = ["2pcs", "4pcs", "6pcs", "8pcs", "10pcs", "12pcs"];
+const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "4pcs": 4, "6pcs": 6, "8pcs": 8, "10pcs": 10, "12pcs": 12 };
 
 function getAspect(size: OtherSize): number {
   const info = OTHER_SIZES[size];
@@ -36,7 +36,7 @@ function getAspect(size: OtherSize): number {
 }
 
 function hasSvg(size: OtherSize): boolean {
-  return size === "3r";
+  return size === "3r" || size === "5r";
 }
 
 function freshSlot(id: number): OtherSlotState {
@@ -402,7 +402,16 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
     </div>
   );
 
-  const gridCols = layout === "2pcs" ? "grid-cols-2" : layout === "4pcs" ? "grid-cols-2" : "grid-cols-3";
+  const gridConfig = (() => {
+    switch (layout) {
+      case "2pcs":  return { cols: "grid-cols-2", scale: "" };
+      case "4pcs":  return { cols: "grid-cols-4", scale: "" };
+      case "6pcs":  return { cols: "grid-cols-3", scale: "" };
+      case "8pcs":  return { cols: "grid-cols-4", scale: "" };
+      case "10pcs": return { cols: "grid-cols-5", scale: "" };
+      case "12pcs": return { cols: "grid-cols-4", scale: "" };
+    }
+  })();
 
   return (
     <main className="max-w-6xl mx-auto p-6 grid grid-cols-[1fr_300px] gap-6">
@@ -456,7 +465,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
           </div>
         </div>
 
-        <div className={cn("grid gap-3", gridCols)}>
+        <div className={cn("grid gap-3", gridConfig.cols, gridConfig.scale)}>
           {slots.map((slot) => (
             <OtherSlotCard
               key={slot.id}

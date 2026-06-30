@@ -874,7 +874,8 @@ fn composite_other_pdf(
             if slot_idx >= slots.len() {
                 break;
             }
-            let bare_href = format!("{}{}.png", size, slot_idx + 1);
+            let svg_slot = j + 1;
+            let bare_href = format!("{}{}.png", size, svg_slot);
             let rel_href = format!("../other_{}.png", slot_idx + 1);
             patched = patched.replace(
                 &format!("xlink:href=\"{}\"", bare_href),
