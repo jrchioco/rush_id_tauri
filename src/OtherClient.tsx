@@ -405,8 +405,10 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
 
   const gridConfig = (() => {
     const numSlots = typeof layout === "number" ? layout : LAYOUT_SLOTS[layout];
-    const cols = numSlots <= 2 ? 2 : numSlots <= 4 ? 3 : numSlots <= 6 ? 3 : numSlots <= 8 ? 4 : 5;
-    return { cols: `grid-cols-${cols}`, scale: "" };
+    if (numSlots <= 2) return { cols: "grid-cols-2", scale: "" };
+    if (numSlots <= 6) return { cols: "grid-cols-3", scale: "" };
+    if (numSlots <= 8) return { cols: "grid-cols-4", scale: "" };
+    return { cols: "grid-cols-5", scale: "" };
   })();
 
   return (
