@@ -404,11 +404,11 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
   );
 
   const gridConfig = (() => {
-    const numSlots = typeof layout === "number" ? layout : LAYOUT_SLOTS[layout];
-    if (numSlots <= 2) return { cols: "grid-cols-2", scale: "" };
-    if (numSlots <= 6) return { cols: "grid-cols-3", scale: "" };
-    if (numSlots <= 8) return { cols: "grid-cols-4", scale: "" };
-    return { cols: "grid-cols-5", scale: "" };
+    const n = typeof layout === "number" ? layout : LAYOUT_SLOTS[layout];
+    if (n <= 2) return { itemWidth: "flex-[0_0_calc(50%-0.375rem)]" };
+    if (n <= 6) return { itemWidth: "flex-[0_0_calc(33.333%-0.5rem)]" };
+    if (n <= 8) return { itemWidth: "flex-[0_0_calc(25%-0.5625rem)]" };
+    return { itemWidth: "flex-[0_0_calc(20%-0.6rem)]" };
   })();
 
   return (
@@ -475,16 +475,17 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
           </div>
         </div>
 
-        <div className={cn("grid gap-3", gridConfig.cols, gridConfig.scale)}>
+        <div className="flex flex-wrap gap-3">
           {slots.map((slot) => (
-            <OtherSlotCard
-              key={slot.id}
-              slot={slot}
-              aspectRatio={slotAspect}
-              onUpdate={(u) => updateSlot(slot.id, u)}
-              onClear={() => handleClearSlot(slot.id)}
-              onFileSelect={(f) => handleFileSelect(slot.id, f)}
-            />
+            <div key={slot.id} className={gridConfig.itemWidth}>
+              <OtherSlotCard
+                slot={slot}
+                aspectRatio={slotAspect}
+                onUpdate={(u) => updateSlot(slot.id, u)}
+                onClear={() => handleClearSlot(slot.id)}
+                onFileSelect={(f) => handleFileSelect(slot.id, f)}
+              />
+            </div>
           ))}
         </div>
 
