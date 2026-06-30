@@ -475,7 +475,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 justify-center">
           {slots.map((slot) => (
             <div key={slot.id} className={gridConfig.itemWidth}>
               <OtherSlotCard
