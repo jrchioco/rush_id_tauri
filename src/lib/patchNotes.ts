@@ -5,6 +5,16 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.17.0": {
+    title: "What's New in v1.17.0",
+    date: "2026-07-02",
+    notes: [
+      "Wallet size support — 2pcs, 3pcs, 9pcs, 18pcs, 27pcs layouts",
+      "4R size support — 2pcs, 3pcs, 5pcs, 6pcs layouts",
+      "Multi-source stitching — composite different SVGs onto separate pages (e.g. 4R 5pcs = 3pcs + 2pcs)",
+      "Per-batch SVG heights — composite pages sized to actual template height, not hardcoded A4",
+    ],
+  },
   "1.16.0": {
     title: "What's New in v1.16.0",
     date: "2026-06-29",
