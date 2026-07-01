@@ -9,7 +9,7 @@ import type { LogEntry } from "./types";
 import { OtherSlotCard, type FitMode, type OtherSlotState } from "./OtherSlotCard";
 
 type OtherSize = "wallet" | "3r" | "4r" | "5r" | "6r" | "8r";
-type OtherLayout = "2pcs" | "4pcs" | "6pcs" | "8pcs" | "10pcs" | "12pcs";
+type OtherLayout = "2pcs" | "3pcs" | "4pcs" | "6pcs" | "8pcs" | "9pcs" | "10pcs" | "12pcs" | "18pcs" | "27pcs";
 
 interface OtherSizeInfo {
   label: string;
@@ -28,7 +28,8 @@ const OTHER_SIZES: Record<OtherSize, OtherSizeInfo> = {
 };
 
 const LAYOUTS: OtherLayout[] = ["2pcs", "4pcs", "6pcs", "8pcs", "10pcs", "12pcs"];
-const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "4pcs": 4, "6pcs": 6, "8pcs": 8, "10pcs": 10, "12pcs": 12 };
+const WALLET_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"];
+const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "3pcs": 3, "4pcs": 4, "6pcs": 6, "8pcs": 8, "9pcs": 9, "10pcs": 10, "12pcs": 12, "18pcs": 18, "27pcs": 27 };
 
 function getAspect(size: OtherSize): number {
   const info = OTHER_SIZES[size];
@@ -36,7 +37,7 @@ function getAspect(size: OtherSize): number {
 }
 
 function hasSvg(size: OtherSize): boolean {
-  return size === "3r" || size === "5r" || size === "8r";
+  return size === "wallet" || size === "3r" || size === "5r" || size === "8r";
 }
 
 function hasDropdown(size: OtherSize): boolean {
@@ -149,8 +150,9 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
       return;
     }
     setSelectedSize(size);
-    setLayout(hasDropdown(size) ? 2 : "2pcs");
-    const slotCount = hasDropdown(size) ? 2 : LAYOUT_SLOTS["2pcs"];
+    const defaultLayout: OtherLayout = size === "wallet" ? "2pcs" : hasDropdown(size) ? 2 as unknown as OtherLayout : "2pcs";
+    setLayout(defaultLayout);
+    const slotCount = LAYOUT_SLOTS[defaultLayout];
     setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i)));
     setLogs([]);
   }, []);
@@ -272,8 +274,10 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
         if (!isMounted()) return;
 
         log("Compositing PDF...");
+        const layoutStr = typeof layout === "number" ? String(layout) : layout;
         const msg = await invoke<string>("composite_other_pdf", {
           size: selectedSize,
+          layout: layoutStr,
           slotCount: typeof layout === "number" ? layout : LAYOUT_SLOTS[layout],
           slots: processed,
           savePath: savePath ?? null,
@@ -443,7 +447,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
               </select>
             ) : (
               <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
-                {LAYOUTS.map((l) => (
+                {(selectedSize === "wallet" ? WALLET_LAYOUTS : LAYOUTS).map((l) => (
                   <button
                     key={l}
                     onClick={() => handleLayoutSwitch(l)}

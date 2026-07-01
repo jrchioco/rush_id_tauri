@@ -904,6 +904,7 @@ fn composite_polaroid_pdf(
 fn composite_other_pdf(
     app_handle: tauri::AppHandle,
     size: String,
+    layout: Option<String>,
     _slot_count: usize,
     slots: Vec<PolaroidSlot>,
     save_path: Option<String>,
@@ -923,7 +924,17 @@ fn composite_other_pdf(
         }
     }
 
-    let svg_name = format!("{}.svg", size);
+    let svg_name = match &layout {
+        Some(l) => {
+            let combined = format!("{}{}.svg", size, l);
+            if res.join("SVGs").join(&combined).exists() {
+                combined
+            } else {
+                format!("{}.svg", size)
+            }
+        }
+        None => format!("{}.svg", size),
+    };
     let svg_path = res.join("SVGs").join(&svg_name);
     if !svg_path.exists() {
         return Err(format!("SVG template not found: {}", svg_name));
