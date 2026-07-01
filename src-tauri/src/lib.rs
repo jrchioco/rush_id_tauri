@@ -908,6 +908,7 @@ fn composite_other_pdf(
     _slot_count: usize,
     slots: Vec<PolaroidSlot>,
     save_path: Option<String>,
+    sources: Option<Vec<String>>,
 ) -> Result<String, String> {
     let d = data_dir(&app_handle);
     let res = resource_dir(&app_handle);
@@ -924,25 +925,6 @@ fn composite_other_pdf(
         }
     }
 
-    let svg_name = match (size.as_str(), layout.as_deref()) {
-        ("wallet", Some("18pcs" | "27pcs")) => "wallet9pcs.svg".to_string(),
-        (_, Some(l)) => format!("{}{}.svg", size, l),
-        _ => format!("{}.svg", size),
-    };
-    let svg_path = res.join("SVGs").join(&svg_name);
-    if !svg_path.exists() {
-        return Err(format!("SVG template not found: {}", svg_name));
-    }
-    let svg_raw = fs::read_to_string(&svg_path)
-        .map_err(|e| format!("Failed to read SVG {}: {}", svg_name, e))?;
-
-    let slot_height = parse_svg_height(&svg_raw);
-
-    let images_per_svg = svg_raw.matches("xlink:href=\"").count();
-    if images_per_svg == 0 {
-        return Err("SVG template has no image references".to_string());
-    }
-
     for (i, slot) in slots.iter().enumerate() {
         let pic_name = format!("other_{}.png", i + 1);
         let pic_path = d.join(&pic_name);
@@ -954,26 +936,82 @@ fn composite_other_pdf(
     }
 
     let mut all_svg_strings: Vec<String> = Vec::new();
-    for batch_start in (0..slots.len()).step_by(images_per_svg) {
-        let mut patched = svg_raw.clone();
-        for j in 0..images_per_svg {
-            let slot_idx = batch_start + j;
-            if slot_idx >= slots.len() {
-                break;
+    let mut slot_height = 297.0_f64;
+
+    if let Some(ref source_list) = sources {
+        let mut slot_offset = 0;
+        for source_name in source_list {
+            let source_path = res.join("SVGs").join(source_name);
+            if !source_path.exists() {
+                return Err(format!("SVG template not found: {}", source_name));
             }
-            let svg_slot = j + 1;
-            let bare_href = format!("{}{}.png", size, svg_slot);
-            let rel_href = format!("../other_{}.png", slot_idx + 1);
-            patched = patched.replace(
-                &format!("xlink:href=\"{}\"", bare_href),
-                &format!("xlink:href=\"{}\"", rel_href),
-            );
-            patched = patched.replace(
-                &format!("href=\"{}\"", bare_href),
-                &format!("href=\"{}\"", rel_href),
-            );
+            let source_raw = fs::read_to_string(&source_path)
+                .map_err(|e| format!("Failed to read SVG {}: {}", source_name, e))?;
+            if all_svg_strings.is_empty() {
+                slot_height = parse_svg_height(&source_raw);
+            }
+            let images_in_source = source_raw.matches("xlink:href=\"").count();
+            if images_in_source == 0 {
+                return Err(format!("SVG template has no image references: {}", source_name));
+            }
+            let mut patched = source_raw.clone();
+            for j in 0..images_in_source {
+                let slot_idx = slot_offset + j;
+                if slot_idx >= slots.len() {
+                    break;
+                }
+                let bare_href = format!("{}{}.png", size, j + 1);
+                let rel_href = format!("../other_{}.png", slot_idx + 1);
+                patched = patched.replace(
+                    &format!("xlink:href=\"{}\"", bare_href),
+                    &format!("xlink:href=\"{}\"", rel_href),
+                );
+                patched = patched.replace(
+                    &format!("href=\"{}\"", bare_href),
+                    &format!("href=\"{}\"", rel_href),
+                );
+            }
+            all_svg_strings.push(patched);
+            slot_offset += images_in_source;
         }
-        all_svg_strings.push(patched);
+    } else {
+        let svg_name = match (size.as_str(), layout.as_deref()) {
+            ("wallet", Some("18pcs" | "27pcs")) => "wallet9pcs.svg".to_string(),
+            (_, Some(l)) => format!("{}{}.svg", size, l),
+            _ => format!("{}.svg", size),
+        };
+        let svg_path = res.join("SVGs").join(&svg_name);
+        if !svg_path.exists() {
+            return Err(format!("SVG template not found: {}", svg_name));
+        }
+        let svg_raw = fs::read_to_string(&svg_path)
+            .map_err(|e| format!("Failed to read SVG {}: {}", svg_name, e))?;
+        slot_height = parse_svg_height(&svg_raw);
+        let images_per_svg = svg_raw.matches("xlink:href=\"").count();
+        if images_per_svg == 0 {
+            return Err("SVG template has no image references".to_string());
+        }
+        for batch_start in (0..slots.len()).step_by(images_per_svg) {
+            let mut patched = svg_raw.clone();
+            for j in 0..images_per_svg {
+                let slot_idx = batch_start + j;
+                if slot_idx >= slots.len() {
+                    break;
+                }
+                let svg_slot = j + 1;
+                let bare_href = format!("{}{}.png", size, svg_slot);
+                let rel_href = format!("../other_{}.png", slot_idx + 1);
+                patched = patched.replace(
+                    &format!("xlink:href=\"{}\"", bare_href),
+                    &format!("xlink:href=\"{}\"", rel_href),
+                );
+                patched = patched.replace(
+                    &format!("href=\"{}\"", bare_href),
+                    &format!("href=\"{}\"", rel_href),
+                );
+            }
+            all_svg_strings.push(patched);
+        }
     }
 
     let mut page_bytes: Vec<Vec<u8>> = Vec::new();

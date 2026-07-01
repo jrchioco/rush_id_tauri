@@ -9,7 +9,7 @@ import type { LogEntry } from "./types";
 import { OtherSlotCard, type FitMode, type OtherSlotState } from "./OtherSlotCard";
 
 type OtherSize = "wallet" | "3r" | "4r" | "5r" | "6r" | "8r";
-type OtherLayout = "2pcs" | "3pcs" | "4pcs" | "6pcs" | "8pcs" | "9pcs" | "10pcs" | "12pcs" | "18pcs" | "27pcs";
+type OtherLayout = "2pcs" | "3pcs" | "4pcs" | "5pcs" | "6pcs" | "8pcs" | "9pcs" | "10pcs" | "12pcs" | "18pcs" | "27pcs";
 
 interface OtherSizeInfo {
   label: string;
@@ -29,8 +29,8 @@ const OTHER_SIZES: Record<OtherSize, OtherSizeInfo> = {
 
 const LAYOUTS: OtherLayout[] = ["2pcs", "4pcs", "6pcs", "8pcs", "10pcs", "12pcs"];
 const WALLET_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"];
-const FOUR_R_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs"];
-const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "3pcs": 3, "4pcs": 4, "6pcs": 6, "8pcs": 8, "9pcs": 9, "10pcs": 10, "12pcs": 12, "18pcs": 18, "27pcs": 27 };
+const FOUR_R_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs", "5pcs", "6pcs"];
+const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "3pcs": 3, "4pcs": 4, "5pcs": 5, "6pcs": 6, "8pcs": 8, "9pcs": 9, "10pcs": 10, "12pcs": 12, "18pcs": 18, "27pcs": 27 };
 
 function getAspect(size: OtherSize): number {
   const info = OTHER_SIZES[size];
@@ -276,12 +276,18 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
 
         log("Compositing PDF...");
         const layoutStr = typeof layout === "number" ? String(layout) : layout;
+        const sources = selectedSize === "4r" && layoutStr === "5pcs"
+          ? ["4r3pcs.svg", "4r2pcs.svg"]
+          : selectedSize === "4r" && layoutStr === "6pcs"
+            ? ["4r3pcs.svg", "4r3pcs.svg"]
+            : null;
         const msg = await invoke<string>("composite_other_pdf", {
           size: selectedSize,
           layout: layoutStr,
           slotCount: typeof layout === "number" ? layout : LAYOUT_SLOTS[layout],
           slots: processed,
           savePath: savePath ?? null,
+          sources,
         });
         if (!isMounted()) return;
         log(`✓ ${msg}`);
