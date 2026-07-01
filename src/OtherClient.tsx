@@ -29,6 +29,7 @@ const OTHER_SIZES: Record<OtherSize, OtherSizeInfo> = {
 
 const LAYOUTS: OtherLayout[] = ["2pcs", "4pcs", "6pcs", "8pcs", "10pcs", "12pcs"];
 const WALLET_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"];
+const FOUR_R_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs"];
 const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "3pcs": 3, "4pcs": 4, "6pcs": 6, "8pcs": 8, "9pcs": 9, "10pcs": 10, "12pcs": 12, "18pcs": 18, "27pcs": 27 };
 
 function getAspect(size: OtherSize): number {
@@ -37,7 +38,7 @@ function getAspect(size: OtherSize): number {
 }
 
 function hasSvg(size: OtherSize): boolean {
-  return size === "wallet" || size === "3r" || size === "5r" || size === "8r";
+  return size === "wallet" || size === "3r" || size === "4r" || size === "5r" || size === "8r";
 }
 
 function hasDropdown(size: OtherSize): boolean {
@@ -447,7 +448,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
               </select>
             ) : (
               <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
-                {(selectedSize === "wallet" ? WALLET_LAYOUTS : LAYOUTS).map((l) => (
+                {(selectedSize === "wallet" ? WALLET_LAYOUTS : selectedSize === "4r" ? FOUR_R_LAYOUTS : LAYOUTS).map((l) => (
                   <button
                     key={l}
                     onClick={() => handleLayoutSwitch(l)}
