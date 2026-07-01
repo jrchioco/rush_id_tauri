@@ -924,16 +924,10 @@ fn composite_other_pdf(
         }
     }
 
-    let svg_name = match &layout {
-        Some(l) => {
-            let combined = format!("{}{}.svg", size, l);
-            if res.join("SVGs").join(&combined).exists() {
-                combined
-            } else {
-                format!("{}.svg", size)
-            }
-        }
-        None => format!("{}.svg", size),
+    let svg_name = match (size.as_str(), layout.as_deref()) {
+        ("wallet", Some("18pcs" | "27pcs")) => "wallet9pcs.svg".to_string(),
+        (_, Some(l)) => format!("{}{}.svg", size, l),
+        _ => format!("{}.svg", size),
     };
     let svg_path = res.join("SVGs").join(&svg_name);
     if !svg_path.exists() {
