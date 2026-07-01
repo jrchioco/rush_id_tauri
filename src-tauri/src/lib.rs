@@ -936,7 +936,7 @@ fn composite_other_pdf(
     }
 
     let mut all_svg_strings: Vec<String> = Vec::new();
-    let mut slot_height = 297.0_f64;
+    let mut slot_heights: Vec<f64> = Vec::new();
 
     if let Some(ref source_list) = sources {
         let mut slot_offset = 0;
@@ -947,9 +947,7 @@ fn composite_other_pdf(
             }
             let source_raw = fs::read_to_string(&source_path)
                 .map_err(|e| format!("Failed to read SVG {}: {}", source_name, e))?;
-            if all_svg_strings.is_empty() {
-                slot_height = parse_svg_height(&source_raw);
-            }
+            slot_heights.push(parse_svg_height(&source_raw));
             let images_in_source = source_raw.matches("xlink:href=\"").count();
             if images_in_source == 0 {
                 return Err(format!("SVG template has no image references: {}", source_name));
@@ -986,7 +984,7 @@ fn composite_other_pdf(
         }
         let svg_raw = fs::read_to_string(&svg_path)
             .map_err(|e| format!("Failed to read SVG {}: {}", svg_name, e))?;
-        slot_height = parse_svg_height(&svg_raw);
+        let svg_height = parse_svg_height(&svg_raw);
         let images_per_svg = svg_raw.matches("xlink:href=\"").count();
         if images_per_svg == 0 {
             return Err("SVG template has no image references".to_string());
@@ -1011,6 +1009,7 @@ fn composite_other_pdf(
                 );
             }
             all_svg_strings.push(patched);
+            slot_heights.push(svg_height);
         }
     }
 
@@ -1020,12 +1019,13 @@ fn composite_other_pdf(
     let mut all_chunks: Vec<(Vec<usize>, f64)> = Vec::new();
 
     for (i, _) in all_svg_strings.iter().enumerate() {
-        if !chunk_indices.is_empty() && chunk_height_mm + slot_height > 297.0 {
+        let h = slot_heights[i];
+        if !chunk_indices.is_empty() && chunk_height_mm + h > 297.0 {
             all_chunks.push((std::mem::take(&mut chunk_indices), chunk_height_mm));
             chunk_height_mm = 0.0;
         }
         chunk_indices.push(i);
-        chunk_height_mm += slot_height;
+        chunk_height_mm += h;
     }
     if !chunk_indices.is_empty() {
         all_chunks.push((chunk_indices, chunk_height_mm));
@@ -1059,7 +1059,7 @@ fn composite_other_pdf(
             let slot_with_y = format!("{} y=\"{:.1}mm\"{}", &slot_svg[..insert_at], y_mm, &slot_svg[insert_at..]);
 
             inner.push_str(&slot_with_y);
-            y_mm += slot_height;
+            y_mm += slot_heights[global_i];
         }
 
         let composite = format!(
