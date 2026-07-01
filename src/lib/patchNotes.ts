@@ -9,10 +9,14 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
     title: "What's New in v1.17.0",
     date: "2026-07-02",
     notes: [
+      "New Other tab — size picker, layout picker, and stitching-based PDF export",
       "Wallet size support — 2pcs, 3pcs, 9pcs, 18pcs, 27pcs layouts",
+      "3R size support — 2pcs, 4pcs, 6pcs, 8pcs, 10pcs, 12pcs layouts",
       "4R size support — 2pcs, 3pcs, 5pcs, 6pcs layouts",
+      "5R size support — 1 to 10pcs",
+      "8R size support — 1 to 10pcs",
+      "Polaroid 20pcs and 30pcs layouts",
       "Multi-source stitching — composite different SVGs onto separate pages (e.g. 4R 5pcs = 3pcs + 2pcs)",
-      "Per-batch SVG heights — composite pages sized to actual template height, not hardcoded A4",
     ],
   },
   "1.16.0": {
