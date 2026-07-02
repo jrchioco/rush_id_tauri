@@ -5,6 +5,20 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.17.1": {
+    title: "What's New in v1.17.1",
+    date: "2026-07-03",
+    notes: [
+      "Retouch window — first-open bug fixed (canvas now sizes correctly on initial open)",
+      "Clone stamp — pixel-perfect rendering (imageSmoothing disabled on composite)",
+      "Clone stamp — per-stroke buffer eliminates dab stacking and opacity compounding",
+      "Eraser — per-stroke buffer prevents over-erasure from overlapping dabs",
+      "Brush cursor — now matches actual brush size (was incorrectly scaled)",
+      "Default hardness raised to 100% (was 50%)",
+      "Single tab — fixed SVG template filter (multi/wallet/passport/4R/8R no longer leak into Single)",
+      "Stroke interpolation — smooth transitions between pointer events (75% overlap)",
+    ],
+  },
   "1.17.0": {
     title: "What's New in v1.17.0",
     date: "2026-07-02",
