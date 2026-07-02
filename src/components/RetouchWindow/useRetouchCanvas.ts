@@ -299,6 +299,7 @@ export function useRetouchCanvas() {
       drawCtx.putImageData(snapshot, 0, 0);
       drawCtx.save();
       drawCtx.globalAlpha = opacity;
+      drawCtx.imageSmoothingEnabled = false;
       drawCtx.drawImage(strokeBuffer, 0, 0);
       drawCtx.restore();
     } else {
