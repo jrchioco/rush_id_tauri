@@ -51,7 +51,10 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
   const compositeIdRef = useRef(0);
 
   const { templates, keyCount, loading: templatesLoading } = useTemplates();
-  const singleTemplates = useMemo(() => templates.filter((t) => !t.key.startsWith("multi_") && !t.key.toLowerCase().includes("passport")), [templates]);
+  const singleTemplates = useMemo(() => {
+    const allowed = new Set(["1x1", "2x2", "Mixed", "Dev 1x1", "Dev 2x2", "Dev Mixed"]);
+    return templates.filter((t) => allowed.has(t.key));
+  }, [templates]);
   const displayTemplates = singleTemplates.length > 0 ? singleTemplates : templates;
   const noApiKeys = keyCount === 0;
   const effectiveTestMode = testMode || noApiKeys;
