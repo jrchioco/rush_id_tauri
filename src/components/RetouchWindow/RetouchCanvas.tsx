@@ -164,9 +164,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const b = transformRef.current;
-    const z = zoom;
-    const radius = (state.brushSize / 2) * b.scale * z;
+    const radius = state.brushSize / 2;
 
     ctx.strokeStyle = "rgba(255,255,255,0.8)";
     ctx.lineWidth = 1;
@@ -179,7 +177,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     ctx.beginPath();
     ctx.arc(displayX, displayY, radius + 1, 0, Math.PI * 2);
     ctx.stroke();
-  }, [transformRef, state.brushSize, zoom]);
+  }, [state.brushSize]);
 
   const drawCloneCrosshair = useCallback((displayX: number, displayY: number) => {
     const canvas = cursorCanvasRef.current;
