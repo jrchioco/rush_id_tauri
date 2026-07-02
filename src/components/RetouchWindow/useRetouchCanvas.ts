@@ -53,7 +53,7 @@ export function useRetouchCanvas() {
   const [tool, setTool] = useState<Tool>("clone");
   const [brushSize, setBrushSize] = useState(30);
   const [opacity, setOpacity] = useState(1.0);
-  const [hardness, setHardness] = useState(50);
+  const [hardness, setHardness] = useState(100);
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
   const [zoom, setZoom] = useState(1);
@@ -235,8 +235,19 @@ export function useRetouchCanvas() {
       srcX - brushImgSize / 2, srcY - brushImgSize / 2, brushImgSize, brushImgSize,
       imgX - brushImgSize / 2, imgY - brushImgSize / 2, brushImgSize, brushImgSize,
     );
+
+    if (hardness < 100) {
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "destination-out";
+      const grad = makeHardnessGradient(ctx, imgX, imgY, brushImgSize / 2, hardness);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(imgX, imgY, brushImgSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.restore();
-  }, [brushSize, opacity, zoom]);
+  }, [brushSize, opacity, hardness, zoom]);
 
   const paintEraser = useCallback((displayX: number, displayY: number) => {
     const drawCanvas = drawCanvasRef.current;
