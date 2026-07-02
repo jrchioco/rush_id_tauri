@@ -178,6 +178,7 @@ export function useRetouchCanvas() {
         drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
 
         updateCloneSource();
+        setViewVersion(v => v + 1);
         resolve();
       };
       img.onerror = () => reject(new Error("Failed to load retouch image"));
