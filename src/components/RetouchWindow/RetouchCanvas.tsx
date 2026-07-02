@@ -15,6 +15,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     baseCanvasRef,
     drawCanvasRef,
     cloneSourceCanvasRef,
+    strokeBufferRef,
     tool,
     zoom,
     setZoom,
@@ -28,6 +29,8 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
     computeTransform,
     paintClone,
     paintEraser,
+    compositeStroke,
+    beginStroke,
     pushUndo,
     setCloneSource,
     updateCloneSource,
@@ -240,12 +243,15 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
     }
 
+    beginStroke();
+
     if (tool === "clone") {
       paintClone(display.x, display.y);
     } else {
       paintEraser(display.x, display.y);
     }
-  }, [tool, getDisplayCoords, paintClone, paintEraser, state.toImageCoords, cloneSourceRef, setCloneSource, isDrawingRef, strokeStartRef, drawCanvasRef, canvasToDisplay, drawCloneCrosshair]);
+    compositeStroke();
+  }, [tool, getDisplayCoords, paintClone, paintEraser, compositeStroke, beginStroke, state.toImageCoords, cloneSourceRef, setCloneSource, isDrawingRef, strokeStartRef, baseCanvasRef, drawCanvasRef, canvasToDisplay, drawCloneCrosshair]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const display = getDisplayCoords(e);
@@ -283,8 +289,9 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
         paintFn(last.x + dx * t, last.y + dy * t);
       }
     }
+    compositeStroke();
     lastPosRef.current = display;
-  }, [tool, altHeld, cloneSource, getDisplayCoords, paintClone, paintEraser, drawCursor, drawCloneCrosshair, canvasToDisplay, isDrawingRef, state.brushSize]);
+  }, [tool, altHeld, cloneSource, getDisplayCoords, paintClone, paintEraser, compositeStroke, drawCursor, drawCloneCrosshair, canvasToDisplay, isDrawingRef, state.brushSize]);
 
   const handlePointerUp = useCallback(() => {
     if (!isDrawingRef.current) return;
@@ -330,6 +337,10 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
       />
       <canvas
         ref={cloneSourceCanvasRef}
+        className="hidden"
+      />
+      <canvas
+        ref={strokeBufferRef}
         className="hidden"
       />
     </div>

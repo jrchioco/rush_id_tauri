@@ -41,6 +41,8 @@ export function useRetouchCanvas() {
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cloneSourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const strokeBufferRef = useRef<HTMLCanvasElement | null>(null);
+  const strokeSnapshotRef = useRef<ImageData | null>(null);
   const originalImageRef = useRef<HTMLImageElement | null>(null);
   const undoStackRef = useRef<CanvasPair[]>([]);
   const postUndoLengthRef = useRef<number | null>(null);
@@ -116,12 +118,17 @@ export function useRetouchCanvas() {
   const resetCanvas = useCallback(() => {
     const drawCanvas = drawCanvasRef.current;
     const baseCanvas = baseCanvasRef.current;
+    const strokeBuffer = strokeBufferRef.current;
     if (!drawCanvas || !baseCanvas) return;
     const drawCtx = drawCanvas.getContext("2d");
     const baseCtx = baseCanvas.getContext("2d");
     if (!drawCtx || !baseCtx) return;
     drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
     baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
+    if (strokeBuffer) {
+      const strokeCtx = strokeBuffer.getContext("2d");
+      if (strokeCtx) strokeCtx.clearRect(0, 0, strokeBuffer.width, strokeBuffer.height);
+    }
     const img = originalImageRef.current;
     if (img) baseCtx.drawImage(img, 0, 0);
     undoStackRef.current = [];
@@ -158,6 +165,7 @@ export function useRetouchCanvas() {
         const baseCanvas = baseCanvasRef.current;
         const drawCanvas = drawCanvasRef.current;
         const cloneCanvas = cloneSourceCanvasRef.current;
+        const strokeBuffer = strokeBufferRef.current;
         if (!baseCanvas || !drawCanvas) { resolve(); return; }
 
         baseCanvas.width = img.naturalWidth;
@@ -167,6 +175,10 @@ export function useRetouchCanvas() {
         if (cloneCanvas) {
           cloneCanvas.width = img.naturalWidth;
           cloneCanvas.height = img.naturalHeight;
+        }
+        if (strokeBuffer) {
+          strokeBuffer.width = img.naturalWidth;
+          strokeBuffer.height = img.naturalHeight;
         }
 
         const baseCtx = baseCanvas.getContext("2d")!;
@@ -208,13 +220,26 @@ export function useRetouchCanvas() {
     return t;
   }, []);
 
-  const paintClone = useCallback((displayX: number, displayY: number) => {
+  const beginStroke = useCallback(() => {
+    const strokeBuffer = strokeBufferRef.current;
     const drawCanvas = drawCanvasRef.current;
+    if (!strokeBuffer || !drawCanvas) return;
+    const strokeCtx = strokeBuffer.getContext("2d");
+    if (!strokeCtx) return;
+    strokeCtx.clearRect(0, 0, strokeBuffer.width, strokeBuffer.height);
+    const drawCtx = drawCanvas.getContext("2d");
+    if (drawCtx) {
+      strokeSnapshotRef.current = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+    }
+  }, []);
+
+  const paintClone = useCallback((displayX: number, displayY: number) => {
+    const strokeBuffer = strokeBufferRef.current;
     const cloneCanvas = cloneSourceCanvasRef.current;
     const start = strokeStartRef.current;
     const source = cloneSourceRef.current;
-    if (!drawCanvas || !cloneCanvas || !start || !source) return;
-    const ctx = drawCanvas.getContext("2d");
+    if (!strokeBuffer || !cloneCanvas || !start || !source) return;
+    const ctx = strokeBuffer.getContext("2d");
     if (!ctx) return;
 
     const imgX = (displayX - baseTransformRef.current.offsetX - zoomOffsetRef.current.dx) / (baseTransformRef.current.scale * zoom);
@@ -229,7 +254,6 @@ export function useRetouchCanvas() {
     ctx.beginPath();
     ctx.arc(imgX, imgY, brushImgSize / 2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.globalAlpha = opacity;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
       cloneCanvas,
@@ -238,38 +262,62 @@ export function useRetouchCanvas() {
     );
 
     ctx.restore();
-  }, [brushSize, opacity, zoom]);
+  }, [brushSize, zoom]);
 
   const paintEraser = useCallback((displayX: number, displayY: number) => {
-    const drawCanvas = drawCanvasRef.current;
-    const baseCanvas = baseCanvasRef.current;
-    if (!drawCanvas || !baseCanvas) return;
-    const drawCtx = drawCanvas.getContext("2d");
-    const baseCtx = baseCanvas.getContext("2d");
-    if (!drawCtx || !baseCtx) return;
+    const strokeBuffer = strokeBufferRef.current;
+    if (!strokeBuffer) return;
+    const ctx = strokeBuffer.getContext("2d");
+    if (!ctx) return;
 
     const imgX = (displayX - baseTransformRef.current.offsetX - zoomOffsetRef.current.dx) / (baseTransformRef.current.scale * zoom);
     const imgY = (displayY - baseTransformRef.current.offsetY - zoomOffsetRef.current.dy) / (baseTransformRef.current.scale * zoom);
     const brushImgSize = brushSize / (baseTransformRef.current.scale * zoom);
 
-    drawCtx.save();
-    drawCtx.globalCompositeOperation = "destination-out";
-    const drawGrad = makeHardnessGradient(drawCtx, imgX, imgY, brushImgSize / 2, hardness);
-    drawCtx.fillStyle = drawGrad;
-    drawCtx.beginPath();
-    drawCtx.arc(imgX, imgY, brushImgSize / 2, 0, Math.PI * 2);
-    drawCtx.fill();
-    drawCtx.restore();
-
-    baseCtx.save();
-    baseCtx.globalCompositeOperation = "destination-out";
-    const baseGrad = makeHardnessGradient(baseCtx, imgX, imgY, brushImgSize / 2, hardness);
-    baseCtx.fillStyle = baseGrad;
-    baseCtx.beginPath();
-    baseCtx.arc(imgX, imgY, brushImgSize / 2, 0, Math.PI * 2);
-    baseCtx.fill();
-    baseCtx.restore();
+    ctx.save();
+    const grad = makeHardnessGradient(ctx, imgX, imgY, brushImgSize / 2, hardness);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(imgX, imgY, brushImgSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }, [brushSize, hardness, zoom]);
+
+  const compositeStroke = useCallback(() => {
+    const drawCanvas = drawCanvasRef.current;
+    const baseCanvas = baseCanvasRef.current;
+    const strokeBuffer = strokeBufferRef.current;
+    if (!drawCanvas || !baseCanvas || !strokeBuffer) return;
+
+    const drawCtx = drawCanvas.getContext("2d");
+    const baseCtx = baseCanvas.getContext("2d");
+    if (!drawCtx || !baseCtx) return;
+
+    if (tool === "clone") {
+      const snapshot = strokeSnapshotRef.current;
+      if (!snapshot) return;
+      drawCtx.putImageData(snapshot, 0, 0);
+      drawCtx.save();
+      drawCtx.globalAlpha = opacity;
+      drawCtx.drawImage(strokeBuffer, 0, 0);
+      drawCtx.restore();
+    } else {
+      const strokeCtx = strokeBuffer.getContext("2d");
+      if (!strokeCtx) return;
+
+      drawCtx.save();
+      drawCtx.globalCompositeOperation = "destination-out";
+      drawCtx.drawImage(strokeBuffer, 0, 0);
+      drawCtx.restore();
+
+      baseCtx.save();
+      baseCtx.globalCompositeOperation = "destination-out";
+      baseCtx.drawImage(strokeBuffer, 0, 0);
+      baseCtx.restore();
+
+      strokeCtx.clearRect(0, 0, strokeBuffer.width, strokeBuffer.height);
+    }
+  }, [tool, opacity]);
 
   const flattenAndSave = useCallback((): string | null => {
     const drawCanvas = drawCanvasRef.current;
@@ -308,6 +356,7 @@ export function useRetouchCanvas() {
     baseCanvasRef,
     drawCanvasRef,
     cloneSourceCanvasRef,
+    strokeBufferRef,
     tool,
     setTool,
     brushSize,
@@ -337,6 +386,8 @@ export function useRetouchCanvas() {
     toImageCoords,
     paintClone,
     paintEraser,
+    compositeStroke,
+    beginStroke,
     pushUndo,
     undo,
     resetCanvas,
