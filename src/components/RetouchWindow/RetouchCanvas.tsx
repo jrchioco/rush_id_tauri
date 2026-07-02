@@ -9,6 +9,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const preStrokePairRef = useRef<{ base: ImageData; draw: ImageData } | null>(null);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const {
     baseCanvasRef,
@@ -219,6 +220,7 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
 
     isDrawingRef.current = true;
     strokeStartRef.current = display;
+    lastPosRef.current = display;
 
     const baseCanvas = baseCanvasRef.current;
     const drawCanvas = drawCanvasRef.current;
@@ -265,16 +267,29 @@ export function RetouchCanvas({ state }: RetouchCanvasProps) {
 
     if (!isDrawingRef.current) return;
 
-    if (tool === "clone") {
-      paintClone(display.x, display.y);
+    const last = lastPosRef.current;
+    const paintFn = tool === "clone" ? paintClone : paintEraser;
+    const step = Math.max(1, state.brushSize * 0.25);
+
+    if (!last) {
+      paintFn(display.x, display.y);
     } else {
-      paintEraser(display.x, display.y);
+      const dx = display.x - last.x;
+      const dy = display.y - last.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const steps = Math.max(1, Math.ceil(dist / step));
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        paintFn(last.x + dx * t, last.y + dy * t);
+      }
     }
-  }, [tool, altHeld, cloneSource, getDisplayCoords, paintClone, paintEraser, drawCursor, drawCloneCrosshair, canvasToDisplay, isDrawingRef]);
+    lastPosRef.current = display;
+  }, [tool, altHeld, cloneSource, getDisplayCoords, paintClone, paintEraser, drawCursor, drawCloneCrosshair, canvasToDisplay, isDrawingRef, state.brushSize]);
 
   const handlePointerUp = useCallback(() => {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
+    lastPosRef.current = null;
     if (preStrokePairRef.current) {
       pushUndo(preStrokePairRef.current);
       preStrokePairRef.current = null;
