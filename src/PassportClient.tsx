@@ -506,12 +506,14 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
                   Process All
                 </button>
               )}
-              <button
-                onClick={handleResetAll}
-                className="px-3 py-1.5 text-[#555] hover:text-[#888] text-xs font-mono transition-colors"
-              >
-                Reset All
-              </button>
+              <Tooltip content={TOOLTIPS.resetAll}>
+                <button
+                  onClick={handleResetAll}
+                  className="px-3 py-1.5 text-[#555] hover:text-[#888] text-xs font-mono transition-colors"
+                >
+                  Reset All
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

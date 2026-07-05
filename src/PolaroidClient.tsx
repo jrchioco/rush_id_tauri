@@ -450,13 +450,15 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
         </div>
 
         <div className="flex gap-3">
-          <button
-            onClick={handleClearAll}
-            disabled={filledCount === 0}
-            className="px-4 py-2.5 bg-transparent text-[#555] border border-[#2a2a28] rounded-lg font-bold text-sm tracking-wide hover:text-[#888] hover:border-[#555] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <Trash2 className="w-4 h-4" /> Clear All
-          </button>
+          <Tooltip content={TOOLTIPS.clearAll}>
+            <button
+              onClick={handleClearAll}
+              disabled={filledCount === 0}
+              className="px-4 py-2.5 bg-transparent text-[#555] border border-[#2a2a28] rounded-lg font-bold text-sm tracking-wide hover:text-[#888] hover:border-[#555] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" /> Clear All
+            </button>
+          </Tooltip>
           <button
             onClick={() => handleExport()}
             disabled={busy || filledCount === 0}
