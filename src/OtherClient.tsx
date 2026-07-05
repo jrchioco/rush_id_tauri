@@ -7,6 +7,7 @@ import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useIsMounted } from "./lib/hooks/useIsMounted";
 import type { LogEntry } from "./types";
 import { OtherSlotCard, type FitMode, type OtherSlotState } from "./OtherSlotCard";
+import { Tooltip } from "./components/Tooltip";
 
 type OtherSize = "wallet" | "3r" | "4r" | "5r" | "6r" | "8r";
 type OtherLayout = "2pcs" | "3pcs" | "4pcs" | "5pcs" | "6pcs" | "8pcs" | "9pcs" | "10pcs" | "12pcs" | "18pcs" | "27pcs";
@@ -75,11 +76,11 @@ async function readFileAsDataUrlFromPath(path: string): Promise<string> {
   return btoa(binary);
 }
 
-async function preprocessSlot(slot: OtherSlotState, slotAspect: number): Promise<string> {
+async function preprocessSlot(slot: OtherSlotState, slotAspect: number, quality: "high" | "flash"): Promise<string> {
   if (!slot.imageBase64) return "";
   const img = await loadImage(`data:image/png;base64,${slot.imageBase64}`);
 
-  const canvasW = 400;
+  const canvasW = quality === "high" ? 800 : 400;
   const canvasH = Math.round(canvasW / slotAspect);
 
   const canvas = document.createElement("canvas");
@@ -127,6 +128,9 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
     Array.from({ length: 2 }, (_, i) => freshSlot(i)),
   );
   const [globalStretch, setGlobalStretch] = useState(false);
+  const [quality, setQuality] = useState<"high" | "flash">(() => {
+    return (localStorage.getItem("otherQuality") as "high" | "flash") || "flash";
+  });
   const [busy, setBusy] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
@@ -238,6 +242,12 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
     );
   }, [globalStretch]);
 
+  const handleQualityToggle = useCallback(() => {
+    const next = quality === "high" ? "flash" : "high";
+    setQuality(next);
+    localStorage.setItem("otherQuality", next);
+  }, [quality]);
+
   const handleClearAll = useCallback(() => {
     const hasImages = slotsRef.current.some((s) => s.imageBase64 !== null);
     if (!hasImages) return;
@@ -269,7 +279,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
             .filter((s) => s.imageBase64 !== null)
             .map(async (s) => ({
               slotIndex: s.id + 1,
-              imageBase64: await preprocessSlot(s, slotAspect),
+              imageBase64: await preprocessSlot(s, slotAspect, quality),
             })),
         );
         if (!isMounted()) return;
@@ -299,7 +309,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
         if (isMounted()) setBusy(false);
       }
     },
-    [selectedSize, layout, filledCount, slotAspect, log],
+    [selectedSize, layout, filledCount, slotAspect, quality, log],
   );
 
   const handleSavePdf = useCallback(async () => {
@@ -487,6 +497,33 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
                 />
               </div>
             </label>
+            <Tooltip
+              content={
+                quality === "high"
+                  ? "High: 800px canvas — better print quality, slower export"
+                  : "Flash: 400px canvas — faster export, lower quality"
+              }
+            >
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">
+                  {quality === "high" ? "High" : "Flash"}
+                </span>
+                <div
+                  onClick={handleQualityToggle}
+                  className={cn(
+                    "w-7 h-4 rounded-full transition-colors relative",
+                    quality === "high" ? "bg-[#c8881a]" : "bg-[#2a2a28]",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
+                      quality === "high" ? "translate-x-[14px]" : "translate-x-[2px]",
+                    )}
+                  />
+                </div>
+              </label>
+            </Tooltip>
           </div>
         </div>
 
