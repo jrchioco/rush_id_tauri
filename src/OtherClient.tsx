@@ -80,7 +80,7 @@ async function preprocessSlot(slot: OtherSlotState, slotAspect: number, quality:
   if (!slot.imageBase64) return "";
   const img = await loadImage(`data:image/png;base64,${slot.imageBase64}`);
 
-  const canvasW = quality === "high" ? 800 : 400;
+  const canvasW = quality === "high" ? 1000 : 625;
   const canvasH = Math.round(canvasW / slotAspect);
 
   const canvas = document.createElement("canvas");
@@ -500,8 +500,8 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
             <Tooltip
               content={
                 quality === "high"
-                  ? "High: 800px canvas — better print quality, slower export"
-                  : "Flash: 400px canvas — faster export, lower quality"
+                  ? "High: 1000px canvas — best print quality (Wallet ~400 DPI)"
+                  : "Flash: 625px canvas — faster export (Wallet ~250 DPI)"
               }
             >
               <label className="flex items-center gap-1.5 cursor-pointer select-none">

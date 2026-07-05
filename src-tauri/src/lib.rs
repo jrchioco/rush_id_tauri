@@ -931,7 +931,6 @@ fn composite_other_pdf(
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(&slot.image_base64)
             .map_err(|e| format!("Base64 decode error for slot {}: {}", i, e))?;
-        let bytes = resize_if_needed(&bytes);
         fs::write(&pic_path, &bytes).map_err(|e| format!("Failed to write {}: {}", pic_name, e))?;
     }
 

@@ -36,7 +36,7 @@ async function preprocessSlot(slot: PolaroidSlotState, quality: "high" | "flash"
   if (!slot.imageBase64) return "";
   const img = await loadImage(`data:image/png;base64,${slot.imageBase64}`);
 
-  const canvasW = quality === "high" ? 800 : 400;
+  const canvasW = quality === "high" ? 630 : 400;
   const canvasH = Math.round(canvasW / SLOT_ASPECT);
 
   const canvas = document.createElement("canvas");
@@ -346,8 +346,8 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
             <Tooltip
               content={
                 quality === "high"
-                  ? "High: 800px canvas — better print quality, slower export"
-                  : "Flash: 400px canvas — faster export, lower quality"
+                  ? "High: 630px canvas (~350 DPI) — best print quality"
+                  : "Flash: 400px canvas (~222 DPI) — faster export"
               }
             >
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
