@@ -10,7 +10,7 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
     date: "2026-07-06",
     notes: [
       "New tooltip system — hover any toggle or button for contextual help",
-      "Quality toggle in Other and Polaroid tabs — High (600DPI) for best print quality, Flash (300DPI) for faster export",
+      "New Quality toggle in Other and Polaroid tabs — High (600DPI) for best print quality, Flash (300DPI) for faster export",
       "3R/5R/8R Other tab fix — stitching and slot count now correct for all layouts",
       "5R/8R cropper fix — dropdown now shows correct default slots on first selection",
     ],
