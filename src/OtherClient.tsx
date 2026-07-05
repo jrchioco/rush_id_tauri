@@ -46,6 +46,15 @@ function hasDropdown(size: OtherSize): boolean {
   return size === "5r" || size === "8r";
 }
 
+function getCanvasWidth(size: OtherSize, quality: "high" | "flash"): number {
+  if (size === "wallet") {
+    return quality === "high" ? 1000 : 625;
+  }
+  const widthMm = OTHER_SIZES[size].widthMm;
+  const dpi = quality === "high" ? 600 : 300;
+  return Math.round((widthMm / 25.4) * dpi);
+}
+
 function freshSlot(id: number): OtherSlotState {
   return { id, imageBase64: null, fitMode: "cover", panX: 0, panY: 0, rotation: 0 };
 }
@@ -76,11 +85,11 @@ async function readFileAsDataUrlFromPath(path: string): Promise<string> {
   return btoa(binary);
 }
 
-async function preprocessSlot(slot: OtherSlotState, slotAspect: number, quality: "high" | "flash"): Promise<string> {
+async function preprocessSlot(slot: OtherSlotState, slotAspect: number, size: OtherSize, quality: "high" | "flash"): Promise<string> {
   if (!slot.imageBase64) return "";
   const img = await loadImage(`data:image/png;base64,${slot.imageBase64}`);
 
-  const canvasW = quality === "high" ? 1000 : 625;
+  const canvasW = getCanvasWidth(size, quality);
   const canvasH = Math.round(canvasW / slotAspect);
 
   const canvas = document.createElement("canvas");
@@ -279,7 +288,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
             .filter((s) => s.imageBase64 !== null)
             .map(async (s) => ({
               slotIndex: s.id + 1,
-              imageBase64: await preprocessSlot(s, slotAspect, quality),
+              imageBase64: await preprocessSlot(s, slotAspect, selectedSize, quality),
             })),
         );
         if (!isMounted()) return;
@@ -500,8 +509,8 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
             <Tooltip
               content={
                 quality === "high"
-                  ? "High: 1000px canvas — best print quality (Wallet ~400 DPI)"
-                  : "Flash: 625px canvas — faster export (Wallet ~250 DPI)"
+                  ? "High — 600 DPI for 3R–8R, 400 DPI for Wallet"
+                  : "Flash — 300 DPI for 3R–8R, 250 DPI for Wallet"
               }
             >
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
