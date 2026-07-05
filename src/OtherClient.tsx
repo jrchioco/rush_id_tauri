@@ -518,8 +518,8 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
             <Tooltip
               content={
                 quality === "high"
-                  ? "High — 600 DPI for 3R–8R, 400 DPI for Wallet"
-                  : "Flash — 300 DPI for 3R–8R, 250 DPI for Wallet"
+                  ? "High: 600DPI - better print quality, slower export"
+                  : "Flash: 300 DPI - faster export, lower quality"
               }
             >
               <label className="flex items-center gap-1.5 cursor-pointer select-none">

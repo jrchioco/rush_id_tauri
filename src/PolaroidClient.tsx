@@ -346,8 +346,8 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
             <Tooltip
               content={
                 quality === "high"
-                  ? "High: 630px canvas (~350 DPI) — best print quality"
-                  : "Flash: 400px canvas (~222 DPI) — faster export"
+                  ? "High: 600DPI - better print quality, slower export"
+                  : "Flash: 300 DPI - faster export, lower quality"
               }
             >
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
