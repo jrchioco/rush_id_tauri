@@ -55,6 +55,16 @@ function getCanvasWidth(size: OtherSize, quality: "high" | "flash"): number {
   return Math.round((widthMm / 25.4) * dpi);
 }
 
+function getSources(size: OtherSize, layout: OtherLayout | number): string[] | null {
+  const slotCount = typeof layout === "number" ? layout : LAYOUT_SLOTS[layout];
+  if (!slotCount) return null;
+  const slotsPerSvg: Record<string, number> = { "3r": 2, "5r": 1, "8r": 1 };
+  const per = slotsPerSvg[size];
+  if (!per) return null;
+  if (slotCount <= per) return null;
+  return Array.from({ length: Math.ceil(slotCount / per) }, () => `${size}.svg`);
+}
+
 function freshSlot(id: number): OtherSlotState {
   return { id, imageBase64: null, fitMode: "cover", panX: 0, panY: 0, rotation: 0 };
 }
@@ -299,7 +309,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
           ? ["4r3pcs.svg", "4r2pcs.svg"]
           : selectedSize === "4r" && layoutStr === "6pcs"
             ? ["4r3pcs.svg", "4r3pcs.svg"]
-            : null;
+            : getSources(selectedSize, layout);
         const msg = await invoke<string>("composite_other_pdf", {
           size: selectedSize,
           layout: layoutStr,
