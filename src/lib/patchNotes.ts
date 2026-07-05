@@ -5,6 +5,19 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.18.0": {
+    title: "What's New in v1.18.0",
+    date: "2026-07-06",
+    notes: [
+      "Centralized tooltip text — all tooltip strings in src/lib/tooltips.ts for easy editing",
+      "Smart tooltip positioning — auto-slides left/right to stay within window, flips to bottom near top edge",
+      "3R/5R/8R stitching fix — correct SVG source generation for all slot counts",
+      "5R/8R dropdown cropper fix — default slot count resolves correctly on first render",
+      "Quality toggle tooltip — High (600DPI) vs Flash (300DPI) with clear DPI and speed info",
+      "Live/Test mode tooltips — added to Single, Multi, and Passport tabs",
+      "Reset All / Clear All tooltips — added to Multi, Passport, Other, and Polaroid tabs",
+    ],
+  },
   "1.17.1": {
     title: "What's New in v1.17.1",
     date: "2026-07-03",
