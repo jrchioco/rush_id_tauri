@@ -175,7 +175,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
     setSelectedSize(size);
     const defaultLayout: OtherLayout = size === "wallet" ? "2pcs" : hasDropdown(size) ? 2 as unknown as OtherLayout : "2pcs";
     setLayout(defaultLayout);
-    const slotCount = LAYOUT_SLOTS[defaultLayout];
+    const slotCount = typeof defaultLayout === "number" ? defaultLayout : LAYOUT_SLOTS[defaultLayout];
     setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i)));
     setLogs([]);
   }, []);
