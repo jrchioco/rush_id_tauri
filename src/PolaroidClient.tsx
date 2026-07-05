@@ -8,6 +8,7 @@ import { useIsMounted } from "./lib/hooks/useIsMounted";
 import type { LogEntry } from "./types";
 import { PolaroidSlotCard, type FitMode, type PolaroidSlotState } from "./PolaroidSlotCard";
 import { Tooltip } from "./components/Tooltip";
+import { TOOLTIPS } from "./lib/tooltips";
 
 type Layout = "2pcs" | "3pcs" | "5pcs" | "10pcs" | "20pcs" | "30pcs";
 
@@ -344,11 +345,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
               </div>
             </label>
             <Tooltip
-              content={
-                quality === "high"
-                  ? "High: 600DPI - better print quality, slower export"
-                  : "Flash: 300 DPI - faster export, lower quality"
-              }
+              content={quality === "high" ? TOOLTIPS.quality.on : TOOLTIPS.quality.off}
             >
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
                 <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">

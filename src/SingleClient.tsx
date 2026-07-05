@@ -16,6 +16,8 @@ import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
 import { RetouchButton, RetouchWindow } from "./components/RetouchWindow";
+import { Tooltip } from "./components/Tooltip";
+import { TOOLTIPS } from "./lib/tooltips";
 import type { LogEntry, LabelMode, FontChoice } from "./types";
 
 type Step = "select" | "crop" | "done";
@@ -383,10 +385,13 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
       <div className="space-y-4">
 
         <div className="flex items-center justify-end">
-          <label className="flex items-center gap-1.5 cursor-pointer select-none">
-            <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">
-              {noApiKeys ? "No API" : testMode ? "Test" : "Live"}
-            </span>
+          <Tooltip
+            content={testMode ? TOOLTIPS.testMode.on : TOOLTIPS.testMode.off}
+          >
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">
+                {noApiKeys ? "No API" : testMode ? "Test" : "Live"}
+              </span>
             <div
               onClick={() => !noApiKeys && setTestMode(!testMode)}
               className={cn(
@@ -403,6 +408,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
               />
             </div>
           </label>
+          </Tooltip>
         </div>
 
         {step === "select" && (

@@ -16,6 +16,8 @@ import { RotationSidebar } from "./components/RotationSidebar";
 import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
 import { RetouchButton, RetouchWindow } from "./components/RetouchWindow";
+import { Tooltip } from "./components/Tooltip";
+import { TOOLTIPS } from "./lib/tooltips";
 import type { LogEntry, LabelMode, FontChoice } from "./types";
 
 const ASPECT = 35 / 45;
@@ -469,26 +471,30 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
             Passport — {SLOT_COUNT} Slots
           </h2>
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">
-                {noApiKeys ? "No API" : testMode ? "Test" : "Live"}
-              </span>
-              <div
-                onClick={() => !noApiKeys && setTestMode(!testMode)}
-                className={cn(
-                  "w-7 h-4 rounded-full transition-colors relative",
-                  effectiveTestMode ? "bg-[#c8881a]" : "bg-[#2a2a28]",
-                  noApiKeys && "opacity-50 cursor-not-allowed",
-                )}
-              >
+            <Tooltip
+              content={testMode ? TOOLTIPS.testMode.on : TOOLTIPS.testMode.off}
+            >
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">
+                  {noApiKeys ? "No API" : testMode ? "Test" : "Live"}
+                </span>
                 <div
+                  onClick={() => !noApiKeys && setTestMode(!testMode)}
                   className={cn(
-                    "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
-                    effectiveTestMode ? "translate-x-[14px]" : "translate-x-[2px]",
+                    "w-7 h-4 rounded-full transition-colors relative",
+                    effectiveTestMode ? "bg-[#c8881a]" : "bg-[#2a2a28]",
+                    noApiKeys && "opacity-50 cursor-not-allowed",
                   )}
-                />
-              </div>
-            </label>
+                >
+                  <div
+                    className={cn(
+                      "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
+                      effectiveTestMode ? "translate-x-[14px]" : "translate-x-[2px]",
+                    )}
+                  />
+                </div>
+              </label>
+            </Tooltip>
             <div className="flex gap-2">
               {anyCrop && (
                 <button

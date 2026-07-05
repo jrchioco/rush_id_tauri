@@ -8,6 +8,7 @@ import { useIsMounted } from "./lib/hooks/useIsMounted";
 import type { LogEntry } from "./types";
 import { OtherSlotCard, type FitMode, type OtherSlotState } from "./OtherSlotCard";
 import { Tooltip } from "./components/Tooltip";
+import { TOOLTIPS } from "./lib/tooltips";
 
 type OtherSize = "wallet" | "3r" | "4r" | "5r" | "6r" | "8r";
 type OtherLayout = "2pcs" | "3pcs" | "4pcs" | "5pcs" | "6pcs" | "8pcs" | "9pcs" | "10pcs" | "12pcs" | "18pcs" | "27pcs";
@@ -516,11 +517,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
               </div>
             </label>
             <Tooltip
-              content={
-                quality === "high"
-                  ? "High: 600DPI - better print quality, slower export"
-                  : "Flash: 300 DPI - faster export, lower quality"
-              }
+              content={quality === "high" ? TOOLTIPS.quality.on : TOOLTIPS.quality.off}
             >
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
                 <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">
