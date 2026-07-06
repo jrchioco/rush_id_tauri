@@ -5,6 +5,15 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.18.1": {
+    title: "What's New in v1.18.1",
+    date: "2026-07-07",
+    notes: [
+      "Tooltips on all buttons — every icon-only and action button now shows contextual help on hover",
+      "Retouch window tooltips — all tools, sliders, and actions in the retouch editor now have descriptive tooltips",
+      "Fixed-position tooltips — tooltips now escape overflow containers, no more clipping issues",
+    ],
+  },
   "1.18.0": {
     title: "What's New in v1.18.0",
     date: "2026-07-06",
