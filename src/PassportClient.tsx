@@ -521,17 +521,18 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
         </div>
 
         {slots.map((slot, i) => (
-          <div key={i} className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
+          <div key={i} className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-visible">
             <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-[#2a2a28]">
               {slot.step === "done" && (
-                <button
-                  onClick={() => handleSlotFontCycle(i)}
-                  title={`Font: ${getFontOption(slot.fontChoice).label.join(" ")} — click to cycle`}
-                  className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10 flex flex-col items-center leading-tight"
-                >
-                  <span>{getFontOption(slot.fontChoice).label[0]}</span>
-                  {getFontOption(slot.fontChoice).label[1] && <span>{getFontOption(slot.fontChoice).label[1]}</span>}
-                </button>
+                <Tooltip content={TOOLTIPS.fontCycle}>
+                  <button
+                    onClick={() => handleSlotFontCycle(i)}
+                    className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10 flex flex-col items-center leading-tight"
+                  >
+                    <span>{getFontOption(slot.fontChoice).label[0]}</span>
+                    {getFontOption(slot.fontChoice).label[1] && <span>{getFontOption(slot.fontChoice).label[1]}</span>}
+                  </button>
+                </Tooltip>
               )}
               {slot.step === "done" ? (
                 <input
@@ -553,22 +554,19 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
               )}
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {slot.step === "done" && (
-                  <button
-                    onClick={() => handleSlotLabelCycle(i)}
-                    title={
-                      slot.labelMode === "off" ? "Off — click to enable name only" :
-                      slot.labelMode === "name" ? "Name only — click to add signature" :
-                      "Name + signature — click to turn off"
-                    }
-                    className={cn(
-                      "px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border transition-colors",
-                      slot.labelMode === "off"
-                        ? "border-[#2a2a28] text-[#555] hover:text-[#888] hover:border-[#888]"
-                        : "border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10",
-                    )}
-                  >
-                    {slot.labelMode === "off" ? "Label" : slot.labelMode === "name" ? "Name" : "Name+Sig"}
-                  </button>
+                  <Tooltip content={TOOLTIPS.labelCycle}>
+                    <button
+                      onClick={() => handleSlotLabelCycle(i)}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border transition-colors",
+                        slot.labelMode === "off"
+                          ? "border-[#2a2a28] text-[#555] hover:text-[#888] hover:border-[#888]"
+                          : "border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10",
+                      )}
+                    >
+                      {slot.labelMode === "off" ? "Label" : slot.labelMode === "name" ? "Name" : "Name+Sig"}
+                    </button>
+                  </Tooltip>
                 )}
                 {slot.step !== "empty" && (
                   <button
@@ -608,7 +606,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
                     onChange={(r) => updateSlot(i, { rotation: r })}
                     size="sm"
                   />
-                  <div ref={cropperWrapRefs[i]} className="flex-1 relative">
+                  <div ref={cropperWrapRefs[i]} className="flex-1 relative [clip-path:inset(0_round_0.75rem)]">
                     <Cropper
                       image={slot.originalImage}
                       crop={slot.crop}
@@ -647,7 +645,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
             {slot.step === "done" && slot.resultPath && (
               <div className="p-3 space-y-3">
                 <div
-                  className="relative rounded-lg flex items-center justify-center p-3"
+                  className="relative rounded-lg flex items-center justify-center p-3 [clip-path:inset(0_round_0.5rem)]"
                   style={{
                     backgroundImage: "repeating-conic-gradient(#1e1e1c 0% 25%, #161614 0% 50%)",
                     backgroundSize: "12px 12px",

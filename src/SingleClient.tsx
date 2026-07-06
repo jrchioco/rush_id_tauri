@@ -534,33 +534,31 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs text-[#555] font-mono tracking-widest uppercase">Name Label</label>
-                <button
-                  onClick={handleLabelModeCycle}
-                  title={
-                    labelMode === "off" ? "Off — click to enable name only" :
-                    labelMode === "name" ? "Name only — click to add signature" :
-                    "Name + signature — click to turn off"
-                  }
-                  className={cn(
-                    "px-2 py-0.5 rounded text-[10px] font-mono tracking-wider uppercase border transition-colors",
-                    labelMode === "off"
-                      ? "border-[#2a2a28] text-[#555] hover:text-[#888] hover:border-[#888]"
-                      : "border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10",
-                  )}
-                >
-                  {labelMode === "off" ? "Label" : labelMode === "name" ? "Name" : "Name+Sig"}
-                </button>
+                <Tooltip content={TOOLTIPS.labelCycle}>
+                  <button
+                    onClick={handleLabelModeCycle}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[10px] font-mono tracking-wider uppercase border transition-colors",
+                      labelMode === "off"
+                        ? "border-[#2a2a28] text-[#555] hover:text-[#888] hover:border-[#888]"
+                        : "border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10",
+                    )}
+                  >
+                    {labelMode === "off" ? "Label" : labelMode === "name" ? "Name" : "Name+Sig"}
+                  </button>
+                </Tooltip>
               </div>
               {labelMode !== "off" && (
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleFontCycle}
-                    title={`Font: ${getFontOption(fontChoice).label.join(" ")} — click to cycle`}
-                    className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10 flex flex-col items-center leading-tight"
-                  >
-                    <span>{getFontOption(fontChoice).label[0]}</span>
-                    {getFontOption(fontChoice).label[1] && <span>{getFontOption(fontChoice).label[1]}</span>}
-                  </button>
+                  <Tooltip content={TOOLTIPS.fontCycle}>
+                    <button
+                      onClick={handleFontCycle}
+                      className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wider uppercase border border-[#c8881a] text-[#c8881a] bg-[#c8881a]/10 flex flex-col items-center leading-tight"
+                    >
+                      <span>{getFontOption(fontChoice).label[0]}</span>
+                      {getFontOption(fontChoice).label[1] && <span>{getFontOption(fontChoice).label[1]}</span>}
+                    </button>
+                  </Tooltip>
                   <input
                     type="text"
                     value={nameLabel}

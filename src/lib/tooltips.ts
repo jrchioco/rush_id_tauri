@@ -21,6 +21,8 @@ export const TOOLTIPS = {
   savePdf: "Export to PDF file",
   startOver: "Clear result and return to image selection",
   processAll: "Crop and process all prepared slots",
+  fontCycle: "Click to cycle font style",
+  labelCycle: "Click to cycle label mode",
 } as const;
 
 export type TooltipKey = keyof typeof TOOLTIPS;
