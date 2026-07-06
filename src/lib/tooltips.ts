@@ -23,6 +23,14 @@ export const TOOLTIPS = {
   processAll: "Crop and process all prepared slots",
   fontCycle: "Click to cycle font style",
   labelCycle: "Click to cycle label mode",
+  backToSizes: "Back to size selection",
+  layoutSwitch: "Switch layout (resets all slots)",
+  stretchAll: "Stretch all images to fill frame (disables panning)",
+  selectTemplate: "Select an SVG print template",
+  uploadSignature: "Upload a signature image",
+  retouch: "Open retouch editor: clone stamp and eraser",
+  removeSlot: "Remove this slot",
+  settings: "API keys, preferences and configuration",
 } as const;
 
 export type TooltipKey = keyof typeof TOOLTIPS;

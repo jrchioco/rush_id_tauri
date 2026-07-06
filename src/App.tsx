@@ -6,6 +6,8 @@ import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SettingsModal } from "./components/SettingsModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
+import { Tooltip } from "./components/Tooltip";
+import { TOOLTIPS } from "./lib/tooltips";
 import SingleClient from "./SingleClient";
 import MultiClient from "./MultiClient";
 import GeminiTab from "./GeminiTab";
@@ -231,13 +233,14 @@ export default function App() {
               ))}
             </nav>
             <div className="w-px h-5 bg-[#2a2a28] mx-1" />
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="p-1.5 rounded-lg text-[#555] hover:text-[#888] hover:bg-[#1a1a18] transition-colors"
-              title="Settings"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+            <Tooltip content={TOOLTIPS.settings}>
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="p-1.5 rounded-lg text-[#555] hover:text-[#888] hover:bg-[#1a1a18] transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </Tooltip>
           </div>
         </div>
       </header>

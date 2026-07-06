@@ -580,12 +580,14 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
                   ) : (
                     <span className="text-[10px] text-[#555] font-mono">no signature</span>
                   )}
-                  <button
-                    onClick={() => sigFileInputRef.current?.click()}
-                    className="flex-1 px-3 py-1.5 bg-[#1a1a18] border border-[#2a2a28] rounded-lg text-xs text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a] font-mono transition-colors"
-                  >
-                    {signatureDataUrl ? "Change signature" : "Browse for signature"}
-                  </button>
+                  <Tooltip content={TOOLTIPS.uploadSignature}>
+                    <button
+                      onClick={() => sigFileInputRef.current?.click()}
+                      className="flex-1 px-3 py-1.5 bg-[#1a1a18] border border-[#2a2a28] rounded-lg text-xs text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a] font-mono transition-colors"
+                    >
+                      {signatureDataUrl ? "Change signature" : "Browse for signature"}
+                    </button>
+                  </Tooltip>
                   <input
                     ref={sigFileInputRef}
                     type="file"
@@ -604,15 +606,17 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
                   <div className="w-full mt-2 h-9 bg-[#1a1a18] border border-[#2a2a28] rounded-lg animate-pulse" />
                 ) : (
                   <>
-                    <button
-                      onClick={() => setTemplateOpen(!templateOpen)}
-                      className="w-full mt-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] font-mono flex items-center justify-between focus:outline-none focus:border-[#c8881a]"
-                    >
-                      <span>{displayTemplates.find((t) => t.path === selectedTemplate)?.name ?? "Select"}</span>
-                      <ChevronDown
-                        className={cn("w-4 h-4 text-[#555] transition-transform", templateOpen && "rotate-180")}
-                      />
-                    </button>
+                    <Tooltip content={TOOLTIPS.selectTemplate}>
+                      <button
+                        onClick={() => setTemplateOpen(!templateOpen)}
+                        className="w-full mt-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] font-mono flex items-center justify-between focus:outline-none focus:border-[#c8881a]"
+                      >
+                        <span>{displayTemplates.find((t) => t.path === selectedTemplate)?.name ?? "Select"}</span>
+                        <ChevronDown
+                          className={cn("w-4 h-4 text-[#555] transition-transform", templateOpen && "rotate-180")}
+                        />
+                      </button>
+                    </Tooltip>
                     {templateOpen && (
                       <div className="absolute z-10 mt-1 w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg overflow-hidden shadow-xl">
                         {displayTemplates.map((t) => (

@@ -568,12 +568,14 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
                   </Tooltip>
                 )}
                 {slot.step !== "empty" && (
-                  <button
-                    onClick={() => handleSlotReset(i)}
-                    className="text-[#555] hover:text-red-400 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content={TOOLTIPS.removeSlot}>
+                    <button
+                      onClick={() => handleSlotReset(i)}
+                      className="text-[#555] hover:text-red-400 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                 )}
               </div>
             </div>
@@ -673,12 +675,14 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
                     ) : (
                       <span className="text-[9px] text-[#555] font-mono">no signature</span>
                     )}
-                    <button
-                      onClick={() => sigFileInputRefs.current[i]?.click()}
-                      className="flex-1 px-2 py-1 bg-[#1a1a18] border border-[#2a2a28] rounded text-[10px] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a] font-mono transition-colors"
-                    >
-                      {slot.signatureDataUrl ? "Change" : "Browse for signature"}
-                    </button>
+                    <Tooltip content={TOOLTIPS.uploadSignature}>
+                      <button
+                        onClick={() => sigFileInputRefs.current[i]?.click()}
+                        className="flex-1 px-2 py-1 bg-[#1a1a18] border border-[#2a2a28] rounded text-[10px] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a] font-mono transition-colors"
+                      >
+                        {slot.signatureDataUrl ? "Change" : "Browse for signature"}
+                      </button>
+                    </Tooltip>
                     <input
                       ref={(el) => {
                         sigFileInputRefs.current[i] = el;
@@ -694,17 +698,19 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
                   {templatesLoading ? (
                     <div className="w-full h-7 bg-[#1a1a18] border border-[#2a2a28] rounded-lg animate-pulse" />
                   ) : (
-                    <select
-                      value={slot.selectedTemplate}
-                      onChange={(e) => updateSlot(i, { selectedTemplate: e.target.value })}
-                      className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1 text-xs text-[#e8e4da] font-mono focus:outline-none focus:border-[#c8881a]"
-                    >
-                      {displayTemplates.map((t) => (
-                        <option key={t.key} value={t.path}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                    <Tooltip content={TOOLTIPS.selectTemplate}>
+                      <select
+                        value={slot.selectedTemplate}
+                        onChange={(e) => updateSlot(i, { selectedTemplate: e.target.value })}
+                        className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1 text-xs text-[#e8e4da] font-mono focus:outline-none focus:border-[#c8881a]"
+                      >
+                        {displayTemplates.map((t) => (
+                          <option key={t.key} value={t.path}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Tooltip>
                   )}
                 </div>
               </div>

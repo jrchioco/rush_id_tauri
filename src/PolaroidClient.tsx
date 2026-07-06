@@ -311,39 +311,43 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
             Polaroid
           </h2>
           <div className="flex items-center gap-3">
-            <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
-              {(["2pcs", "3pcs", "5pcs", "10pcs", "20pcs", "30pcs"] as Layout[]).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => handleLayoutSwitch(l)}
+            <Tooltip content={TOOLTIPS.layoutSwitch}>
+              <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
+                {(["2pcs", "3pcs", "5pcs", "10pcs", "20pcs", "30pcs"] as Layout[]).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => handleLayoutSwitch(l)}
+                    className={cn(
+                      "px-3 py-1 rounded-md text-xs font-mono font-bold tracking-wide transition-colors",
+                      layout === l
+                        ? "bg-[#c8881a] text-[#0c0c0b]"
+                        : "text-[#555] hover:text-[#888]",
+                    )}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </Tooltip>
+            <Tooltip content={TOOLTIPS.stretchAll}>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">Stretch all</span>
+                <div
+                  onClick={handleGlobalStretchToggle}
                   className={cn(
-                    "px-3 py-1 rounded-md text-xs font-mono font-bold tracking-wide transition-colors",
-                    layout === l
-                      ? "bg-[#c8881a] text-[#0c0c0b]"
-                      : "text-[#555] hover:text-[#888]",
+                    "w-7 h-4 rounded-full transition-colors relative",
+                    globalStretch ? "bg-[#c8881a]" : "bg-[#2a2a28]",
                   )}
                 >
-                  {l}
-                </button>
-              ))}
-            </div>
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">Stretch all</span>
-              <div
-                onClick={handleGlobalStretchToggle}
-                className={cn(
-                  "w-7 h-4 rounded-full transition-colors relative",
-                  globalStretch ? "bg-[#c8881a]" : "bg-[#2a2a28]",
-                )}
-              >
-                <div
-                  className={cn(
-                    "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
-                    globalStretch ? "translate-x-[14px]" : "translate-x-[2px]",
-                  )}
-                />
-              </div>
-            </label>
+                  <div
+                    className={cn(
+                      "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
+                      globalStretch ? "translate-x-[14px]" : "translate-x-[2px]",
+                    )}
+                  />
+                </div>
+              </label>
+            </Tooltip>
             <Tooltip
               content={quality === "high" ? TOOLTIPS.quality.on : TOOLTIPS.quality.off}
             >

@@ -460,62 +460,70 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleBackToSizes}
-              className="w-7 h-7 rounded-lg bg-[#111110] border border-[#2a2a28] flex items-center justify-center text-[#555] hover:text-[#c8881a] hover:border-[#c8881a]/50 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
+            <Tooltip content={TOOLTIPS.backToSizes}>
+              <button
+                onClick={handleBackToSizes}
+                className="w-7 h-7 rounded-lg bg-[#111110] border border-[#2a2a28] flex items-center justify-center text-[#555] hover:text-[#c8881a] hover:border-[#c8881a]/50 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            </Tooltip>
             <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">
               {sizeInfo.label} — {sizeInfo.inches}
             </h2>
           </div>
           <div className="flex items-center gap-3">
             {hasDropdown(selectedSize) ? (
-              <select
-                value={typeof layout === "number" ? layout : 2}
-                onChange={(e) => handleLayoutSwitch(Number(e.target.value))}
-                className="bg-[#111110] border border-[#2a2a28] rounded-lg px-3 py-1 text-xs font-mono font-bold text-[#c8881a] tracking-wide cursor-pointer appearance-auto"
-              >
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>{n}pcs</option>
-                ))}
-              </select>
+              <Tooltip content={TOOLTIPS.layoutSwitch}>
+                <select
+                  value={typeof layout === "number" ? layout : 2}
+                  onChange={(e) => handleLayoutSwitch(Number(e.target.value))}
+                  className="bg-[#111110] border border-[#2a2a28] rounded-lg px-3 py-1 text-xs font-mono font-bold text-[#c8881a] tracking-wide cursor-pointer appearance-auto"
+                >
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>{n}pcs</option>
+                  ))}
+                </select>
+              </Tooltip>
             ) : (
-              <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
-                {(selectedSize === "wallet" ? WALLET_LAYOUTS : selectedSize === "4r" ? FOUR_R_LAYOUTS : LAYOUTS).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => handleLayoutSwitch(l)}
-                    className={cn(
-                      "px-3 py-1 rounded-md text-xs font-mono font-bold tracking-wide transition-colors",
-                      layout === l
-                        ? "bg-[#c8881a] text-[#0c0c0b]"
-                        : "text-[#555] hover:text-[#888]",
-                    )}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
+              <Tooltip content={TOOLTIPS.layoutSwitch}>
+                <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
+                  {(selectedSize === "wallet" ? WALLET_LAYOUTS : selectedSize === "4r" ? FOUR_R_LAYOUTS : LAYOUTS).map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => handleLayoutSwitch(l)}
+                      className={cn(
+                        "px-3 py-1 rounded-md text-xs font-mono font-bold tracking-wide transition-colors",
+                        layout === l
+                          ? "bg-[#c8881a] text-[#0c0c0b]"
+                          : "text-[#555] hover:text-[#888]",
+                      )}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </Tooltip>
             )}
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">Stretch all</span>
-              <div
-                onClick={handleGlobalStretchToggle}
-                className={cn(
-                  "w-7 h-4 rounded-full transition-colors relative",
-                  globalStretch ? "bg-[#c8881a]" : "bg-[#2a2a28]",
-                )}
-              >
+            <Tooltip content={TOOLTIPS.stretchAll}>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">Stretch all</span>
                 <div
+                  onClick={handleGlobalStretchToggle}
                   className={cn(
-                    "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
-                    globalStretch ? "translate-x-[14px]" : "translate-x-[2px]",
+                    "w-7 h-4 rounded-full transition-colors relative",
+                    globalStretch ? "bg-[#c8881a]" : "bg-[#2a2a28]",
                   )}
-                />
-              </div>
-            </label>
+                >
+                  <div
+                    className={cn(
+                      "w-3 h-3 rounded-full bg-[#111110] absolute top-0.5 transition-transform",
+                      globalStretch ? "translate-x-[14px]" : "translate-x-[2px]",
+                    )}
+                  />
+                </div>
+              </label>
+            </Tooltip>
             <Tooltip
               content={quality === "high" ? TOOLTIPS.quality.on : TOOLTIPS.quality.off}
             >
