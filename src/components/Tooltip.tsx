@@ -10,7 +10,7 @@ interface TooltipProps {
   children: ReactNode;
 }
 
-export function Tooltip({ content, className, fixed, children }: TooltipProps) {
+export function Tooltip({ content, className, fixed = true, children }: TooltipProps) {
   const { offsetX, side, fixedTop, fixedLeft, triggerRef, tooltipRef, onMouseEnter } = useTooltipPosition({ fixed });
 
   return (

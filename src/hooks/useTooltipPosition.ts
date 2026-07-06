@@ -19,7 +19,7 @@ interface UseTooltipPositionResult {
 }
 
 export function useTooltipPosition(options?: UseTooltipPositionOptions): UseTooltipPositionResult {
-  const fixed = options?.fixed ?? false;
+  const fixed = options?.fixed ?? true;
   const [offsetX, setOffsetX] = useState(0);
   const [side, setSide] = useState<Side>("top");
   const [fixedPos, setFixedPos] = useState({ top: 0, left: 0 });

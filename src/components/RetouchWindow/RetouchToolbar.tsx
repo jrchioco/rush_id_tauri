@@ -35,7 +35,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
         <div>
           <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Tools</h3>
           <div className="space-y-1">
-            <Tooltip content={TOOLTIPS.cloneStamp} fixed>
+            <Tooltip content={TOOLTIPS.cloneStamp}>
               <button
                 onClick={() => setTool("clone")}
                 className={cn(
@@ -49,7 +49,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 Clone Stamp
               </button>
             </Tooltip>
-            <Tooltip content={TOOLTIPS.eraser} fixed>
+            <Tooltip content={TOOLTIPS.eraser}>
               <button
                 onClick={() => setTool("eraser")}
                 className={cn(
@@ -74,7 +74,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 <span>Size</span>
                 <span>{brushSize}px</span>
               </div>
-              <Tooltip content={TOOLTIPS.brushSize} className="w-full" fixed>
+              <Tooltip content={TOOLTIPS.brushSize} className="w-full">
                 <input
                   type="range"
                   min={10}
@@ -90,7 +90,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 <span>Hardness</span>
                 <span>{hardness}%</span>
               </div>
-              <Tooltip content={TOOLTIPS.brushHardness} className="w-full" fixed>
+              <Tooltip content={TOOLTIPS.brushHardness} className="w-full">
                 <input
                   type="range"
                   min={0}
@@ -107,7 +107,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                   <span>Opacity</span>
                   <span>{Math.round(opacity * 100)}%</span>
                 </div>
-                <Tooltip content={TOOLTIPS.brushOpacity} className="w-full" fixed>
+                <Tooltip content={TOOLTIPS.brushOpacity} className="w-full">
                   <input
                     type="range"
                     min={10}
@@ -130,7 +130,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 <span>Brightness</span>
                 <span>{brightness}</span>
               </div>
-              <Tooltip content={TOOLTIPS.brightness} className="w-full" fixed>
+              <Tooltip content={TOOLTIPS.brightness} className="w-full">
                 <input
                   type="range"
                   min={0}
@@ -146,7 +146,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 <span>Contrast</span>
                 <span>{contrast}</span>
               </div>
-              <Tooltip content={TOOLTIPS.contrast} className="w-full" fixed>
+              <Tooltip content={TOOLTIPS.contrast} className="w-full">
                 <input
                   type="range"
                   min={0}
@@ -163,7 +163,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
         <div>
           <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Zoom</h3>
           <div className="flex items-center gap-2">
-            <Tooltip content={TOOLTIPS.zoomReset} fixed>
+            <Tooltip content={TOOLTIPS.zoomReset}>
               <button
                 onClick={() => resetView()}
                 className="px-2 py-1 text-[10px] text-[#888] hover:text-[#e8e4da] font-mono border border-[#2a2a28] rounded transition-colors"
@@ -178,7 +178,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
         <div>
           <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Actions</h3>
           <div className="space-y-1">
-            <Tooltip content={TOOLTIPS.undo} fixed>
+            <Tooltip content={TOOLTIPS.undo}>
               <button
                 onClick={undo}
                 disabled={!canUndo}
@@ -193,7 +193,7 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 Undo
               </button>
             </Tooltip>
-            <Tooltip content={TOOLTIPS.retouchReset} fixed>
+            <Tooltip content={TOOLTIPS.retouchReset}>
               <button
                 onClick={onReset}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono text-[#888] hover:text-[#e8e4da] transition-colors"
