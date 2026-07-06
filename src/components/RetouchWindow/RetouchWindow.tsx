@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { useRetouchCanvas } from "./useRetouchCanvas";
 import { RetouchCanvas } from "./RetouchCanvas";
 import { RetouchToolbar } from "./RetouchToolbar";
+import { Tooltip } from "../Tooltip";
+import { TOOLTIPS } from "../../lib/tooltips";
 
 interface RetouchWindowProps {
   isOpen: boolean;
@@ -89,9 +91,11 @@ export function RetouchWindow({ isOpen, imageDataUrl, onClose, onSave }: Retouch
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2a28]">
           <h2 className="text-sm font-bold text-[#e8e4da] tracking-wide">Retouch Photo</h2>
-          <button onClick={onClose} className="text-[#555] hover:text-[#888] transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+          <Tooltip content={TOOLTIPS.closeRetouch}>
+            <button onClick={onClose} className="text-[#555] hover:text-[#888] transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </Tooltip>
         </div>
 
         <div className="flex flex-1 min-h-0">

@@ -1,5 +1,7 @@
 import { Undo2, RotateCcw, Stamp, Eraser } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { Tooltip } from "../Tooltip";
+import { TOOLTIPS } from "../../lib/tooltips";
 import type { useRetouchCanvas } from "./useRetouchCanvas";
 
 interface RetouchToolbarProps {
@@ -33,30 +35,34 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
         <div>
           <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Tools</h3>
           <div className="space-y-1">
-            <button
-              onClick={() => setTool("clone")}
-              className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors",
-                tool === "clone"
-                  ? "bg-[rgba(200,136,26,0.15)] border border-[#c8881a] text-[#c8881a]"
-                  : "text-[#888] hover:text-[#e8e4da] border border-transparent"
-              )}
-            >
-              <Stamp size={14} />
-              Clone Stamp
-            </button>
-            <button
-              onClick={() => setTool("eraser")}
-              className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors",
-                tool === "eraser"
-                  ? "bg-[rgba(200,136,26,0.15)] border border-[#c8881a] text-[#c8881a]"
-                  : "text-[#888] hover:text-[#e8e4da] border border-transparent"
-              )}
-            >
-              <Eraser size={14} />
-              Eraser
-            </button>
+            <Tooltip content={TOOLTIPS.cloneStamp} fixed>
+              <button
+                onClick={() => setTool("clone")}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors",
+                  tool === "clone"
+                    ? "bg-[rgba(200,136,26,0.15)] border border-[#c8881a] text-[#c8881a]"
+                    : "text-[#888] hover:text-[#e8e4da] border border-transparent"
+                )}
+              >
+                <Stamp size={14} />
+                Clone Stamp
+              </button>
+            </Tooltip>
+            <Tooltip content={TOOLTIPS.eraser} fixed>
+              <button
+                onClick={() => setTool("eraser")}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors",
+                  tool === "eraser"
+                    ? "bg-[rgba(200,136,26,0.15)] border border-[#c8881a] text-[#c8881a]"
+                    : "text-[#888] hover:text-[#e8e4da] border border-transparent"
+                )}
+              >
+                <Eraser size={14} />
+                Eraser
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -68,28 +74,32 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 <span>Size</span>
                 <span>{brushSize}px</span>
               </div>
-              <input
-                type="range"
-                min={10}
-                max={100}
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
-              />
+              <Tooltip content={TOOLTIPS.brushSize} className="w-full" fixed>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  value={brushSize}
+                  onChange={(e) => setBrushSize(Number(e.target.value))}
+                  className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
+                />
+              </Tooltip>
             </div>
             <div>
               <div className="flex justify-between text-[10px] text-[#888] font-mono mb-1">
                 <span>Hardness</span>
                 <span>{hardness}%</span>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={hardness}
-                onChange={(e) => setHardness(Number(e.target.value))}
-                className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
-              />
+              <Tooltip content={TOOLTIPS.brushHardness} className="w-full" fixed>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={hardness}
+                  onChange={(e) => setHardness(Number(e.target.value))}
+                  className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
+                />
+              </Tooltip>
             </div>
             {tool === "clone" && (
               <div>
@@ -97,14 +107,16 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                   <span>Opacity</span>
                   <span>{Math.round(opacity * 100)}%</span>
                 </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={100}
-                  value={Math.round(opacity * 100)}
-                  onChange={(e) => setOpacity(Number(e.target.value) / 100)}
-                  className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
-                />
+                <Tooltip content={TOOLTIPS.brushOpacity} className="w-full" fixed>
+                  <input
+                    type="range"
+                    min={10}
+                    max={100}
+                    value={Math.round(opacity * 100)}
+                    onChange={(e) => setOpacity(Number(e.target.value) / 100)}
+                    className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
+                  />
+                </Tooltip>
               </div>
             )}
           </div>
@@ -118,28 +130,32 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
                 <span>Brightness</span>
                 <span>{brightness}</span>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={200}
-                value={brightness}
-                onChange={(e) => setBrightness(Number(e.target.value))}
-                className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
-              />
+              <Tooltip content={TOOLTIPS.brightness} className="w-full" fixed>
+                <input
+                  type="range"
+                  min={0}
+                  max={200}
+                  value={brightness}
+                  onChange={(e) => setBrightness(Number(e.target.value))}
+                  className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
+                />
+              </Tooltip>
             </div>
             <div>
               <div className="flex justify-between text-[10px] text-[#888] font-mono mb-1">
                 <span>Contrast</span>
                 <span>{contrast}</span>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={200}
-                value={contrast}
-                onChange={(e) => setContrast(Number(e.target.value))}
-                className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
-              />
+              <Tooltip content={TOOLTIPS.contrast} className="w-full" fixed>
+                <input
+                  type="range"
+                  min={0}
+                  max={200}
+                  value={contrast}
+                  onChange={(e) => setContrast(Number(e.target.value))}
+                  className="w-full h-1 bg-[#2a2a28] rounded-lg appearance-none cursor-pointer accent-[#c8881a]"
+                />
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -147,12 +163,14 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
         <div>
           <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Zoom</h3>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => resetView()}
-              className="px-2 py-1 text-[10px] text-[#888] hover:text-[#e8e4da] font-mono border border-[#2a2a28] rounded transition-colors"
-            >
-              Reset
-            </button>
+            <Tooltip content={TOOLTIPS.zoomReset} fixed>
+              <button
+                onClick={() => resetView()}
+                className="px-2 py-1 text-[10px] text-[#888] hover:text-[#e8e4da] font-mono border border-[#2a2a28] rounded transition-colors"
+              >
+                Reset
+              </button>
+            </Tooltip>
             <span className="text-[10px] text-[#555] font-mono">{Math.round(zoom * 100)}%</span>
           </div>
         </div>
@@ -160,26 +178,30 @@ export function RetouchToolbar({ state, onReset }: RetouchToolbarProps) {
         <div>
           <h3 className="text-[10px] text-[#555] font-mono uppercase tracking-wider mb-2">Actions</h3>
           <div className="space-y-1">
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors",
-                canUndo
-                  ? "text-[#888] hover:text-[#e8e4da]"
-                  : "text-[#333] cursor-not-allowed"
-              )}
-            >
-              <Undo2 size={14} />
-              Undo
-            </button>
-            <button
-              onClick={onReset}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono text-[#888] hover:text-[#e8e4da] transition-colors"
-            >
-              <RotateCcw size={14} />
-              Reset
-            </button>
+            <Tooltip content={TOOLTIPS.undo} fixed>
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono transition-colors",
+                  canUndo
+                    ? "text-[#888] hover:text-[#e8e4da]"
+                    : "text-[#333] cursor-not-allowed"
+                )}
+              >
+                <Undo2 size={14} />
+                Undo
+              </button>
+            </Tooltip>
+            <Tooltip content={TOOLTIPS.retouchReset} fixed>
+              <button
+                onClick={onReset}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded text-xs font-mono text-[#888] hover:text-[#e8e4da] transition-colors"
+              >
+                <RotateCcw size={14} />
+                Reset
+              </button>
+            </Tooltip>
           </div>
         </div>
 

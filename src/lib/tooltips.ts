@@ -31,6 +31,19 @@ export const TOOLTIPS = {
   retouch: "Open retouch editor: clone stamp and eraser",
   removeSlot: "Remove this slot",
   settings: "API keys, preferences and configuration",
+
+  // Retouch Window
+  closeRetouch: "Close without saving",
+  cloneStamp: "Copy pixels from source area: Alt+Click to set source",
+  eraser: "Erase to transparent",
+  undo: "Undo last stroke (Ctrl+Z)",
+  retouchReset: "Reset to original image",
+  zoomReset: "Reset zoom to fit (Ctrl+0)",
+  brushSize: "Brush diameter: 10-100px ([ ] keys)",
+  brushHardness: "Edge softness: 0% soft, 100% hard (eraser only)",
+  brushOpacity: "Stroke opacity (clone tool only)",
+  brightness: "Adjust image brightness",
+  contrast: "Adjust image contrast",
 } as const;
 
 export type TooltipKey = keyof typeof TOOLTIPS;
