@@ -606,7 +606,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
                   <div className="w-full mt-2 h-9 bg-[#1a1a18] border border-[#2a2a28] rounded-lg animate-pulse" />
                 ) : (
                   <>
-                    <Tooltip content={TOOLTIPS.selectTemplate}>
+                    <Tooltip content={TOOLTIPS.selectTemplate} className="w-full">
                       <button
                         onClick={() => setTemplateOpen(!templateOpen)}
                         className="w-full mt-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-sm text-[#e8e4da] font-mono flex items-center justify-between focus:outline-none focus:border-[#c8881a]"

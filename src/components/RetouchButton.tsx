@@ -8,12 +8,12 @@ interface RetouchButtonProps {
 
 export function RetouchButton({ onClick }: RetouchButtonProps) {
   return (
-    <Tooltip content={TOOLTIPS.retouch}>
+    <Tooltip content={TOOLTIPS.retouch} className="absolute bottom-2 right-2 z-10">
       <button
         onClick={onClick}
-        className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1
+        className="flex items-center gap-1 px-2 py-1
                    bg-black/60 text-white text-xs rounded opacity-50
-                   hover:opacity-100 transition-opacity duration-150 z-10"
+                   hover:opacity-100 transition-opacity duration-150"
       >
         <Paintbrush size={12} />
         Retouch

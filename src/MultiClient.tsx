@@ -645,14 +645,16 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
 
             {slot.step === "done" && slot.resultPath && (
               <div className="p-3 space-y-3">
-                <div
-                  className="relative rounded-lg flex items-center justify-center p-3 [clip-path:inset(0_round_0.5rem)]"
-                  style={{
-                    backgroundImage: "repeating-conic-gradient(#1e1e1c 0% 25%, #161614 0% 50%)",
-                    backgroundSize: "12px 12px",
-                  }}
-                >
-                  <img src={slot.resultPath} alt="Result" className="max-h-[120px] object-contain rounded shadow-lg" />
+                <div className="relative">
+                  <div
+                    className="rounded-lg flex items-center justify-center p-3 [clip-path:inset(0_round_0.5rem)]"
+                    style={{
+                      backgroundImage: "repeating-conic-gradient(#1e1e1c 0% 25%, #161614 0% 50%)",
+                      backgroundSize: "12px 12px",
+                    }}
+                  >
+                    <img src={slot.resultPath} alt="Result" className="max-h-[120px] object-contain rounded shadow-lg" />
+                  </div>
                   <RetouchButton onClick={() => handleRetouchOpen(i)} />
                 </div>
                 <div className="flex items-center gap-2">
@@ -698,7 +700,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
                   {templatesLoading ? (
                     <div className="w-full h-7 bg-[#1a1a18] border border-[#2a2a28] rounded-lg animate-pulse" />
                   ) : (
-                    <Tooltip content={TOOLTIPS.selectTemplate}>
+                    <Tooltip content={TOOLTIPS.selectTemplate} className="w-full">
                       <select
                         value={slot.selectedTemplate}
                         onChange={(e) => updateSlot(i, { selectedTemplate: e.target.value })}
