@@ -234,7 +234,7 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
       ref={cardRef}
       style={{ aspectRatio: `${aspectRatio}` }}
       className={cn(
-        "relative rounded-lg overflow-visible transition-colors",
+        "relative rounded-lg overflow-hidden transition-colors",
         "w-full",
         isEmpty
           ? "border-2 border-dashed border-[#c8881a]/40 bg-[#111110] hover:border-[#c8881a]/70 cursor-pointer"
@@ -265,7 +265,7 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
         <>
           <canvas
             ref={canvasRef}
-            className={cn("absolute inset-0 w-full h-full [clip-path:inset(0_round_0.5rem)]", canvasCursor)}
+            className={cn("absolute inset-0 w-full h-full", canvasCursor)}
             onMouseDown={handlePanStart}
           />
 

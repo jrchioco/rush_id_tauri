@@ -232,7 +232,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
     <div
       ref={cardRef}
       className={cn(
-        "relative rounded-lg overflow-visible transition-colors",
+        "relative rounded-lg overflow-hidden transition-colors",
         "w-full aspect-[45.693394/61.973392]",
         isEmpty
           ? "border-2 border-dashed border-[#c8881a]/40 bg-[#111110] hover:border-[#c8881a]/70 cursor-pointer"
@@ -263,7 +263,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
         <>
           <canvas
             ref={canvasRef}
-            className={cn("absolute inset-0 w-full h-full [clip-path:inset(0_round_0.5rem)]", canvasCursor)}
+            className={cn("absolute inset-0 w-full h-full", canvasCursor)}
             onMouseDown={handlePanStart}
           />
 

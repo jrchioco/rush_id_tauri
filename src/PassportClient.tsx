@@ -521,7 +521,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
         </div>
 
         {slots.map((slot, i) => (
-          <div key={i} className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-visible">
+          <div key={i} className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-[#2a2a28]">
               {slot.step === "done" && (
                 <Tooltip content={TOOLTIPS.fontCycle}>
@@ -608,7 +608,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
                     onChange={(r) => updateSlot(i, { rotation: r })}
                     size="sm"
                   />
-                  <div ref={cropperWrapRefs[i]} className="flex-1 relative [clip-path:inset(0_round_0.75rem)]">
+                  <div ref={cropperWrapRefs[i]} className="flex-1 relative">
                     <Cropper
                       image={slot.originalImage}
                       crop={slot.crop}
@@ -648,7 +648,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
               <div className="p-3 space-y-3">
                 <div className="relative">
                   <div
-                    className="rounded-lg flex items-center justify-center p-3 [clip-path:inset(0_round_0.5rem)]"
+                    className="rounded-lg flex items-center justify-center p-3"
                     style={{
                       backgroundImage: "repeating-conic-gradient(#1e1e1c 0% 25%, #161614 0% 50%)",
                       backgroundSize: "12px 12px",

@@ -447,10 +447,10 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
         )}
 
         {step === "crop" && originalImage && (
-          <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-visible">
+          <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
             <div className="flex min-h-[500px] bg-[#0c0c0b]">
               <RotationSidebar value={rotation} onChange={setRotation} size="lg" />
-              <div ref={cropperWrapRef} className="flex-1 relative [clip-path:inset(0_round_0.75rem)]">
+              <div ref={cropperWrapRef} className="flex-1 relative">
                 <Cropper
                   image={originalImage}
                   crop={crop}
