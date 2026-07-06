@@ -1,6 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Upload, X, RotateCw, StretchHorizontal } from "lucide-react";
 import { cn } from "./lib/utils";
+import { Tooltip } from "./components/Tooltip";
+import { TOOLTIPS } from "./lib/tooltips";
 
 export type FitMode = "cover" | "stretch";
 
@@ -230,7 +232,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
     <div
       ref={cardRef}
       className={cn(
-        "relative rounded-lg overflow-hidden transition-colors",
+        "relative rounded-lg overflow-visible transition-colors",
         "w-full aspect-[45.693394/61.973392]",
         isEmpty
           ? "border-2 border-dashed border-[#c8881a]/40 bg-[#111110] hover:border-[#c8881a]/70 cursor-pointer"
@@ -261,34 +263,40 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
         <>
           <canvas
             ref={canvasRef}
-            className={cn("absolute inset-0 w-full h-full", canvasCursor)}
+            className={cn("absolute inset-0 w-full h-full [clip-path:inset(0_round_0.5rem)]", canvasCursor)}
             onMouseDown={handlePanStart}
           />
 
           <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => { e.stopPropagation(); onClear(); }}
-              className="w-5 h-5 rounded bg-[#0c0c0b]/80 border border-[#2a2a28] flex items-center justify-center text-[#888] hover:text-red-400 hover:border-red-400/50 transition-colors"
-            >
-              <X className="w-3 h-3" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); cycleRotation(); }}
-              className="w-5 h-5 rounded bg-[#0c0c0b]/80 border border-[#2a2a28] flex items-center justify-center text-[#888] hover:text-[#c8881a] hover:border-[#c8881a]/50 transition-colors"
-            >
-              <RotateCw className="w-3 h-3" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); toggleFitMode(); }}
-              className={cn(
-                "w-5 h-5 rounded bg-[#0c0c0b]/80 border flex items-center justify-center transition-colors",
-                slot.fitMode === "stretch"
-                  ? "border-[#c8881a]/50 text-[#c8881a]"
-                  : "border-[#2a2a28] text-[#888] hover:text-[#c8881a] hover:border-[#c8881a]/50",
-              )}
-            >
-              <StretchHorizontal className="w-3 h-3" />
-            </button>
+            <Tooltip content={TOOLTIPS.removeImage}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onClear(); }}
+                className="w-5 h-5 rounded bg-[#0c0c0b]/80 border border-[#2a2a28] flex items-center justify-center text-[#888] hover:text-red-400 hover:border-red-400/50 transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Tooltip>
+            <Tooltip content={TOOLTIPS.rotate90}>
+              <button
+                onClick={(e) => { e.stopPropagation(); cycleRotation(); }}
+                className="w-5 h-5 rounded bg-[#0c0c0b]/80 border border-[#2a2a28] flex items-center justify-center text-[#888] hover:text-[#c8881a] hover:border-[#c8881a]/50 transition-colors"
+              >
+                <RotateCw className="w-3 h-3" />
+              </button>
+            </Tooltip>
+            <Tooltip content={slot.fitMode === "stretch" ? TOOLTIPS.toggleFitCover : TOOLTIPS.toggleFitStretch}>
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleFitMode(); }}
+                className={cn(
+                  "w-5 h-5 rounded bg-[#0c0c0b]/80 border flex items-center justify-center transition-colors",
+                  slot.fitMode === "stretch"
+                    ? "border-[#c8881a]/50 text-[#c8881a]"
+                    : "border-[#2a2a28] text-[#888] hover:text-[#c8881a] hover:border-[#c8881a]/50",
+                )}
+              >
+                <StretchHorizontal className="w-3 h-3" />
+              </button>
+            </Tooltip>
           </div>
 
           <div className="absolute bottom-1 left-1 right-1 flex justify-center opacity-0 hover:opacity-100 transition-opacity">
