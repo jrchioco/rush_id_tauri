@@ -496,14 +496,16 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
             </Tooltip>
             <div className="flex gap-2">
               {anyCrop && (
-                <button
-                  onClick={handleProcessAll}
-                  disabled={busy}
-                  className="px-3 py-1.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-xs tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] flex items-center gap-1.5"
-                >
-                  {busy ? <RotateCw className="w-3 h-3 animate-spin" /> : <Scissors className="w-3 h-3" />}
-                  Process All
-                </button>
+                <Tooltip content={TOOLTIPS.processAll}>
+                  <button
+                    onClick={handleProcessAll}
+                    disabled={busy}
+                    className="px-3 py-1.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-xs tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] flex items-center gap-1.5"
+                  >
+                    {busy ? <RotateCw className="w-3 h-3 animate-spin" /> : <Scissors className="w-3 h-3" />}
+                    Process All
+                  </button>
+                </Tooltip>
               )}
               <Tooltip content={TOOLTIPS.resetAll}>
                 <button
@@ -714,22 +716,26 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
 
         {anyDone && (
           <div className="flex gap-3">
-            <button
-              onClick={handleSavePdf}
-              disabled={busy}
-              className="flex-1 px-4 py-2.5 bg-transparent text-[#c8881a] border border-[#c8881a] rounded-lg font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {busy ? <RotateCw className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-              Save PDF
-            </button>
-            <button
-              onClick={() => handleComposite()}
-              disabled={busy}
-              className="flex-1 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] flex items-center justify-center gap-2"
-            >
-              {busy ? <RotateCw className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-              {busy ? "Compositing..." : `Print All (${slots.filter((s) => s.step === "done").length} slots)`}
-            </button>
+            <Tooltip content={TOOLTIPS.savePdf} className="flex-1">
+              <button
+                onClick={handleSavePdf}
+                disabled={busy}
+                className="flex-1 px-4 py-2.5 bg-transparent text-[#c8881a] border border-[#c8881a] rounded-lg font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {busy ? <RotateCw className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                Save PDF
+              </button>
+            </Tooltip>
+            <Tooltip content={TOOLTIPS.printAll} className="flex-1">
+              <button
+                onClick={() => handleComposite()}
+                disabled={busy}
+                className="flex-1 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] flex items-center justify-center gap-2"
+              >
+                {busy ? <RotateCw className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                {busy ? "Compositing..." : `Print All (${slots.filter((s) => s.step === "done").length} slots)`}
+              </button>
+            </Tooltip>
           </div>
         )}
       </div>

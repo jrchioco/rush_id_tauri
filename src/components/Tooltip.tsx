@@ -5,16 +5,17 @@ import { useTooltipPosition } from "../hooks/useTooltipPosition";
 interface TooltipProps {
   content: ReactNode;
   side?: "top" | "bottom" | "left" | "right";
+  className?: string;
   children: ReactNode;
 }
 
-export function Tooltip({ content, children }: TooltipProps) {
+export function Tooltip({ content, className, children }: TooltipProps) {
   const { offsetX, side, triggerRef, tooltipRef, onMouseEnter } = useTooltipPosition();
 
   return (
     <div
       ref={triggerRef}
-      className="group/tooltip relative inline-flex"
+      className={cn("group/tooltip relative inline-flex", className)}
       onMouseEnter={onMouseEnter}
     >
       {children}

@@ -479,25 +479,29 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
                 onChange={(e) => setZoom(Number(e.target.value))}
                 className="flex-1 accent-[#c8881a]"
               />
-              <button
-                onClick={handleProcess}
-                disabled={loading}
-                className={cn(
-                  "px-5 py-2 rounded-lg font-semibold text-sm flex items-center gap-2 tracking-wide transition-colors",
-                  loading
-                    ? "bg-[#2a2a28] text-[#555] cursor-not-allowed"
-                    : "bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030]",
-                )}
-              >
-                {loading ? <RotateCw className="w-4 h-4 animate-spin" /> : <Scissors className="w-4 h-4" />}
-                {loading ? "Processing..." : effectiveTestMode ? "Crop (Test Mode)" : "Crop & Remove BG"}
-              </button>
-              <button
-                onClick={handleReset}
-                className="px-3 py-2 text-[#555] hover:text-[#888] text-sm font-mono transition-colors"
-              >
-                Cancel
-              </button>
+              <Tooltip content={effectiveTestMode ? TOOLTIPS.cropTestMode : TOOLTIPS.cropAndProcess}>
+                <button
+                  onClick={handleProcess}
+                  disabled={loading}
+                  className={cn(
+                    "px-5 py-2 rounded-lg font-semibold text-sm flex items-center gap-2 tracking-wide transition-colors",
+                    loading
+                      ? "bg-[#2a2a28] text-[#555] cursor-not-allowed"
+                      : "bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030]",
+                  )}
+                >
+                  {loading ? <RotateCw className="w-4 h-4 animate-spin" /> : <Scissors className="w-4 h-4" />}
+                  {loading ? "Processing..." : effectiveTestMode ? "Crop (Test Mode)" : "Crop & Remove BG"}
+                </button>
+              </Tooltip>
+              <Tooltip content={TOOLTIPS.cancel}>
+                <button
+                  onClick={handleReset}
+                  className="px-3 py-2 text-[#555] hover:text-[#888] text-sm font-mono transition-colors"
+                >
+                  Cancel
+                </button>
+              </Tooltip>
             </div>
           </div>
         )}
@@ -636,27 +640,33 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
                 )}
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={handlePrint}
-                  className="flex-1 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors flex items-center justify-center gap-2"
-                >
-                  <Printer className="w-4 h-4" /> Print
-                </button>
-                <button
-                  onClick={handleSavePdf}
-                  className="flex-1 px-4 py-2.5 bg-transparent text-[#c8881a] border border-[#c8881a] rounded-lg font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 transition-colors flex items-center justify-center gap-2"
-                >
-                  <FileDown className="w-4 h-4" /> Save PDF
-                </button>
+                <Tooltip content={TOOLTIPS.print} className="flex-1">
+                  <button
+                    onClick={handlePrint}
+                    className="flex-1 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Printer className="w-4 h-4" /> Print
+                  </button>
+                </Tooltip>
+                <Tooltip content={TOOLTIPS.savePdf} className="flex-1">
+                  <button
+                    onClick={handleSavePdf}
+                    className="flex-1 px-4 py-2.5 bg-transparent text-[#c8881a] border border-[#c8881a] rounded-lg font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <FileDown className="w-4 h-4" /> Save PDF
+                  </button>
+                </Tooltip>
               </div>
             </div>
 
-            <button
-              onClick={handleReset}
-              className="text-[#555] hover:text-[#888] text-xs font-mono transition-colors flex items-center gap-1"
-            >
-              ← Start Over
-            </button>
+            <Tooltip content={TOOLTIPS.startOver}>
+              <button
+                onClick={handleReset}
+                className="text-[#555] hover:text-[#888] text-xs font-mono transition-colors flex items-center gap-1"
+              >
+                ← Start Over
+              </button>
+            </Tooltip>
           </div>
         )}
       </div>

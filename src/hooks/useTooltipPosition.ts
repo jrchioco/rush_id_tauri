@@ -31,7 +31,12 @@ export function useTooltipPosition() {
     }
     setOffsetX(offset);
 
-    if (triggerRect.top < tooltipH + MARGIN * 2) {
+    const spaceAbove = triggerRect.top;
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+
+    if (spaceBelow < tooltipH + MARGIN && spaceAbove >= spaceBelow) {
+      setSide("top");
+    } else if (spaceAbove < tooltipH + MARGIN) {
       setSide("bottom");
     } else {
       setSide("top");
