@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice, labelArgsFor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
+import { buildSavePath, setLastSaveDir } from "./lib/savePath";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
@@ -328,9 +329,14 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
   async function handleSavePdf() {
     if (!selectedTemplate) return;
     try {
+      const templateKey = templates.find((t) => t.path === selectedTemplate)?.key ?? "photo";
       const { save } = await import("@tauri-apps/plugin-dialog");
-      const savePath = await save({ filters: [{ name: "PDF", extensions: ["pdf"] }] });
+      const savePath = await save({
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+        defaultPath: buildSavePath([templateKey, "photo"]),
+      });
       if (!savePath || !isMounted()) return;
+      setLastSaveDir(savePath);
       log("Exporting PDF...");
       const pdfPath = await invoke<string>("export_pdf", { svgPath: selectedTemplate, savePath });
       if (!isMounted()) return;

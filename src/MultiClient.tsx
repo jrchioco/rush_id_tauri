@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice, labelArgsFor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
+import { buildSavePath, setLastSaveDir } from "./lib/savePath";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
@@ -291,9 +292,14 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
   }
 
   async function handleSavePdf() {
+    const done = slotsRef.current.filter((s) => s.step === "done");
     const { save } = await import("@tauri-apps/plugin-dialog");
-    const savePath = await save({ filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    const savePath = await save({
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+      defaultPath: buildSavePath(["multi", `${done.length}slots`]),
+    });
     if (!savePath) return;
+    setLastSaveDir(savePath);
     await handleComposite(savePath);
   }
 

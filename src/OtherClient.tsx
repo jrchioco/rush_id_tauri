@@ -5,6 +5,7 @@ import { Printer, RotateCw, Trash2, ArrowLeft } from "lucide-react";
 import { cn, fmt, loadImage } from "./lib/utils";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useIsMounted } from "./lib/hooks/useIsMounted";
+import { buildSavePath, setLastSaveDir } from "./lib/savePath";
 import type { LogEntry } from "./types";
 import { OtherSlotCard, type FitMode, type OtherSlotState } from "./OtherSlotCard";
 import { Tooltip } from "./components/Tooltip";
@@ -333,10 +334,15 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
 
   const handleSavePdf = useCallback(async () => {
     const { save } = await import("@tauri-apps/plugin-dialog");
-    const savePath = await save({ filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    const layoutStr = typeof layout === "number" ? `${layout}pcs` : layout;
+    const savePath = await save({
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+      defaultPath: buildSavePath([selectedSize ?? "other", layoutStr]),
+    });
     if (!savePath) return;
+    setLastSaveDir(savePath);
     await handleExport(savePath);
-  }, [handleExport]);
+  }, [handleExport, selectedSize, layout]);
 
   useTauriDragDrop((paths) => {
     const validExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];

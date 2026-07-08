@@ -5,6 +5,7 @@ import { Printer, RotateCw, Trash2, TriangleAlert } from "lucide-react";
 import { cn, fmt, loadImage } from "./lib/utils";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useIsMounted } from "./lib/hooks/useIsMounted";
+import { buildSavePath, setLastSaveDir } from "./lib/savePath";
 import type { LogEntry } from "./types";
 import { PolaroidSlotCard, type FitMode, type PolaroidSlotState } from "./PolaroidSlotCard";
 import { Tooltip } from "./components/Tooltip";
@@ -223,10 +224,14 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
 
   const handleSavePdf = useCallback(async () => {
     const { save } = await import("@tauri-apps/plugin-dialog");
-    const savePath = await save({ filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    const savePath = await save({
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+      defaultPath: buildSavePath(["polaroid", layout]),
+    });
     if (!savePath) return;
+    setLastSaveDir(savePath);
     await handleExport(savePath);
-  }, [handleExport]);
+  }, [handleExport, layout]);
 
   useTauriDragDrop((paths) => {
     const validExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
