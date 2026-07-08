@@ -30,7 +30,7 @@ const AiStudioTab = forwardRef<{ hasUnsavedWork: () => boolean }>(function AiStu
           ))}
         </div>
         <div className="mt-8 px-4 py-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg inline-block">
-          <span className="text-[10px] text-[#555] font-mono tracking-widest">POWERED BY GOOGLE AI</span>
+          <span className="text-[10px] text-[#555] font-mono tracking-widest">POWERED BY GEMINI</span>
         </div>
       </div>
     </main>
