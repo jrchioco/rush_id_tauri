@@ -5,6 +5,16 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.18.2": {
+    title: "What's New in v1.18.2",
+    date: "2026-07-09",
+    notes: [
+      "Save PDF remembers last folder — dialog opens to your last save location",
+      "Auto-generated filenames — exports now include timestamp (e.g., 1x1-photo-20260709-143022.pdf)",
+      "Export tooltip clarity — Print tooltips now explain the file is temporary and auto-deleted on restart",
+      "Tab renamed — Gemini tab is now AI Studio (powered by Gemini)",
+    ],
+  },
   "1.18.1": {
     title: "What's New in v1.18.1",
     date: "2026-07-07",
