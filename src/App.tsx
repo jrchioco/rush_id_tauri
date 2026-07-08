@@ -10,12 +10,12 @@ import { Tooltip } from "./components/Tooltip";
 import { TOOLTIPS } from "./lib/tooltips";
 import SingleClient from "./SingleClient";
 import MultiClient from "./MultiClient";
-import GeminiTab from "./GeminiTab";
+import AiStudioTab from "./AiStudioTab";
 import PassportClient from "./PassportClient";
 import PolaroidClient from "./PolaroidClient";
 import OtherClient from "./OtherClient";
 
-type Tab = "single" | "multi" | "passport" | "polaroid" | "other" | "gemini";
+type Tab = "single" | "multi" | "passport" | "polaroid" | "other" | "ai-studio";
 
 const TABS: { key: Tab; label: string; icon: typeof Scan }[] = [
   { key: "single", label: "Single", icon: Scan },
@@ -23,7 +23,7 @@ const TABS: { key: Tab; label: string; icon: typeof Scan }[] = [
   { key: "passport", label: "Passport", icon: IdCard },
   { key: "polaroid", label: "Polaroid", icon: Camera },
   { key: "other", label: "Other", icon: Ruler },
-  { key: "gemini", label: "Gemini", icon: Sparkles },
+  { key: "ai-studio", label: "AI Studio", icon: Sparkles },
 ];
 
 export default function App() {
@@ -37,7 +37,7 @@ export default function App() {
   const [configVersion, setConfigVersion] = useState(0);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const tabRefs = useRef<Record<Tab, { hasUnsavedWork: () => boolean } | null>>({
-    single: null, multi: null, passport: null, polaroid: null, other: null, gemini: null,
+    single: null, multi: null, passport: null, polaroid: null, other: null, "ai-studio": null,
   });
 
   const handleTabSwitch = useCallback((key: Tab) => {
@@ -250,7 +250,7 @@ export default function App() {
       {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} /></ErrorBoundary>}
       {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} /></ErrorBoundary>}
       {activeTab === "other" && <ErrorBoundary><OtherClient key={configVersion} ref={(el) => { tabRefs.current.other = el; }} /></ErrorBoundary>}
-      {activeTab === "gemini" && <ErrorBoundary><GeminiTab key={configVersion} ref={(el) => { tabRefs.current.gemini = el; }} /></ErrorBoundary>}
+      {activeTab === "ai-studio" && <ErrorBoundary><AiStudioTab key={configVersion} ref={(el) => { tabRefs.current["ai-studio"] = el; }} /></ErrorBoundary>}
 
       <SettingsModal
         open={settingsOpen}

@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { Sparkles } from "lucide-react";
 
-const GeminiTab = forwardRef<{ hasUnsavedWork: () => boolean }>(function GeminiTab(_, ref) {
+const AiStudioTab = forwardRef<{ hasUnsavedWork: () => boolean }>(function AiStudioTab(_, ref) {
   useImperativeHandle(ref, () => ({
     hasUnsavedWork: () => false,
   }));
@@ -12,9 +12,9 @@ const GeminiTab = forwardRef<{ hasUnsavedWork: () => boolean }>(function GeminiT
         <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#4285f4] via-[#34a853] to-[#fbbc05] flex items-center justify-center">
           <Sparkles className="w-8 h-8 text-white" />
         </div>
-        <h2 className="text-lg font-bold text-[#e8e4da] tracking-wide mb-2">Gemini</h2>
+        <h2 className="text-lg font-bold text-[#e8e4da] tracking-wide mb-2">AI Studio</h2>
         <p className="text-sm text-[#555] font-mono mb-6">
-          AI-powered image generation & editing — coming soon
+          AI-powered studio - coming soon
         </p>
         <div className="max-w-md mx-auto space-y-3 text-left">
           {[
@@ -37,4 +37,4 @@ const GeminiTab = forwardRef<{ hasUnsavedWork: () => boolean }>(function GeminiT
   );
 });
 
-export default GeminiTab;
+export default AiStudioTab;
