@@ -1,0 +1,150 @@
+.companion-widget {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 40; /* below SettingsModal/Toaster in rush_id_tauri */
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  pointer-events: none; /* widget itself doesn't block clicks... */
+}
+
+.companion-image-stack {
+  position: relative;
+  width: 150px; /* matches "med" tier default; override via CSS for other tiers */
+  height: 150px;
+  pointer-events: none; /* ...only the head-pat region is interactive */
+  animation: companion-bob 3.6s ease-in-out infinite;
+}
+
+.companion-image-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.companion-image-inner.is-pulsing {
+  animation: companion-pop 400ms ease-out;
+}
+
+.companion-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.companion-image--in {
+  animation: companion-fade-in var(--effie-fade, 240ms) ease-out;
+}
+
+.companion-image--out {
+  animation: companion-fade-out var(--effie-fade, 240ms) ease-out forwards;
+}
+
+.companion-headpat-region {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 28%; /* top ~25-30% of bounding box (her head) */
+  cursor: pointer;
+  pointer-events: auto; /* only her head is clickable; rest passes clicks through */
+}
+
+.companion-bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 200px;
+  padding: 6px 10px;
+  background: #1a1a1a;
+  border: 1px solid #c8881a;
+  border-radius: 8px;
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #fff;
+  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms ease, visibility 0s linear 200ms;
+}
+
+.companion-bubble.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 200ms ease;
+}
+
+.companion-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  right: 16px;
+  border: 6px solid transparent;
+  border-top-color: #c8881a;
+}
+
+.companion-bubble-text {
+  flex: 1;
+}
+
+.companion-bubble-dismiss {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  margin-left: 2px;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.companion-bubble-dismiss:hover {
+  color: #fff;
+}
+
+@keyframes companion-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes companion-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes companion-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes companion-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

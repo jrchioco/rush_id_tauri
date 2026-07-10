@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./components/CompanionWidget/effieInvoke";
 import { toast } from "sonner";
 import { Printer, RotateCw, Trash2, ArrowLeft } from "lucide-react";
 import { cn, fmt, loadImage } from "./lib/utils";

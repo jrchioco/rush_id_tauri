@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./components/CompanionWidget/effieInvoke";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";

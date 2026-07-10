@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./CompanionWidget/effieInvoke";
 import { getVersion, getTauriVersion } from "@tauri-apps/api/app";
 import { X, Eye, EyeOff, Plus } from "lucide-react";
 import { toast } from "sonner";

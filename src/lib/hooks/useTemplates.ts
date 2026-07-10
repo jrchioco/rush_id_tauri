@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../components/CompanionWidget/effieInvoke";
 import type { SvgTemplate } from "../../types";
 import { useIsMounted } from "./useIsMounted";
 

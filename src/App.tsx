@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./components/CompanionWidget/effieInvoke";
 import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "./lib/utils";
@@ -14,6 +14,9 @@ import AiStudioTab from "./AiStudioTab";
 import PassportClient from "./PassportClient";
 import PolaroidClient from "./PolaroidClient";
 import OtherClient from "./OtherClient";
+import { CompanionWidget } from "./components/CompanionWidget";
+import { useEffieMood, setEffieMood } from "./components/CompanionWidget/moodStore";
+import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 
 type Tab = "single" | "multi" | "passport" | "polaroid" | "other" | "ai-studio";
 
@@ -75,6 +78,16 @@ export default function App() {
       setShowWhatsNew(true);
     }
   }, []);
+
+  // Effie companion widget: subscribe to her mood store and surface a "dragover"
+  // mood while a file is dragged anywhere over the window (guarded so it never
+  // clobbers an in-flight "working" mood).
+  const effie = useEffieMood();
+  const effieDrag = useTauriDragDrop(() => {});
+  useEffect(() => {
+    if (effieDrag.isDragging && effie.mood === "idle") setEffieMood("dragover");
+    else if (!effieDrag.isDragging && effie.mood === "dragover") setEffieMood("idle");
+  }, [effieDrag.isDragging, effie.mood]);
 
   async function handleSaveConfig() {
     try {
@@ -261,6 +274,13 @@ export default function App() {
       <WhatsNewModal
         open={showWhatsNew}
         onClose={() => setShowWhatsNew(false)}
+      />
+
+      <CompanionWidget
+        mood={effie.mood}
+        actionKey={effie.actionKey}
+        message={effie.message}
+        tier="med"
       />
     </div>
   );
