@@ -278,13 +278,14 @@ export default function App() {
         onClose={() => setShowWhatsNew(false)}
       />
 
-      <CompanionWidget
-        mood={effie.mood}
-        actionKey={effie.actionKey}
-        message={effie.message}
-        tier={effieSettings.tier}
-        visible={effieSettings.enabled}
-      />
+      {effieSettings.enabled && (
+        <CompanionWidget
+          mood={effie.mood}
+          actionKey={effie.actionKey}
+          message={effie.message}
+          tier={effieSettings.tier}
+        />
+      )}
     </div>
   );
 }
