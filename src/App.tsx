@@ -16,6 +16,7 @@ import PolaroidClient from "./PolaroidClient";
 import OtherClient from "./OtherClient";
 import { CompanionWidget } from "./components/CompanionWidget";
 import { useEffieMood, setEffieMood } from "./components/CompanionWidget/moodStore";
+import { useEffieSettings } from "./components/CompanionWidget/effieSettings";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 
 type Tab = "single" | "multi" | "passport" | "polaroid" | "other" | "ai-studio";
@@ -83,6 +84,7 @@ export default function App() {
   // mood while a file is dragged anywhere over the window (guarded so it never
   // clobbers an in-flight "working" mood).
   const effie = useEffieMood();
+  const effieSettings = useEffieSettings();
   const effieDrag = useTauriDragDrop(() => {});
   useEffect(() => {
     if (effieDrag.isDragging && effie.mood === "idle") setEffieMood("dragover");
@@ -280,7 +282,8 @@ export default function App() {
         mood={effie.mood}
         actionKey={effie.actionKey}
         message={effie.message}
-        tier="med"
+        tier={effieSettings.tier}
+        visible={effieSettings.enabled}
       />
     </div>
   );

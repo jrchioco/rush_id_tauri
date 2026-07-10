@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
 import { invoke } from "./CompanionWidget/effieInvoke";
+import {
+  useEffieSettings,
+  getEffieSettings,
+  setEffieTier,
+  setEffieEnabled,
+} from "./CompanionWidget/effieSettings";
+import type { ResolutionTier } from "./CompanionWidget";
 import { getVersion, getTauriVersion } from "@tauri-apps/api/app";
 import { X, Eye, EyeOff, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -8,7 +15,7 @@ import { useIsMounted } from "../lib/hooks/useIsMounted";
 import { PatchNotesModal } from "./PatchNotesModal";
 import { LicenseModal } from "./LicenseModal";
 
-type SettingsTab = "keys" | "about";
+type SettingsTab = "keys" | "about" | "effie";
 
 interface SettingsModalProps {
   open: boolean;
@@ -74,6 +81,11 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
   const [patchNotesOpen, setPatchNotesOpen] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
 
+  // Effie preferences (seeded from the store when the modal opens; committed on Save)
+  const effie = useEffieSettings();
+  const [effieTier, setLocalEffieTier] = useState<ResolutionTier>(effie.tier);
+  const [effieEnabled, setLocalEffieEnabled] = useState(effie.enabled);
+
   useEffect(() => {
     if (!open) return;
     setFetching(true);
@@ -95,6 +107,14 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
     if (!open) return;
     getVersion().then(setAppVersion).catch(() => {});
     getTauriVersion().then(setTauriVersion).catch(() => {});
+  }, [open]);
+
+  // Seed Effie prefs from the store each time the modal opens (so Cancel discards).
+  useEffect(() => {
+    if (!open) return;
+    const s = getEffieSettings();
+    setLocalEffieTier(s.tier);
+    setLocalEffieEnabled(s.enabled);
   }, [open]);
 
   if (!open) return null;
@@ -167,6 +187,20 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
     }
   }
 
+  async function handleEffieSave() {
+    setLoading(true);
+    try {
+      setEffieTier(effieTier);
+      setEffieEnabled(effieEnabled);
+      if (!isMounted()) return;
+      toast.success("Settings saved");
+      onSaved();
+      onClose();
+    } finally {
+      if (isMounted()) setLoading(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -181,6 +215,7 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
         <div className="flex border-b border-[#2a2a28]">
           {([
             { key: "keys" as const, label: "API Keys" },
+            { key: "effie" as const, label: "Effie" },
             { key: "about" as const, label: "About" },
           ]).map((t) => (
             <button
@@ -309,6 +344,64 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
           </div>
         )}
 
+        {tab === "effie" && (
+          <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+            <div>
+              <p className="text-[10px] text-[#4a6aaa] font-mono mb-2 uppercase tracking-widest">
+                Quality
+              </p>
+              <p className="text-[10px] text-[#555] font-mono mb-2">
+                Higher tiers are sharper but heavier. Med is the default.
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {(["low", "med", "high", "ultra"] as ResolutionTier[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setLocalEffieTier(t)}
+                    className={cn(
+                      "px-3 py-2 rounded-lg text-xs font-mono transition-colors border",
+                      effieTier === t
+                        ? "bg-[#c8881a] text-[#0c0c0b] border-[#c8881a]"
+                        : "bg-[#1a1a18] text-[#888] border-[#2a2a28] hover:text-[#e8e4da]"
+                    )}
+                  >
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-[#2a2a28] pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-[#4a6aaa] font-mono mb-1 uppercase tracking-widest">
+                    Show Effie
+                  </p>
+                  <p className="text-[10px] text-[#555] font-mono">
+                    The companion mascot in the bottom-right corner.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setLocalEffieEnabled(!effieEnabled)}
+                  role="switch"
+                  aria-checked={effieEnabled}
+                  className={cn(
+                    "relative w-11 h-6 rounded-full transition-colors flex-shrink-0",
+                    effieEnabled ? "bg-[#c8881a]" : "bg-[#2a2a28]"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-0.5 w-5 h-5 rounded-full bg-[#0c0c0b] transition-all",
+                      effieEnabled ? "left-[22px]" : "left-0.5"
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {tab === "keys" && (
           <div className="flex gap-3 px-6 py-4 border-t border-[#2a2a28]">
             <button
@@ -323,6 +416,29 @@ export function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
               className={cn(
                 "flex-1 px-4 py-2 rounded-lg font-bold text-sm tracking-wide transition-colors",
                 loading || (poofKeys.every((k) => !k.trim()) && removebgKeys.every((k) => !k.trim()))
+                  ? "bg-[#2a2a28] text-[#555] cursor-not-allowed"
+                  : "bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030]"
+              )}
+            >
+              {loading ? "Saving..." : "Save"}
+            </button>
+          </div>
+        )}
+
+        {tab === "effie" && (
+          <div className="flex gap-3 px-6 py-4 border-t border-[#2a2a28]">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 text-[#555] hover:text-[#888] text-sm font-mono transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEffieSave}
+              disabled={loading}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-bold text-sm tracking-wide transition-colors",
+                loading
                   ? "bg-[#2a2a28] text-[#555] cursor-not-allowed"
                   : "bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030]"
               )}
