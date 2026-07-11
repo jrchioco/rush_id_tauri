@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "./components/CompanionWidget/effieInvoke";
+import { setEffieMood } from "./components/CompanionWidget/moodStore";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -276,6 +277,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
   async function handleProcess() {
     if (!originalImage || !croppedAreaPixels) return;
     setLoading(true);
+    setEffieMood("working");
     log("Cropping image...");
 
     try {
@@ -304,9 +306,11 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
       await invoke("write_picture", { imageBase64: dataUrl.split(",")[1] });
       if (!isMounted()) return;
       setStep("done");
+      setEffieMood("success");
       log(effectiveTestMode ? "✓ Cropped (test mode)" : "✓ Background removed");
     } catch (e) {
       toast.error(String(e));
+      setEffieMood("error");
       log(`Error: ${e}`);
     } finally {
       if (isMounted()) setLoading(false);

@@ -5,18 +5,34 @@ import { setEffieMood } from "./moodStore";
 // app's real async work. Replace `import { invoke } from "@tauri-apps/api/core"`
 // with this module in any component that performs backend calls.
 //
-// - Only "heavy" commands (slow network/PDF ops) flip Effie to "working".
-// - An in-flight reference count means parallel invokes (e.g. MultiClient's
-//   parallel RemoveBG) don't prematurely show "success", and a second invoke
-//   while already "working" does NOT replay the transition (the store skips
-//   unchanged sets).
-// - "success"/"error" only fires once all in-flight invokes settle; if any
-//   failed, the settled mood is "error".
+// Commands are split into two groups:
+// - WORKING_ONLY: show "working" while in-flight, but do NOT fire "success"/
+//   "error" on settle (e.g. the crop step's write_picture, or remove_bg whose
+//   success would be premature — compositing still happens after it).
+// - RESULT: fire "success"/"error" once the command settles — the real end of
+//   a user-visible unit of work (PDF export / print / composite).
 //
-// Commands not in HEAVY pass through untouched (no mood change).
+// An in-flight reference count means parallel invokes don't prematurely show
+// "success", and a second invoke while already "working" does NOT replay the
+// transition (the store skips unchanged sets). "success"/"error" only fires
+// when the last tracked command settles AND a RESULT command ran in that batch;
+// WORKING_ONLY commands alone never flip Effie to success or error.
+//
+// Commands not in these maps pass through untouched (no mood change).
+//
+// This wrapper alone cannot cover the frontend crop step in test mode (no
+// representative Tauri command there). The process handlers in SingleClient/
+// MultiClient/PassportClient therefore also set "working"/"success"/"error"
+// explicitly for that step.
 
-const HEAVY: Record<string, string | undefined> = {
+type MoodMap = Record<string, string | undefined>;
+
+const WORKING_ONLY: MoodMap = {
   remove_bg: "bg_removal",
+  write_picture: undefined,
+};
+
+const RESULT: MoodMap = {
   export_pdf: undefined,
   print_file: undefined,
   composite_multi_pdf: undefined,
@@ -24,40 +40,56 @@ const HEAVY: Record<string, string | undefined> = {
   composite_other_pdf: undefined,
 };
 
+function moodKeyFor(cmd: string): string | undefined {
+  const working = WORKING_ONLY[cmd];
+  if (working !== undefined) return working;
+  return RESULT[cmd];
+}
+
 let inflight = 0;
 let failed = false;
+let resultRan = false;
 
 export async function invoke<T>(
   cmd: string,
   args?: Record<string, unknown>,
   options?: unknown,
 ): Promise<T> {
-  const actionKey = HEAVY[cmd];
+  const isResult = cmd in RESULT;
+  const isTracked = isResult || cmd in WORKING_ONLY;
+  const key = moodKeyFor(cmd);
 
-  if (actionKey !== undefined) {
+  if (isTracked) {
+    if (isResult) resultRan = true;
     inflight++;
     if (inflight === 1) {
-      setEffieMood("working", actionKey ? { actionKey } : undefined);
+      setEffieMood("working", key ? { actionKey: key } : undefined);
     }
   }
 
   try {
     const result = await tauriInvoke<T>(cmd, args, options as never);
-    if (actionKey !== undefined) {
+    if (isTracked) {
       inflight--;
       if (inflight === 0) {
-        setEffieMood(failed ? "error" : "success");
+        if (resultRan) {
+          setEffieMood(failed ? "error" : "success");
+        }
         failed = false;
+        resultRan = false;
       }
     }
     return result;
   } catch (err) {
-    if (actionKey !== undefined) {
-      failed = true;
+    if (isTracked) {
+      if (isResult) failed = true;
       inflight--;
       if (inflight === 0) {
-        setEffieMood("error");
+        if (resultRan) {
+          setEffieMood(failed ? "error" : "success");
+        }
         failed = false;
+        resultRan = false;
       }
     }
     throw err;

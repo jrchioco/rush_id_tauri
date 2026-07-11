@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "./components/CompanionWidget/effieInvoke";
+import { setEffieMood } from "./components/CompanionWidget/moodStore";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -225,6 +226,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
       .filter(({ s }) => s.step === "crop" && s.croppedAreaPixels);
     if (pending.length === 0) return;
     setBusy(true);
+    setEffieMood("working");
     log(`Processing ${pending.length} slot(s)${effectiveTestMode ? " (test mode — no API calls)" : ""}...`);
     try {
     const bgColors = pending.map(({ i }) => current[i].bgColor);
@@ -252,9 +254,11 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
         }
         return next;
       });
+      setEffieMood("success");
       log(`✓ Batch ${effectiveTestMode ? "cropped" : "processing complete"}`);
     } catch (e) {
       log(`Batch error: ${e}`);
+      setEffieMood("error");
       toast.error(String(e));
     } finally {
       setBusy(false);
