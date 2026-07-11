@@ -5,6 +5,16 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.19.0": {
+    title: "What's New in v1.19.0",
+    date: "2026-07-11",
+    notes: [
+      "Welcome Effie, the newest member of our team! She's an assistant who hangs out in the corner and reacts to everything you do.",
+      "She greets you on launch, looks busy while processing, cheers on success, and frowns on errors. Drop an image in and she perks up.",
+      "Customize Effie: a new \"Effie\" tab in Settings lets you set her quality (Low / Med / High / Ultra) and show or hide her. Your choice is saved automatically.",
+      "Hover your cursor around her head and Effie loves a good head-pat",
+    ],
+  },
   "1.18.2": {
     title: "What's New in v1.18.2",
     date: "2026-07-09",
