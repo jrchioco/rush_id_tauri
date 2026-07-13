@@ -12,11 +12,12 @@ export const LINES: Record<string, string[]> = {
   // dragover: a file is hovering the dropzone — anticipation / curiosity.
   dragover: [
     "ooh, ano 'yan?",
-    "may dala ka ba?",
+    "plot twist incoming, I can feel it",
     "sige, idrop mo na!",
     "hmm, ano 'to?",
     "teka lang, ano 'yan?",
-    "parating na ba 'to?",
+    "Ah s***, here we go again.",
+    "the suspense is real, drop it already!",
     "ready ka na ba? drop mo na!",
     "luh, ano 'yun?",
     "suspenders on, drop it here!",
@@ -27,7 +28,7 @@ export const LINES: Record<string, string[]> = {
   working: [
     "ginagawa na...",
     "sandali lang!",
-    "busy busy hihi",
+    "we're so back! (task in progress)",
     "antay ka lang ha",
     "tinatapos ko na 'to",
     "medyo matagal 'to, wait lang",
@@ -42,13 +43,16 @@ export const LINES: Record<string, string[]> = {
   working_polaroid_export: [
     "oh we're doing polaroid!",
     "polaroid time! click click",
+    "Alright, let me cook!",
     "picture picture — developing na!",
-    "ilabas natin sa polaroid 'to!",
+    "we're framing this masterpiece rn",
+    "capturing the moment, hold on",
   ],
   working_bg_removal: [
     "tinanggal ko na yung background!",
     "bye-bye background!",
     "greenscreen begone!",
+    "erasing the background like it owes me money",
     "sudo rm -rf /background",
   ],
 
@@ -58,6 +62,7 @@ export const LINES: Record<string, string[]> = {
     "ayan, oks na!",
     "done! enjoy~",
     "yes! tapos na",
+    "MY MAGNUM OPUS!!!",
     "lagay mo na sa album mo",
     "solved! chik chak",
     "eto na oh, hehe",
@@ -71,7 +76,9 @@ export const LINES: Record<string, string[]> = {
     "uy, may problema...",
     "pasensya na, na-stuck ako",
     "ay teh, may error",
+    "Task failed successfully",
     "di ko kaya 'to huhu",
+    "this is fine 🔥🐶",
     "ayaw gumana nito eh",
     "Error: ask Darkelle?",
     "baka di mo araw today? hehe...",
@@ -83,7 +90,14 @@ export const LINES: Record<string, string[]> = {
 // "idle" and she's not being head-patted.
 export const IDLE_AMBIENT: string[] = [
   "pa milktea ka para di boring.",
+  "vibing lang, walang render, walang crash, ang saya.",
   "miss ko na mag-shoot",
+  "Bored here, can you play any NewJeans song?",
+  "NPC Mode: ON",
+  "big NPC energy right now",
+  "Ensaladang Avocado 🥑🌶️🤤",
+  "just here, existing, thriving (allegedly)",
+  "sigma idle grindset: doing absolutely nothing",
   "kape muna tayo?",
 ];
 
