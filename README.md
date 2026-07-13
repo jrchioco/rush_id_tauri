@@ -2,7 +2,7 @@
 
 > Crop, remove backgrounds, and print ID photos. Fast.
 
-[![Version](https://img.shields.io/badge/version-1.15.0-blue)](https://github.com/jrchioco/rush_id_tauri/releases)
+[![Version](https://img.shields.io/badge/version-1.19.1-blue)](https://github.com/jrchioco/rush_id_tauri/releases)
 [![License](https://img.shields.io/badge/license-source--available-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)]()
 
@@ -41,6 +41,7 @@ Rush ID is a desktop app for processing ID photos. Drop in your images, crop the
 - **Retouch window**: clone stamp, eraser, brightness and contrast adjustments
 - **Name & signature overlay**: 4 fonts, 3 label modes (Off, Name, Name+Sig)
 - **Rotation control**: slider, numeric input, or Alt+scroll wheel
+- **Effie, your companion**: a chibi assistant who hangs in the corner — greets you on launch, perks up when you drag or browse for photos, looks busy while processing, cheers on success, and frowns on errors. Toggle or resize her in Settings → Effie.
 
 ### Workflow
 

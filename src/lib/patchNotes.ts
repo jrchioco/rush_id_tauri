@@ -5,6 +5,16 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.19.1": {
+    title: "What's New in v1.19.1",
+    date: "2026-07-14",
+    notes: [
+      "Effie now gets excited the moment you click to browse for a file — not just when you drag images in.",
+      "Fixed: Effie's excited reaction only fired on the first task, then went quiet until you restarted the app. She now reacts on every drag and every browse, even after finishing work.",
+      "Effie's lines got a refresh — new and updated chatter for drag-over, working (including background removal), and idle so she feels more alive while you work.",
+      "Added a safety fallback so Effie can't get stuck in her excited state if a file dialog closes unexpectedly (e.g. on some Linux setups).",
+    ],
+  },
   "1.19.0": {
     title: "What's New in v1.19.0",
     date: "2026-07-11",
