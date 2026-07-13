@@ -87,8 +87,11 @@ export default function App() {
   const effieSettings = useEffieSettings();
   const effieDrag = useTauriDragDrop(() => {});
   useEffect(() => {
-    if (effieDrag.isDragging && effie.mood === "idle") setEffieMood("dragover");
-    else if (!effieDrag.isDragging && effie.mood === "dragover") setEffieMood("idle");
+    if (effieDrag.isDragging) {
+      if (effie.mood !== "working" && effie.mood !== "dragover") setEffieMood("dragover");
+    } else {
+      if (effie.mood === "dragover") setEffieMood("idle");
+    }
   }, [effieDrag.isDragging, effie.mood]);
 
   async function handleSaveConfig() {
