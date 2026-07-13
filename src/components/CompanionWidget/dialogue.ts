@@ -51,6 +51,7 @@ export const LINES: Record<string, string[]> = {
   working_bg_removal: [
     "tinanggal ko na yung background!",
     "bye-bye background!",
+    "Ryōiki Tenkai: Background Annihilation! 🤞",
     "greenscreen begone!",
     "erasing the background like it owes me money",
     "sudo rm -rf /background",
