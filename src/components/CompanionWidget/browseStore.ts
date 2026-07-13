@@ -9,8 +9,15 @@ import { useSyncExternalStore } from "react";
 // used as the "dialog closed" signal (App.tsx wires a window "focus" listener to
 // endBrowse()). App.tsx feeds this flag into the same anticipation effect as
 // drag-over, so browsing and dragging share one dragover path.
+//
+// Safety net: if that "focus" signal never arrives (e.g. a cancelled dialog on
+// some Linux/WebKitGTK setups), beginBrowse() arms a timeout that force-ends the
+// browse so Effie can't get stuck in "dragover". Cleared by any normal endBrowse().
+
+const BROWSE_TIMEOUT_MS = 20000;
 
 let browsing = false;
+let timer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -20,11 +27,16 @@ function emit() {
 export function beginBrowse(): void {
   if (browsing) return;
   browsing = true;
+  timer = setTimeout(endBrowse, BROWSE_TIMEOUT_MS);
   emit();
 }
 
 export function endBrowse(): void {
   if (!browsing) return;
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
   browsing = false;
   emit();
 }
