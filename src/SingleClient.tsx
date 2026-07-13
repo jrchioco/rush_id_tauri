@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "./components/CompanionWidget/effieInvoke";
 import { setEffieMood } from "./components/CompanionWidget/moodStore";
+import { beginBrowse } from "./components/CompanionWidget/browseStore";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -423,7 +424,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
 
         {step === "select" && (
           <div
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => { beginBrowse(); fileInputRef.current?.click(); }}
             className={cn(
               "border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-200 bg-[#1a1a18]",
               isDragging

@@ -16,6 +16,7 @@ import PolaroidClient from "./PolaroidClient";
 import OtherClient from "./OtherClient";
 import { CompanionWidget } from "./components/CompanionWidget";
 import { useEffieMood, setEffieMood } from "./components/CompanionWidget/moodStore";
+import { useIsBrowsing, endBrowse } from "./components/CompanionWidget/browseStore";
 import { useEffieSettings } from "./components/CompanionWidget/effieSettings";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 
@@ -81,18 +82,26 @@ export default function App() {
   }, []);
 
   // Effie companion widget: subscribe to her mood store and surface a "dragover"
-  // mood while a file is dragged anywhere over the window (guarded so it never
-  // clobbers an in-flight "working" mood).
+  // anticipation mood while a file is dragged over the window OR a "click to
+  // browse" file dialog is open (guarded so it never clobbers an in-flight
+  // "working" mood). A native file dialog has no close event, so the window
+  // regaining focus is used as the "dialog closed" signal → endBrowse().
   const effie = useEffieMood();
   const effieSettings = useEffieSettings();
   const effieDrag = useTauriDragDrop(() => {});
+  const isBrowsing = useIsBrowsing();
   useEffect(() => {
-    if (effieDrag.isDragging) {
+    const active = effieDrag.isDragging || isBrowsing;
+    if (active) {
       if (effie.mood !== "working" && effie.mood !== "dragover") setEffieMood("dragover");
     } else {
       if (effie.mood === "dragover") setEffieMood("idle");
     }
-  }, [effieDrag.isDragging, effie.mood]);
+  }, [effieDrag.isDragging, isBrowsing, effie.mood]);
+  useEffect(() => {
+    window.addEventListener("focus", endBrowse);
+    return () => window.removeEventListener("focus", endBrowse);
+  }, []);
 
   async function handleSaveConfig() {
     try {

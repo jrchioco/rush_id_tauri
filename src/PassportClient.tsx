@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "./components/CompanionWidget/effieInvoke";
 import { setEffieMood } from "./components/CompanionWidget/moodStore";
+import { beginBrowse } from "./components/CompanionWidget/browseStore";
 import Cropper, { Area } from "react-easy-crop";
 import { Upload, Printer, Scissors, RotateCw, X, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -444,6 +445,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
   }
 
   function clickSlotUpload(i: number) {
+    beginBrowse();
     fileInputRefs.current[i]?.click();
   }
 

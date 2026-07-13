@@ -3,6 +3,7 @@ import { Upload, X, RotateCw, StretchHorizontal } from "lucide-react";
 import { cn } from "./lib/utils";
 import { Tooltip } from "./components/Tooltip";
 import { TOOLTIPS } from "./lib/tooltips";
+import { beginBrowse } from "./components/CompanionWidget/browseStore";
 
 export type FitMode = "cover" | "stretch";
 
@@ -123,7 +124,10 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
   }, [redraw]);
 
   const handleClick = useCallback(() => {
-    if (isEmpty) fileInputRef.current?.click();
+    if (isEmpty) {
+      beginBrowse();
+      fileInputRef.current?.click();
+    }
   }, [isEmpty]);
 
   const handleFileChange = useCallback(
