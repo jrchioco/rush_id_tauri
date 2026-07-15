@@ -11,6 +11,8 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
     notes: [
       "Fixed memory not releasing after Reset/Clear in the Polaroid and Other tabs — a slot cleared or reset while its image was still decoding could re-retain the full-resolution bitmap. The load is now cancelled cleanly on reset.",
       "Added a defensive canvas backing-store release on slot clear so memory returns closer to baseline immediately instead of waiting for the next import to overwrite it.",
+      "Large photos (long edge above ~4000px, e.g. ~50MP scans) are now downscaled to ~1400px when loaded into the cropper in Single, Multi, and Passport modes, so export no longer stalls on huge source images.",
+      "Export now reports progress (resize / render / merge) in the batch log, so a slow operation is visible instead of looking like a hang.",
     ],
   },
   "1.19.1": {
