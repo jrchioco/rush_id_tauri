@@ -1113,6 +1113,13 @@ fn composite_other_pdf(
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[tauri::command]
+fn open_devtools(app: tauri::AppHandle) {
+    for (_label, win) in app.webview_windows() {
+        win.open_devtools();
+    }
+}
+
 pub fn run() {
     cleanup_temp_pdfs();
     tauri::Builder::default()
@@ -1136,6 +1143,7 @@ pub fn run() {
             composite_other_pdf,
             get_key_count,
             open_file,
+            open_devtools,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
