@@ -7,7 +7,7 @@ import { Upload, Printer, FileDown, Scissors, RotateCw, ChevronDown, TriangleAle
 import { toast } from "sonner";
 import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice, labelArgsFor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
-import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
+import { loadCropperImage } from "./lib/loadCropperImage";
 import { buildSavePath, setLastSaveDir } from "./lib/savePath";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
@@ -93,7 +93,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
       return;
     }
     try {
-      const { dataUrl, fileName } = await readFileAsDataUrl(filePath);
+      const { dataUrl, fileName } = await loadCropperImage(filePath);
       setOriginalImage(dataUrl);
       setStep("crop");
       setCrop({ x: 0, y: 0 });
@@ -106,21 +106,23 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
     }
   });
 
-  const handleFile = useCallback((file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setOriginalImage(reader.result as string);
+    try {
+      const { dataUrl, fileName } = await loadCropperImage(file);
+      setOriginalImage(dataUrl);
       setStep("crop");
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setRotation(0);
-      log(`Loaded: ${file.name}`);
-    };
-    reader.readAsDataURL(file);
+      log(`Loaded: ${fileName}`);
+    } catch (e) {
+      toast.error(`Failed to load image: ${e}`);
+      log(`Error reading file: ${e}`);
+    }
   }, [log]);
 
   useEffect(() => {

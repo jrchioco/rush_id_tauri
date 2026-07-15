@@ -7,7 +7,7 @@ import { Upload, Printer, Scissors, RotateCw, X, TriangleAlert } from "lucide-re
 import { toast } from "sonner";
 import { cn, fmt, compositeOnColor, getFontOption, getNextFontChoice, labelArgsFor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
-import { readFileAsDataUrl } from "./lib/readFileAsDataUrl";
+import { loadCropperImage } from "./lib/loadCropperImage";
 import { buildSavePath, setLastSaveDir } from "./lib/savePath";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
@@ -143,7 +143,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
         `${imagePaths.length - toFill.length} image(s) skipped — not enough empty slots`,
       );
     }
-    Promise.all(toFill.map(readFileAsDataUrl))
+    Promise.all(toFill.map((p) => loadCropperImage(p)))
       .then((results) => {
         setSlots((prev) => {
           const next = [...prev];
@@ -179,20 +179,21 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
     updateSlot(i, { rotation: Math.max(-90, Math.min(90, current + delta)) });
   }
 
-  const handleSlotFile = useCallback((i: number, file: File) => {
+  const handleSlotFile = useCallback(async (i: number, file: File) => {
     if (!file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
+    try {
+      const result = await loadCropperImage(file);
       updateSlot(i, {
-        originalImage: reader.result as string,
+        originalImage: result.dataUrl,
         step: "crop",
         crop: { x: 0, y: 0 },
         zoom: 1,
         rotation: 0,
       });
-      log(`${LABELS[i]}: Loaded ${file.name}`);
-    };
-    reader.readAsDataURL(file);
+      log(`${LABELS[i]}: Loaded ${result.fileName}`);
+    } catch (e) {
+      toast.error(`Failed to load image: ${e}`);
+    }
   }, [log]);
 
   const handleSlotFileRef = useRef(handleSlotFile);
