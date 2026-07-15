@@ -225,14 +225,19 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;
+    let cancelled = false;
     import("@tauri-apps/api/event").then(({ listen }) =>
       listen<{ msg: string }>("batch_progress", (e) => {
         logRef.current(`[export] ${e.payload.msg}`);
       }).then((fn) => {
-        unlisten = fn;
+        if (cancelled) fn();
+        else unlisten = fn;
       }),
     );
-    return () => unlisten?.();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   async function handleProcessAll() {
