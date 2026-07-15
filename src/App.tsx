@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "./components/CompanionWidget/effieInvoke";
-import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "./lib/utils";
@@ -62,17 +61,6 @@ export default function App() {
     invoke<boolean>("check_config").then((ready) => {
       setConfigReady(ready);
     });
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "F12") {
-        e.preventDefault();
-        tauriInvoke("open_devtools");
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   useEffect(() => {
