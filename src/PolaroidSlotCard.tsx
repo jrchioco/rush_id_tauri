@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Upload, X, RotateCw, StretchHorizontal } from "lucide-react";
-import { cn } from "./lib/utils";
+import { cn, releaseCanvas } from "./lib/utils";
 import { Tooltip } from "./components/Tooltip";
 import { TOOLTIPS } from "./lib/tooltips";
 import { beginBrowse } from "./components/CompanionWidget/browseStore";
@@ -80,15 +80,13 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
   useEffect(() => {
     if (!slot.imageBase64) {
       imgRef.current = null;
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext("2d");
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      releaseCanvas(canvasRef.current);
       return;
     }
     const img = new Image();
+    let cancelled = false;
     img.onload = () => {
+      if (cancelled) return;
       imgRef.current = img;
       const card = cardRef.current;
       const canvas = canvasRef.current;
@@ -99,6 +97,12 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       redraw();
     };
     img.src = "data:image/png;base64," + slot.imageBase64;
+    return () => {
+      cancelled = true;
+      img.onload = null;
+      img.src = "";
+      imgRef.current = null;
+    };
   }, [slot.imageBase64, redraw]);
 
   useEffect(() => {

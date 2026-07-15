@@ -5,6 +5,14 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.19.2": {
+    title: "What's New in v1.19.2",
+    date: "2026-07-15",
+    notes: [
+      "Fixed memory not releasing after Reset/Clear in the Polaroid and Other tabs — a slot cleared or reset while its image was still decoding could re-retain the full-resolution bitmap. The load is now cancelled cleanly on reset.",
+      "Added a defensive canvas backing-store release on slot clear so memory returns closer to baseline immediately instead of waiting for the next import to overwrite it.",
+    ],
+  },
   "1.19.1": {
     title: "What's New in v1.19.1",
     date: "2026-07-14",

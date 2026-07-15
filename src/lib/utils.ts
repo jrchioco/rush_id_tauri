@@ -206,3 +206,14 @@ export async function compositeOnColor(
     }, "image/png");
   });
 }
+
+// Forces the browser to deallocate a canvas's backing store (not just clear
+// pixels). clearRect alone leaves the backing store sized to the old
+// width/height; zeroing the dimensions releases the memory immediately.
+export function releaseCanvas(canvas: HTMLCanvasElement | null) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.width = 0;
+  canvas.height = 0;
+}
