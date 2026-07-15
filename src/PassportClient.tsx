@@ -223,6 +223,18 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
     return () => document.removeEventListener("paste", handlePaste);
   }, []);
 
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    import("@tauri-apps/api/event").then(({ listen }) =>
+      listen<{ msg: string }>("batch_progress", (e) => {
+        logRef.current(`[export] ${e.payload.msg}`);
+      }).then((fn) => {
+        unlisten = fn;
+      }),
+    );
+    return () => unlisten?.();
+  }, []);
+
   async function handleProcessAll() {
     const current = slotsRef.current;
     const pending = current

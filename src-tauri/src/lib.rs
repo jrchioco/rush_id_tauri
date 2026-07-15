@@ -578,6 +578,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
     let d = data_dir(&app_handle);
     let tmp_dir = d.join("tmp");
     fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
+    app_handle.emit("batch_progress", serde_json::json!({ "msg": format!("Starting export — {} client(s)", clients.len()) })).ok();
 
     let _ = fs::remove_file(tmp_dir.join("composite_multi.svg"));
     if let Ok(entries) = fs::read_dir(&tmp_dir) {
@@ -622,6 +623,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         let temp_svg = tmp_dir.join(format!("client_{}.svg", i));
         fs::write(&temp_svg, &patched).map_err(|e| format!("Failed to write client SVG {}: {}", i, e))?;
     }
+    app_handle.emit("batch_progress", serde_json::json!({ "msg": format!("Resized {} image(s)", clients.len()) })).ok();
 
     // Phase 2: Dynamically chunk clients by A4 height, render each chunk as a separate PDF
     let mut page_bytes: Vec<Vec<u8>> = Vec::new();
@@ -711,6 +713,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
     };
 
     fs::write(&pdf_path, &final_pdf).map_err(|e| format!("Failed to write PDF: {}", e))?;
+    app_handle.emit("batch_progress", serde_json::json!({ "msg": "PDF ready" })).ok();
 
     if cfg!(target_os = "windows") {
         Command::new("cmd")
