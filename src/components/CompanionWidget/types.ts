@@ -11,10 +11,6 @@ export interface CompanionWidgetProps {
    * Only used when `message` is not provided.
    */
   actionKey?: string;
-  /** Show the widget. Default true. */
-  visible?: boolean;
-  /** Optional close affordance for the speech bubble. */
-  onDismiss?: () => void;
   /**
    * Auto-revert: Effie returns to "idle" after this many ms in any non-idle
    * mood. Defaults to 10000 (10s). Implemented as an internal effective-mood

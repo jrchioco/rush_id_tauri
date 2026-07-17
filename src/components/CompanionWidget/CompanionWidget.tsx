@@ -51,8 +51,6 @@ export function CompanionWidget({
   mood,
   message,
   actionKey,
-  visible = true,
-  onDismiss,
   tier = "med",
   autoIdleAfter = 20000,
 }: Props) {
@@ -239,8 +237,6 @@ export function CompanionWidget({
     }
   }, [bubbleLine, isHeadPatted]);
 
-  if (!visible) return null;
-
   const showBubble = bubbleText.length > 0;
 
   return (
@@ -280,19 +276,16 @@ export function CompanionWidget({
         {showBubble && (
           <div className={`companion-bubble${bubbleShown ? " is-visible" : ""}`}>
             <span className="companion-bubble-text">{bubbleText}</span>
-            {onDismiss && (
-              <button
-                className="companion-bubble-dismiss"
-                onClick={() => {
-                  setBubbleText("");
-                  setBubbleShown(false);
-                  onDismiss();
-                }}
-                aria-label="Dismiss"
-              >
-                ×
+            <button
+              className="companion-bubble-dismiss"
+              onClick={() => {
+                setBubbleText("");
+                setBubbleShown(false);
+              }}
+              aria-label="Dismiss"
+            >
+              ×
               </button>
-            )}
           </div>
         )}
       </div>
