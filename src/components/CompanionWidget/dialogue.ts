@@ -126,6 +126,7 @@ export const WELCOME: string[] = [
   "heyy, welcome! anong gupit today?",
   "andito ka na pala, let's get to work!",
   "hi... antok pa ako, pero welcome!",
+  "heyy! new session, new IDs. lapag mo na 'yan!",
   "uy uy uy, andiyan na si boss!",
   "ready ka na sa magic? lapag mo na!",
   "Effie here! your friendly neighborhood editor.",
@@ -133,30 +134,4 @@ export const WELCOME: string[] = [
 
 export function pickWelcome(): string {
   return pickRandom(WELCOME);
-}
-
-// Greeting bank — shown once on every app launch via the full-screen launch
-// greeting overlay (VN-style). Taglish/meme lines. Avoids repeating the
-// immediately previous launch's line when the bank has >1 entry (in-memory
-// dedup only — resets on restart, which is fine since dedup is a nice-to-have).
-export const GREETING: string[] = [
-  "uy, andiyan na si boss! camera's hot, let's make magic ✨",
-  "welcome back! ready ka na sa mga gupit-gupit? hehe",
-  "heyy! new day, new IDs. lapag mo na 'yan!",
-  "Effie online! papagalawin natin yang photos mo 💅",
-  "oh ayan na ang legend. tara, edit tayo!",
-  "hi hi! kape muna before magtrabaho? char, let's go!",
-  "welcome sa rush ID! ako na bahala sa background mo 😎",
-];
-
-let lastGreetingIndex = -1;
-
-export function pickGreeting(): string {
-  if (GREETING.length <= 1) return pickRandom(GREETING);
-  let i = Math.floor(Math.random() * GREETING.length);
-  if (i === lastGreetingIndex) {
-    i = (i + 1) % GREETING.length;
-  }
-  lastGreetingIndex = i;
-  return GREETING[i];
 }

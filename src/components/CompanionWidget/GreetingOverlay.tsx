@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { pickGreeting } from "./dialogue";
+import { pickWelcome } from "./dialogue";
 import "./GreetingOverlay.css";
 
 const TYPEWRITER_MS = 25;
@@ -20,7 +20,7 @@ export function GreetingOverlay({ onClose }: { onClose: () => void }) {
 
   // Typewriter reveal.
   useEffect(() => {
-    const full = pickGreeting();
+    const full = pickWelcome();
     fullLineRef.current = full;
     let i = 0;
     const id = setInterval(() => {
