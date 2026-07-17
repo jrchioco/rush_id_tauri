@@ -49,7 +49,7 @@
   left: 0;
   width: 100%;
   height: 28%; /* top ~25-30% of bounding box (her head) */
-  cursor: pointer;
+  cursor: url("./assets/poof-hand.webp") 8 4, pointer;
   pointer-events: auto; /* only her head is clickable; rest passes clicks through */
 }
 
