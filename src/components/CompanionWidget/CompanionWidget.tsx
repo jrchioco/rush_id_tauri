@@ -54,7 +54,7 @@ export function CompanionWidget({
   visible = true,
   onDismiss,
   tier = "med",
-  autoIdleAfter = 10000,
+  autoIdleAfter = 20000,
 }: Props) {
   const [idleVariant, setIdleVariant] = useState<string>("idle-canonical");
   // Drives the idle pose cycle (30s canonical -> 5s yawn/lookup -> repeat).
