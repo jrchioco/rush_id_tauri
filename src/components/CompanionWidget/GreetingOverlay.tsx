@@ -3,7 +3,7 @@ import { pickWelcome } from "./dialogue";
 import "./GreetingOverlay.css";
 
 const TYPEWRITER_MS = 25;
-const COUNTDOWN_SECONDS = 5;
+const COUNTDOWN_SECONDS = 10;
 const FADE_MS = 150;
 
 const GREETING_IMG = new URL("./assets/greeting-idle.webp", import.meta.url).href;
