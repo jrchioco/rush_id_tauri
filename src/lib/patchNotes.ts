@@ -7,11 +7,12 @@ interface PatchNote {
 export const PATCH_NOTES: Record<string, PatchNote> = {
   "1.19.3": {
     title: "What's New in v1.19.3",
-    date: "TBD",
+    date: "2026-07-17",
     notes: [
       "Effie now lingers in her working, success, and error moods twice as long (20s instead of 10s) before returning to idle, so her reactions are easier to catch.",
       "Patting Effie's head now swaps your cursor for a little hand — she loves the attention.",
       "New launch greeting! Effie greets you with a full-screen welcome on every launch, with a typewriter reveal and a 10-second countdown to proceed. The corner companion only appears once the greeting closes.",
+      "Tidied up the companion widget: removed the unused dismiss/visibility prop plumbing (hiding Effie is handled by the Settings toggle).",
     ],
   },
   "1.19.2": {
