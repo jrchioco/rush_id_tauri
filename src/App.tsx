@@ -296,7 +296,7 @@ export default function App() {
         <GreetingOverlay onClose={() => setShowGreeting(false)} />
       )}
 
-      {effieSettings.enabled && (
+      {effieSettings.enabled && !showGreeting && (
         <CompanionWidget
           mood={effie.mood}
           actionKey={effie.actionKey}
