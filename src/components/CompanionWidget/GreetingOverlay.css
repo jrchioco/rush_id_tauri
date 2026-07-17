@@ -1,0 +1,78 @@
+.greeting-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100; /* above the companion widget (z-40) and all modals */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  opacity: 1;
+  transition: opacity 150ms ease;
+}
+
+.greeting-overlay.is-closing {
+  opacity: 0;
+}
+
+.greeting-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45); /* dimmed backdrop over the live app */
+}
+
+.greeting-art {
+  position: absolute;
+  right: 4%;
+  bottom: 0;
+  height: min(80vh, 1200px);
+  width: auto;
+  object-fit: contain;
+  object-position: bottom;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+}
+
+.greeting-box {
+  position: relative;
+  z-index: 1;
+  width: 90%;
+  max-width: 900px;
+  margin-bottom: 5vh;
+  background: rgba(12, 12, 11, 0.92);
+  border: 1px solid #2a2a28;
+  border-radius: 14px;
+  padding: 18px 22px 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.greeting-name {
+  display: inline-block;
+  background: #c8881a;
+  color: #0c0c0b;
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  padding: 2px 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.greeting-text {
+  color: #e8e4da;
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 1.5em;
+  white-space: pre-wrap;
+}
+
+.greeting-prompt {
+  margin-top: 10px;
+  color: #c8881a;
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}

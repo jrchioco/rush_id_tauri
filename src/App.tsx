@@ -15,6 +15,7 @@ import PassportClient from "./PassportClient";
 import PolaroidClient from "./PolaroidClient";
 import OtherClient from "./OtherClient";
 import { CompanionWidget } from "./components/CompanionWidget";
+import { GreetingOverlay } from "./components/CompanionWidget/GreetingOverlay";
 import { useEffieMood, setEffieMood } from "./components/CompanionWidget/moodStore";
 import { useIsBrowsing, endBrowse } from "./components/CompanionWidget/browseStore";
 import { useEffieSettings } from "./components/CompanionWidget/effieSettings";
@@ -41,6 +42,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(true);
   const tabRefs = useRef<Record<Tab, { hasUnsavedWork: () => boolean } | null>>({
     single: null, multi: null, passport: null, polaroid: null, other: null, "ai-studio": null,
   });
@@ -289,6 +291,10 @@ export default function App() {
         open={showWhatsNew}
         onClose={() => setShowWhatsNew(false)}
       />
+
+      {effieSettings.enabled && showGreeting && (
+        <GreetingOverlay onClose={() => setShowGreeting(false)} />
+      )}
 
       {effieSettings.enabled && (
         <CompanionWidget
