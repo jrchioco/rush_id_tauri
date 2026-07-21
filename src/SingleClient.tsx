@@ -25,7 +25,11 @@ import type { LogEntry, LabelMode, FontChoice } from "./types";
 
 type Step = "select" | "crop" | "done";
 
-const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function SingleClient(_, ref) {
+interface SingleClientProps {
+  onPrintReminder?: () => void;
+}
+
+const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }, SingleClientProps>(function SingleClient({ onPrintReminder }, ref) {
   const [step, setStep] = useState<Step>("select");
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [resultPath, setResultPath] = useState<string | null>(null);
@@ -322,6 +326,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
 
   async function handlePrint() {
     if (!selectedTemplate) return;
+    onPrintReminder?.();
     try {
       log("Opening print dialog...");
       const msg = await invoke<string>("print_file", { svgPath: selectedTemplate });
@@ -335,6 +340,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Sing
 
   async function handleSavePdf() {
     if (!selectedTemplate) return;
+    onPrintReminder?.();
     try {
       const templateKey = templates.find((t) => t.path === selectedTemplate)?.key ?? "photo";
       const { save } = await import("@tauri-apps/plugin-dialog");

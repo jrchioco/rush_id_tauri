@@ -62,7 +62,11 @@ function freshSlot(i: number, defaultTemplate = ""): SlotData {
   };
 }
 
-const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function MultiClient(_, ref) {
+interface MultiClientProps {
+  onPrintReminder?: () => void;
+}
+
+const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientProps>(function MultiClient({ onPrintReminder }, ref) {
   const [slots, setSlots] = useState<SlotData[]>(() =>
     Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)),
   );
@@ -292,6 +296,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Multi
       log("✗ No template selected for one or more slots");
       return;
     }
+    onPrintReminder?.();
     setBusy(true);
     log("Compositing multi-client PDF...");
     try {

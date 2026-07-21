@@ -79,7 +79,11 @@ async function preprocessSlot(slot: PolaroidSlotState, quality: "high" | "flash"
   return dataUrl.split(",")[1];
 }
 
-const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function PolaroidClient(_, ref) {
+interface PolaroidClientProps {
+  onPrintReminder?: () => void;
+}
+
+const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }, PolaroidClientProps>(function PolaroidClient({ onPrintReminder }, ref) {
   const [layout, setLayout] = useState<Layout>("5pcs");
   const [slots, setSlots] = useState<PolaroidSlotState[]>(() =>
     Array.from({ length: 5 }, (_, i) => freshSlot(i)),
@@ -190,6 +194,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
   const handleExport = useCallback(
     async (savePath?: string) => {
       if (filledCount === 0) return;
+      onPrintReminder?.();
       setBusy(true);
       log("Preprocessing images...");
       try {
@@ -219,7 +224,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Po
         if (isMounted()) setBusy(false);
       }
     },
-    [layout, filledCount, quality, log],
+    [layout, filledCount, quality, log, onPrintReminder],
   );
 
   const handleSavePdf = useCallback(async () => {

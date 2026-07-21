@@ -141,7 +141,11 @@ async function preprocessSlot(slot: OtherSlotState, slotAspect: number, size: Ot
   return dataUrl.split(",")[1];
 }
 
-const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function OtherClient(_, ref) {
+interface OtherClientProps {
+  onPrintReminder?: () => void;
+}
+
+const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientProps>(function OtherClient({ onPrintReminder }, ref) {
   const [selectedSize, setSelectedSize] = useState<OtherSize | null>(null);
   const [layout, setLayout] = useState<OtherLayout | number>("2pcs");
   const [slots, setSlots] = useState<OtherSlotState[]>(() =>
@@ -291,6 +295,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
         toast.error(`No SVG template for ${OTHER_SIZES[selectedSize].label}`);
         return;
       }
+      onPrintReminder?.();
       setBusy(true);
       log("Preprocessing images...");
       try {
@@ -329,7 +334,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Other
         if (isMounted()) setBusy(false);
       }
     },
-    [selectedSize, layout, filledCount, slotAspect, quality, log],
+    [selectedSize, layout, filledCount, slotAspect, quality, log, onPrintReminder],
   );
 
   const handleSavePdf = useCallback(async () => {

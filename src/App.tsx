@@ -6,6 +6,7 @@ import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SettingsModal } from "./components/SettingsModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
+import { PrintReminderModal } from "./components/PrintReminderModal";
 import { Tooltip } from "./components/Tooltip";
 import { TOOLTIPS } from "./lib/tooltips";
 import SingleClient from "./SingleClient";
@@ -43,6 +44,7 @@ export default function App() {
   const [configVersion, setConfigVersion] = useState(0);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [showGreeting, setShowGreeting] = useState(true);
+  const [showPrintReminder, setShowPrintReminder] = useState(false);
   const tabRefs = useRef<Record<Tab, { hasUnsavedWork: () => boolean } | null>>({
     single: null, multi: null, passport: null, polaroid: null, other: null, "ai-studio": null,
   });
@@ -274,11 +276,11 @@ export default function App() {
         </div>
       </header>
 
-      {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} ref={(el) => { tabRefs.current.single = el; }} /></ErrorBoundary>}
-      {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} /></ErrorBoundary>}
-      {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} /></ErrorBoundary>}
-      {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} /></ErrorBoundary>}
-      {activeTab === "other" && <ErrorBoundary><OtherClient key={configVersion} ref={(el) => { tabRefs.current.other = el; }} /></ErrorBoundary>}
+      {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} ref={(el) => { tabRefs.current.single = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
+      {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
+      {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
+      {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
+      {activeTab === "other" && <ErrorBoundary><OtherClient key={configVersion} ref={(el) => { tabRefs.current.other = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
       {activeTab === "ai-studio" && <ErrorBoundary><AiStudioTab key={configVersion} ref={(el) => { tabRefs.current["ai-studio"] = el; }} /></ErrorBoundary>}
 
       <SettingsModal
@@ -304,6 +306,11 @@ export default function App() {
           tier={effieSettings.tier}
         />
       )}
+
+      <PrintReminderModal
+        open={showPrintReminder}
+        onClose={() => setShowPrintReminder(false)}
+      />
     </div>
   );
 }

@@ -64,7 +64,11 @@ function freshSlot(i: number, defaultTemplate = ""): SlotData {
   };
 }
 
-const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function PassportClient(_, ref) {
+interface PassportClientProps {
+  onPrintReminder?: () => void;
+}
+
+const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportClientProps>(function PassportClient({ onPrintReminder }, ref) {
   const [slots, setSlots] = useState<SlotData[]>(() =>
     Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)),
   );
@@ -294,6 +298,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }>(function Pa
       log("✗ No template selected for one or more slots");
       return;
     }
+    onPrintReminder?.();
     setBusy(true);
     log("Compositing passport PDF...");
     try {
