@@ -45,12 +45,13 @@ export function PrintReminderModal({ open, onClose }: PrintReminderModalProps) {
     panelRef.current?.focus();
 
     function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") { onClose(); return; }
       if (e.key === "ArrowRight" && step < 2) setStep(2);
       if (e.key === "ArrowLeft" && step > 1) setStep(1);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, step]);
+  }, [open, step, onClose]);
 
   const handleImageClick = useCallback(
     (e: React.MouseEvent<HTMLImageElement>) => {
