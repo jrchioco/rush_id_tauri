@@ -5,6 +5,13 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.19.4": {
+    title: "What's New in v1.19.4",
+    date: "2026-07-22",
+    notes: [
+      "New print reminder modal — every time you click Print or Save PDF, a tabbed guide appears with annotated screenshots showing the correct Acrobat and Epson settings for ID photos. Dismiss with Esc, click outside, or the × button. Shows on every export (non-blocking — export still completes normally).",
+    ],
+  },
   "1.19.3": {
     title: "What's New in v1.19.3",
     date: "2026-07-17",

@@ -2,7 +2,7 @@
 
 > Crop, remove backgrounds, and print ID photos. Fast.
 
-[![Version](https://img.shields.io/badge/version-1.19.1-blue)](https://github.com/jrchioco/rush_id_tauri/releases)
+[![Version](https://img.shields.io/badge/version-1.19.4-blue)](https://github.com/jrchioco/rush_id_tauri/releases)
 [![License](https://img.shields.io/badge/license-source--available-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)]()
 
