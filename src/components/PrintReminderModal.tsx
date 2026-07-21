@@ -10,6 +10,21 @@ const STEPS = [
   { image: TIP_2, alt: "Epson Printer Properties settings" },
 ] as const;
 
+const CAPTIONS = [
+  [
+    { setting: "Actual Size", reason: "not \"Fit\", or photos will be scaled/distorted" },
+    { setting: "Uncheck \"Choose paper source by PDF page size\"", reason: "keeps A4 tray selected" },
+    { setting: "Portrait", reason: "sheet width follows A4 (210mm), designed to stitch correctly only in Portrait" },
+  ],
+  [
+    { setting: "Select the High Photo Settings preset first", reason: "it sets most of this for you", isLeadIn: true },
+    { setting: "Document Size: A4 210 x 297mm", reason: "must match the sheet size" },
+    { setting: "Orientation: Portrait", reason: "same reason as Acrobat, keeps the stitched layout aligned" },
+    { setting: "Quality: High", reason: "lower settings can wash out details on ID photos" },
+    { setting: "Color: Color", reason: "don't leave it on Grayscale by accident" },
+  ],
+] as const;
+
 interface PrintReminderModalProps {
   open: boolean;
   onClose: () => void;
@@ -89,6 +104,17 @@ export function PrintReminderModal({ open, onClose }: PrintReminderModalProps) {
             style={{ cursor: step === 1 ? "e-resize" : "w-resize" }}
             draggable={false}
           />
+          <div className="mt-3 space-y-1.5">
+            {CAPTIONS[step - 1].map((item, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs font-mono">
+                <span className="text-[#c8881a] mt-0.5 flex-shrink-0">✓</span>
+                <span>
+                  <span className="text-[#e8e4da] font-semibold">{item.setting}</span>
+                  <span className="text-[#555]"> — {item.reason}</span>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Footer */}
