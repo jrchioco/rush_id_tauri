@@ -267,7 +267,7 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
       ref={cardRef}
       style={{ aspectRatio: `${aspectRatio}` }}
       className={cn(
-        "relative rounded-lg overflow-hidden transition-colors",
+        "group relative rounded-lg overflow-hidden transition-colors",
         "w-full",
         isEmpty
           ? "border-2 border-dashed border-[#c8881a]/40 bg-[#111110] hover:border-[#c8881a]/70 cursor-pointer"
@@ -302,7 +302,7 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
             onMouseDown={handlePanStart}
           />
 
-          <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 hover:opacity-100 transition-opacity">
+          <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Tooltip content={TOOLTIPS.removeImage}>
               <button
                 onClick={(e) => { e.stopPropagation(); onClear(); }}
@@ -334,7 +334,7 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
             </Tooltip>
           </div>
 
-          <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between opacity-0 hover:opacity-100 transition-opacity">
+          <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
             <span
               className="text-[8px] text-[#555] font-mono bg-[#0c0c0b]/80 px-1.5 py-0.5 rounded cursor-pointer select-none"
               onDoubleClick={(e) => { e.stopPropagation(); onUpdate({ zoom: 1, panX: 0, panY: 0 }); }}
