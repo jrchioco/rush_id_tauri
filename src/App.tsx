@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "./components/CompanionWidget/effieInvoke";
 import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SettingsModal } from "./components/SettingsModal";
-import { WhatsNewModal } from "./components/WhatsNewModal";
+import { PatchNotesPanel } from "./components/PatchNotesPanel";
 import { PrintReminderModal } from "./components/PrintReminderModal";
 import { Tooltip } from "./components/Tooltip";
 import { TOOLTIPS } from "./lib/tooltips";
+import { getLastSeenVersion, setLastSeenVersion } from "./lib/lastSeenVersion";
+import { useIsMounted } from "./lib/hooks/useIsMounted";
 import SingleClient from "./SingleClient";
 import MultiClient from "./MultiClient";
 import AiStudioTab from "./AiStudioTab";
@@ -34,6 +37,7 @@ const TABS: { key: Tab; label: string; icon: typeof Scan }[] = [
 ];
 
 export default function App() {
+  const isMounted = useIsMounted();
   const [configReady, setConfigReady] = useState<boolean | null>(null);
   const [setupKeys, setSetupKeys] = useState([""]);
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -42,9 +46,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("single");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
-  const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [showGreeting, setShowGreeting] = useState(true);
   const [showPrintReminder, setShowPrintReminder] = useState(false);
+
+  // Launch type detection — first_install / update / normal.
+  const [launchType, setLaunchType] = useState<"first_install" | "update" | "normal">("normal");
+  const [greetingDismissed, setGreetingDismissed] = useState(false);
+  const [patchNotesDismissed, setPatchNotesDismissed] = useState(false);
   const tabRefs = useRef<Record<Tab, { hasUnsavedWork: () => boolean } | null>>({
     single: null, multi: null, passport: null, polaroid: null, other: null, "ai-studio": null,
   });
@@ -78,11 +86,19 @@ export default function App() {
     }).catch(() => {});
   }, []);
 
+  // Detect launch type on mount.
   useEffect(() => {
-    if (localStorage.getItem("showWhatsNew") === "true") {
-      localStorage.removeItem("showWhatsNew");
-      setShowWhatsNew(true);
-    }
+    getVersion().then((currentVersion) => {
+      if (!isMounted()) return;
+      const lastSeen = getLastSeenVersion();
+      if (lastSeen === null) {
+        setLaunchType("first_install");
+      } else if (lastSeen !== currentVersion) {
+        setLaunchType("update");
+      } else {
+        setLaunchType("normal");
+      }
+    }).catch(() => {});
   }, []);
 
   // Effie companion widget: subscribe to her mood store and surface a "dragover"
@@ -217,7 +233,6 @@ export default function App() {
               setUpdating(true);
               update.downloadAndInstall().then(() => {
                 toast.success("Update installed. Restarting...");
-                localStorage.setItem("showWhatsNew", "true");
                 import("@tauri-apps/plugin-process").then(({ relaunch }) => {
                   relaunch();
                 });
@@ -289,13 +304,11 @@ export default function App() {
         onSaved={() => setConfigVersion((v) => v + 1)}
       />
 
-      <WhatsNewModal
-        open={showWhatsNew}
-        onClose={() => setShowWhatsNew(false)}
-      />
-
       {effieSettings.enabled && showGreeting && (
-        <GreetingOverlay onClose={() => setShowGreeting(false)} />
+        <GreetingOverlay
+          onClose={() => { setShowGreeting(false); setGreetingDismissed(true); }}
+          appendUpdateLine={launchType === "update" || launchType === "first_install"}
+        />
       )}
 
       {effieSettings.enabled && !showGreeting && (
@@ -304,6 +317,16 @@ export default function App() {
           actionKey={effie.actionKey}
           message={effie.message}
           tier={effieSettings.tier}
+        />
+      )}
+
+      {!patchNotesDismissed && (launchType === "update" || launchType === "first_install") && (
+        <PatchNotesPanel
+          open={greetingDismissed}
+          onClose={() => {
+            setPatchNotesDismissed(true);
+            getVersion().then((v) => { if (isMounted()) setLastSeenVersion(v); }).catch(() => {});
+          }}
         />
       )}
 

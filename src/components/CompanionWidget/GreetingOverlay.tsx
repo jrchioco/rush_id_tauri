@@ -5,10 +5,11 @@ import "./GreetingOverlay.css";
 const TYPEWRITER_MS = 25;
 const COUNTDOWN_SECONDS = 10;
 const FADE_MS = 150;
+const UPDATE_SUFFIX = " ... oh, and we've got some new stuff — check below!";
 
 const GREETING_IMG = new URL("./assets/greeting-idle.webp", import.meta.url).href;
 
-export function GreetingOverlay({ onClose }: { onClose: () => void }) {
+export function GreetingOverlay({ onClose, appendUpdateLine }: { onClose: () => void; appendUpdateLine?: boolean }) {
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(true);
   const [closing, setClosing] = useState(false);
@@ -20,7 +21,8 @@ export function GreetingOverlay({ onClose }: { onClose: () => void }) {
 
   // Typewriter reveal.
   useEffect(() => {
-    const full = pickWelcome();
+    const base = pickWelcome();
+    const full = appendUpdateLine ? base + UPDATE_SUFFIX : base;
     fullLineRef.current = full;
     let i = 0;
     const id = setInterval(() => {
