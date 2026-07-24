@@ -135,8 +135,8 @@ async function preprocessSlot(slot: OtherSlotState, slotAspect: number, size: Ot
   drawW *= slot.zoom;
   drawH *= slot.zoom;
 
-  const maxPanX = imgAspect > effCanvasAspect ? (drawW - effCanvasW) / 2 : 0;
-  const maxPanY = imgAspect <= effCanvasAspect ? (drawH - effCanvasH) / 2 : 0;
+  const maxPanX = drawW > effCanvasW ? (drawW - effCanvasW) / 2 : 0;
+  const maxPanY = drawH > effCanvasH ? (drawH - effCanvasH) / 2 : 0;
 
   ctx.drawImage(img, -drawW / 2 + slot.panX * maxPanX, -drawH / 2 + slot.panY * maxPanY, drawW, drawH);
 

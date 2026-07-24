@@ -75,8 +75,8 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
     drawW *= slot.zoom;
     drawH *= slot.zoom;
 
-    const maxPanX = imgAspect > effCanvasAspect ? (drawW - effCanvasW) / 2 : 0;
-    const maxPanY = imgAspect <= effCanvasAspect ? (drawH - effCanvasH) / 2 : 0;
+    const maxPanX = drawW > effCanvasW ? (drawW - effCanvasW) / 2 : 0;
+    const maxPanY = drawH > effCanvasH ? (drawH - effCanvasH) / 2 : 0;
 
     ctx.drawImage(img, -drawW / 2 + slot.panX * maxPanX, -drawH / 2 + slot.panY * maxPanY, drawW, drawH);
     ctx.restore();
@@ -195,11 +195,8 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
           scaledH = scaledW / imgAspect;
         }
 
-        if (imgAspect > effSlotAspect) {
-          maxPanX = (scaledW - effSlotW) / 2;
-        } else {
-          maxPanY = (scaledH - effSlotH) / 2;
-        }
+        maxPanX = scaledW > effSlotW ? (scaledW - effSlotW) / 2 : 0;
+        maxPanY = scaledH > effSlotH ? (scaledH - effSlotH) / 2 : 0;
       }
 
       panStart.current = { x: e.clientX, y: e.clientY, panX: slot.panX, panY: slot.panY, maxPanX, maxPanY };
