@@ -17,7 +17,7 @@ const SLOT_COUNTS: Record<Layout, number> = { "2pcs": 2, "3pcs": 3, "5pcs": 5, "
 const SLOT_ASPECT = 45.693394 / 61.973392;
 
 function freshSlot(id: number): PolaroidSlotState {
-  return { id, imageBase64: null, fitMode: "cover", panX: 0, panY: 0, rotation: 0 };
+  return { id, imageBase64: null, fitMode: "cover", panX: 0, panY: 0, rotation: 0, zoom: 1 };
 }
 
 function readFileAsBase64(file: File): Promise<string> {
@@ -69,6 +69,9 @@ async function preprocessSlot(slot: PolaroidSlotState, quality: "high" | "flash"
       drawH = effCanvasW / imgAspect;
     }
   }
+
+  drawW *= slot.zoom;
+  drawH *= slot.zoom;
 
   const maxPanX = imgAspect > effCanvasAspect ? (drawW - effCanvasW) / 2 : 0;
   const maxPanY = imgAspect <= effCanvasAspect ? (drawH - effCanvasH) / 2 : 0;
@@ -164,7 +167,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }, PolaroidCli
     setGlobalStretch(next);
     setSlots((prev) =>
       prev.map((s) =>
-        s.imageBase64 ? { ...s, fitMode: (next ? "stretch" : "cover") as FitMode, panX: 0, panY: 0 } : s,
+        s.imageBase64 ? { ...s, fitMode: (next ? "stretch" : "cover") as FitMode, panX: 0, panY: 0, zoom: 1 } : s,
       ),
     );
   }, [globalStretch]);

@@ -67,7 +67,7 @@ function getSources(size: OtherSize, layout: OtherLayout | number): string[] | n
 }
 
 function freshSlot(id: number): OtherSlotState {
-  return { id, imageBase64: null, fitMode: "cover", panX: 0, panY: 0, rotation: 0 };
+  return { id, imageBase64: null, fitMode: "cover", panX: 0, panY: 0, rotation: 0, zoom: 1 };
 }
 
 function readFileAsBase64(file: File): Promise<string> {
@@ -131,6 +131,9 @@ async function preprocessSlot(slot: OtherSlotState, slotAspect: number, size: Ot
       drawH = effCanvasW / imgAspect;
     }
   }
+
+  drawW *= slot.zoom;
+  drawH *= slot.zoom;
 
   const maxPanX = imgAspect > effCanvasAspect ? (drawW - effCanvasW) / 2 : 0;
   const maxPanY = imgAspect <= effCanvasAspect ? (drawH - effCanvasH) / 2 : 0;
@@ -261,7 +264,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
     setGlobalStretch(next);
     setSlots((prev) =>
       prev.map((s) =>
-        s.imageBase64 ? { ...s, fitMode: (next ? "stretch" : "cover") as FitMode, panX: 0, panY: 0 } : s,
+        s.imageBase64 ? { ...s, fitMode: (next ? "stretch" : "cover") as FitMode, panX: 0, panY: 0, zoom: 1 } : s,
       ),
     );
   }, [globalStretch]);

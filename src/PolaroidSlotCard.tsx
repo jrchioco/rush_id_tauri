@@ -14,6 +14,7 @@ export interface PolaroidSlotState {
   panX: number;
   panY: number;
   rotation: number;
+  zoom: number;
 }
 
 interface PolaroidSlotCardProps {
@@ -70,12 +71,15 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       }
     }
 
+    drawW *= slot.zoom;
+    drawH *= slot.zoom;
+
     const maxPanX = imgAspect > effCanvasAspect ? (drawW - effCanvasW) / 2 : 0;
     const maxPanY = imgAspect <= effCanvasAspect ? (drawH - effCanvasH) / 2 : 0;
 
     ctx.drawImage(img, -drawW / 2 + slot.panX * maxPanX, -drawH / 2 + slot.panY * maxPanY, drawW, drawH);
     ctx.restore();
-  }, [slot.fitMode, slot.panX, slot.panY, slot.rotation]);
+  }, [slot.fitMode, slot.panX, slot.panY, slot.rotation, slot.zoom]);
 
   useEffect(() => {
     if (!slot.imageBase64) {
@@ -181,11 +185,18 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
         const imgAspect = img.naturalWidth / img.naturalHeight;
         const effSlotAspect = effSlotW / effSlotH;
 
+        let scaledW: number, scaledH: number;
         if (imgAspect > effSlotAspect) {
-          const scaledW = effSlotH * imgAspect;
+          scaledH = effSlotH * slot.zoom;
+          scaledW = scaledH * imgAspect;
+        } else {
+          scaledW = effSlotW * slot.zoom;
+          scaledH = scaledW / imgAspect;
+        }
+
+        if (imgAspect > effSlotAspect) {
           maxPanX = (scaledW - effSlotW) / 2;
         } else {
-          const scaledH = effSlotW / imgAspect;
           maxPanY = (scaledH - effSlotH) / 2;
         }
       }
@@ -223,7 +234,7 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [isEmpty, slot.fitMode, slot.panX, slot.panY, slot.rotation, onUpdate],
+    [isEmpty, slot.fitMode, slot.panX, slot.panY, slot.rotation, slot.zoom, onUpdate],
   );
 
   const cycleRotation = useCallback(() => {
@@ -233,6 +244,20 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
   const toggleFitMode = useCallback(() => {
     onUpdate({ fitMode: slot.fitMode === "cover" ? "stretch" : "cover", panX: 0, panY: 0 });
   }, [slot.fitMode, onUpdate]);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || isEmpty) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.altKey) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const next = Math.min(5, Math.max(1, slot.zoom + delta));
+      onUpdate({ zoom: Math.round(next * 10) / 10 });
+    };
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [isEmpty, slot.zoom, onUpdate]);
 
   const canvasCursor = isEmpty || slot.fitMode === "stretch" ? "default" : isPanning ? "grabbing" : "grab";
 
@@ -307,10 +332,26 @@ export function PolaroidSlotCard({ slot, onUpdate, onClear, onFileSelect }: Pola
             </Tooltip>
           </div>
 
-          <div className="absolute bottom-1 left-1 right-1 flex justify-center opacity-0 hover:opacity-100 transition-opacity">
-            <span className="text-[8px] text-[#555] font-mono bg-[#0c0c0b]/80 px-1.5 py-0.5 rounded">
-              {slot.rotation}° · {slot.fitMode}
+          <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between opacity-0 hover:opacity-100 transition-opacity">
+            <span
+              className="text-[8px] text-[#555] font-mono bg-[#0c0c0b]/80 px-1.5 py-0.5 rounded cursor-pointer select-none"
+              onDoubleClick={(e) => { e.stopPropagation(); onUpdate({ zoom: 1, panX: 0, panY: 0 }); }}
+              title="Double-click to reset zoom"
+            >
+              {slot.zoom > 1 ? `${slot.zoom.toFixed(1)}× · ` : ""}{slot.rotation}° · {slot.fitMode}
             </span>
+            {slot.zoom > 1 && (
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={0.1}
+                value={slot.zoom}
+                onChange={(e) => onUpdate({ zoom: Number(e.target.value) })}
+                onClick={(e) => e.stopPropagation()}
+                className="w-16 h-1 accent-[#c8881a] cursor-pointer"
+              />
+            )}
           </div>
         </>
       )}
