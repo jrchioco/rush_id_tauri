@@ -342,18 +342,16 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
             >
               {slot.zoom > 1 ? `${slot.zoom.toFixed(1)}× · ` : ""}{slot.rotation}° · {slot.fitMode}
             </span>
-            {slot.zoom > 1 && (
-              <input
-                type="range"
-                min={1}
-                max={5}
-                step={0.1}
-                value={slot.zoom}
-                onChange={(e) => onUpdate({ zoom: Number(e.target.value) })}
-                onClick={(e) => e.stopPropagation()}
-                className="w-16 h-1 accent-[#c8881a] cursor-pointer"
-              />
-            )}
+            <input
+              type="range"
+              min={1}
+              max={5}
+              step={0.1}
+              value={slot.zoom}
+              onChange={(e) => onUpdate({ zoom: Number(e.target.value) })}
+              onClick={(e) => e.stopPropagation()}
+              className="w-16 h-1 accent-[#c8881a] cursor-pointer"
+            />
           </div>
         </>
       )}
