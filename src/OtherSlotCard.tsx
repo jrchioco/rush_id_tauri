@@ -250,7 +250,7 @@ export function OtherSlotCard({ slot, aspectRatio, onUpdate, onClear, onFileSele
     const el = cardRef.current;
     if (!el || isEmpty) return;
     const handleWheel = (e: WheelEvent) => {
-      if (!e.altKey) return;
+      if (!e.ctrlKey) return;
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       const next = Math.min(5, Math.max(1, slot.zoom + delta));
