@@ -5,6 +5,15 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.19.5": {
+    title: "What's New in v1.19.5",
+    date: "2026-07-24",
+    notes: [
+      "Effie now tells you what's new — after an update, she'll hint at the latest changes and show a quick summary once her greeting finishes.",
+      "Print settings guide loads faster — the reminder screenshots are now optimized so they pop up quicker, even on slower machines.",
+      "Zoom in on your photos — Polaroid and Other tabs now support Ctrl+scroll to zoom (up to 5x). Double-click the zoom level to reset.",
+    ],
+  },
   "1.19.4": {
     title: "What's New in v1.19.4",
     date: "2026-07-22",

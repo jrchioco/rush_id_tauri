@@ -7,13 +7,14 @@ interface ThemedModalProps {
   children: ReactNode;
   className?: string;
   panelClassName?: string;
+  dismissible?: boolean;
 }
 
-export function ThemedModal({ open, onClose, children, className, panelClassName }: ThemedModalProps) {
+export function ThemedModal({ open, onClose, children, className, panelClassName, dismissible = true }: ThemedModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !dismissible) return;
     panelRef.current?.focus();
 
     function handleKeyDown(e: KeyboardEvent) {
@@ -21,13 +22,13 @@ export function ThemedModal({ open, onClose, children, className, panelClassName
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, dismissible]);
 
   if (!open) return null;
 
   return (
     <div className={cn("fixed inset-0 z-50 flex items-center justify-center", className)}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={dismissible ? onClose : undefined} />
       <div
         ref={panelRef}
         tabIndex={-1}

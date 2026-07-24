@@ -21,7 +21,7 @@ export function PatchNotesPanel({ open, onClose }: PatchNotesPanelProps) {
   const entry = version ? PATCH_NOTES[version] : undefined;
 
   return (
-    <ThemedModal open={open} onClose={onClose} panelClassName="w-[min(max(60vw,420px),640px)]">
+    <ThemedModal open={open} onClose={onClose} dismissible={false} panelClassName="w-[min(max(60vw,420px),640px)]">
       <div className="px-6 py-5">
         <h2 className="text-base font-bold text-[#e8e4da] tracking-wide mb-4">
           {entry ? entry.title : "What's New"}
