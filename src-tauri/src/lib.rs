@@ -1,4 +1,6 @@
 use base64::Engine;
+use chrono::Utc;
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -440,6 +442,45 @@ fn cleanup_temp_pdfs() {
             }
         }
     }
+}
+
+fn activity_db_path(app: &tauri::AppHandle) -> PathBuf {
+    data_dir(app).join("activity.db")
+}
+
+fn init_activity_db(app: &tauri::AppHandle) -> Result<(), String> {
+    let path = activity_db_path(app);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            tab TEXT,
+            page_count INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_created_at ON activity_log(created_at);",
+    )
+    .map_err(|e| format!("Failed to create activity_log table: {}", e))?;
+    Ok(())
+}
+
+fn log_activity(app: &tauri::AppHandle, event_type: &str, tab: &str, page_count: i32) {
+    let path = activity_db_path(app);
+    if let Ok(conn) = Connection::open(&path) {
+        let now = Utc::now().to_rfc3339();
+        let _ = conn.execute(
+            "INSERT INTO activity_log (event_type, tab, page_count, created_at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![event_type, tab, page_count, now],
+        );
+    }
+}
+
+#[tauri::command]
+fn log_print_reminder(app_handle: tauri::AppHandle, tab: String) -> Result<(), String> {
+    log_activity(&app_handle, "print_reminder_shown", &tab, 1);
+    Ok(())
 }
 
 #[tauri::command]
@@ -1119,6 +1160,10 @@ fn composite_other_pdf(
 pub fn run() {
     cleanup_temp_pdfs();
     tauri::Builder::default()
+        .setup(|app| {
+            init_activity_db(&app.handle())?;
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -1137,9 +1182,10 @@ pub fn run() {
             composite_multi_pdf,
             composite_polaroid_pdf,
             composite_other_pdf,
-            get_key_count,
-            open_file,
-        ])
+             get_key_count,
+             open_file,
+             log_print_reminder,
+         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

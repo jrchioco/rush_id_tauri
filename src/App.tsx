@@ -144,6 +144,11 @@ export default function App() {
     }
   }
 
+  function handlePrintReminder() {
+    setShowPrintReminder(true);
+    invoke("log_print_reminder", { tab: activeTab }).catch(() => {});
+  }
+
   if (configReady === null) {
     return (
       <div className="min-h-screen bg-[#111110] flex items-center justify-center">
@@ -291,11 +296,11 @@ export default function App() {
         </div>
       </header>
 
-      {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} ref={(el) => { tabRefs.current.single = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
-      {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
-      {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
-      {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
-      {activeTab === "other" && <ErrorBoundary><OtherClient key={configVersion} ref={(el) => { tabRefs.current.other = el; }} onPrintReminder={() => setShowPrintReminder(true)} /></ErrorBoundary>}
+      {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} ref={(el) => { tabRefs.current.single = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+      {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+      {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+      {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+      {activeTab === "other" && <ErrorBoundary><OtherClient key={configVersion} ref={(el) => { tabRefs.current.other = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
       {activeTab === "ai-studio" && <ErrorBoundary><AiStudioTab key={configVersion} ref={(el) => { tabRefs.current["ai-studio"] = el; }} /></ErrorBoundary>}
 
       <SettingsModal
