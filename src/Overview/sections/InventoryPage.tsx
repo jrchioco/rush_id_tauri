@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "../components/CompanionWidget/effieInvoke";
+import { invoke } from "../../components/CompanionWidget/effieInvoke";
 import { Plus, AlertTriangle } from "lucide-react";
-import type { Material } from "../types";
+import type { Material } from "../../types";
 import AddEditMaterialModal from "./AddEditMaterialModal";
 import RestockAdjustModal from "./RestockAdjustModal";
 
@@ -64,7 +64,7 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
+    <div>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-lg font-bold text-[#e8e4da] tracking-wide">Inventory</h1>

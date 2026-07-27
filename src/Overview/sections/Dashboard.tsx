@@ -43,7 +43,7 @@ function StatCard({ icon: Icon, label, value }: StatCardProps) {
   );
 }
 
-export default function ActivitySummary() {
+export default function Dashboard() {
   const [stats, setStats] = useState<ActivityStats | null>(null);
   const [recent, setRecent] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);

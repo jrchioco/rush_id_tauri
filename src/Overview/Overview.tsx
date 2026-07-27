@@ -1,72 +1,52 @@
-import { useState, useEffect } from "react";
-import { invoke } from "../components/CompanionWidget/effieInvoke";
-import { Package, TrendingUp, DollarSign } from "lucide-react";
-import type { MaterialsSummary } from "../types";
-import ActivitySummary from "./sections/ActivitySummary";
+import { useState } from "react";
+import { ActivitySquare, Package, TrendingUp, DollarSign } from "lucide-react";
+import Dashboard from "./sections/Dashboard";
+import InventoryPage from "./sections/InventoryPage";
+import SalesHistory from "./sections/SalesHistory";
+import ServicePricing from "./sections/ServicePricing";
 
-function ComingSoon({ title, icon: Icon }: { title: string; icon: typeof Package }) {
-  return (
-    <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
-      <div className="flex items-center gap-3 mb-2">
-        <Icon className="w-5 h-5 text-[#555]" />
-        <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide">{title}</h3>
-      </div>
-      <p className="text-xs text-[#555] font-mono">Coming soon</p>
-    </div>
-  );
-}
+const SECTIONS = [
+  { key: "dashboard", label: "Dashboard", icon: ActivitySquare },
+  { key: "inventory", label: "Inventory", icon: Package },
+  { key: "sales-history", label: "Sales History", icon: TrendingUp },
+  { key: "service-pricing", label: "Service Pricing", icon: DollarSign },
+] as const;
 
-function InventoryCard() {
-  const [summary, setSummary] = useState<MaterialsSummary | null>(null);
-
-  useEffect(() => {
-    invoke<MaterialsSummary>("get_materials_summary")
-      .then(setSummary)
-      .catch(() => {});
-  }, []);
-
-  const low = summary?.low_count ?? 0;
-
-  return (
-    <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
-      <div className="flex items-center gap-3 mb-2">
-        <Package className="w-5 h-5 text-[#555]" />
-        <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide">Inventory</h3>
-      </div>
-      {summary ? (
-        <div>
-          <p className="text-xs text-[#555] font-mono">
-            {summary.total} material{summary.total !== 1 ? "s" : ""}
-          </p>
-          {low > 0 ? (
-            <p className="text-xs font-mono mt-1 text-[#c8881a]">
-              {low} item{low !== 1 ? "s" : ""} low
-            </p>
-          ) : (
-            <p className="text-xs text-[#555] font-mono mt-1">All stocked</p>
-          )}
-        </div>
-      ) : (
-        <p className="text-xs text-[#555] font-mono">Loading...</p>
-      )}
-    </div>
-  );
-}
+type SectionKey = (typeof SECTIONS)[number]["key"];
 
 export default function Overview() {
+  const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-lg font-bold text-[#e8e4da] tracking-wide">Overview</h1>
-        <p className="text-xs text-[#555] font-mono mt-1">Activity and summary at a glance</p>
+    <div className="flex h-full">
+      <div className="w-48 shrink-0 bg-[#0c0c0b] border-r border-[#2a2a28] p-4">
+        <h2 className="text-xs font-bold text-[#555] font-mono tracking-widest uppercase mb-4 px-3">Overview</h2>
+        <nav className="space-y-1">
+          {SECTIONS.map((section) => {
+            const isActive = activeSection === section.key;
+            return (
+              <button
+                key={section.key}
+                onClick={() => setActiveSection(section.key)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-mono transition-colors ${
+                  isActive
+                    ? "bg-[#c8881a] text-[#0c0c0b] font-bold"
+                    : "text-[#888] hover:text-[#e8e4da] hover:bg-[#1a1a18]"
+                }`}
+              >
+                <section.icon className="w-4 h-4" />
+                {section.label}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      <ActivitySummary />
-
-      <div className="grid grid-cols-3 gap-4 mt-8">
-        <InventoryCard />
-        <ComingSoon title="Sales History" icon={TrendingUp} />
-        <ComingSoon title="Service Pricing" icon={DollarSign} />
+      <div className="flex-1 overflow-y-auto px-8 py-8">
+        {activeSection === "dashboard" && <Dashboard />}
+        {activeSection === "inventory" && <InventoryPage />}
+        {activeSection === "sales-history" && <SalesHistory />}
+        {activeSection === "service-pricing" && <ServicePricing />}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { invoke } from "../components/CompanionWidget/effieInvoke";
-import { ThemedModal } from "../components/ThemedModal";
-import type { Material } from "../types";
+import { invoke } from "../../components/CompanionWidget/effieInvoke";
+import { ThemedModal } from "../../components/ThemedModal";
+import type { Material } from "../../types";
 
 interface Props {
   material: Material;
