@@ -62,12 +62,7 @@ export default function ActivitySummary() {
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-lg font-bold text-[#e8e4da] tracking-wide">Activity</h1>
-        <p className="text-xs text-[#555] font-mono mt-1">Today's Activity</p>
-      </div>
-
+    <div>
       <div className="grid grid-cols-4 gap-4 mb-8">
         <StatCard icon={FileDown} label="PDFs Exported Today" value={stats?.pdf_exports ?? 0} />
         <StatCard icon={Printer} label="Print Reminders Today" value={stats?.print_reminders ?? 0} />
