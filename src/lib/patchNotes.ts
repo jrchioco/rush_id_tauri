@@ -5,6 +5,16 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.20.0": {
+    title: "What's New in v1.20.0",
+    date: "2026-07-28",
+    notes: [
+      "New Overview tab — your central hub for activity monitoring. Switches between Dashboard, Inventory, Sales History, and Service Pricing via a left sidebar.",
+      "Dashboard section — see today's export and print activity at a glance: PDFs exported, print reminders triggered, total pages, and multi-page batches.",
+      "Inventory section — track materials with full CRUD: add, edit, delete, restock, and adjust stock. Materials can auto-deduct on export when linked to a tab.",
+      "Low-stock alerts — materials below their threshold show an amber warning. Overview card shows count of low items.",
+    ],
+  },
   "1.19.5": {
     title: "What's New in v1.19.5",
     date: "2026-07-24",
