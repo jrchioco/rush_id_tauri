@@ -329,7 +329,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }, SingleClientP
     onPrintReminder?.();
     try {
       log("Opening print dialog...");
-      const msg = await invoke<string>("print_file", { svgPath: selectedTemplate });
+      const msg = await invoke<string>("print_file", { svgPath: selectedTemplate, tab: "single" });
       if (!isMounted()) return;
       log(`✓ ${msg}`);
     } catch (e) {
@@ -351,7 +351,7 @@ const SingleClient = forwardRef<{ hasUnsavedWork: () => boolean }, SingleClientP
       if (!savePath || !isMounted()) return;
       setLastSaveDir(savePath);
       log("Exporting PDF...");
-      const pdfPath = await invoke<string>("export_pdf", { svgPath: selectedTemplate, savePath });
+      const pdfPath = await invoke<string>("export_pdf", { svgPath: selectedTemplate, savePath, tab: "single" });
       if (!isMounted()) return;
       await invoke("open_file", { path: pdfPath });
       if (!isMounted()) return;

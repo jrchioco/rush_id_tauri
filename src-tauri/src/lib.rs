@@ -410,7 +410,7 @@ fn write_picture(app_handle: tauri::AppHandle, image_base64: String) -> Result<S
 }
 
 #[tauri::command]
-fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String) -> Result<String, String> {
+fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String, tab: String) -> Result<String, String> {
     let tmp_dir = data_dir(&app_handle).join("tmp");
     let patched_svg = patch_svg_path(&app_handle, &svg_path)?;
     let svg_content = fs::read_to_string(&patched_svg)
@@ -425,6 +425,7 @@ fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String)
     fs::write(&pdf_path, &pdf_bytes).map_err(|e| format!("Failed to write PDF: {}", e))?;
 
     if pdf_path.exists() {
+        log_activity(&app_handle, "pdf_export", &tab, 1);
         Ok(pdf_path.to_string_lossy().to_string())
     } else {
         Err("PDF generation failed".to_string())
@@ -506,7 +507,7 @@ fn open_file(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, String> {
+fn print_file(app_handle: tauri::AppHandle, svg_path: String, tab: String) -> Result<String, String> {
     let tmp_dir = data_dir(&app_handle).join("tmp");
     let patched_svg = patch_svg_path(&app_handle, &svg_path)?;
     let svg_content = fs::read_to_string(&patched_svg)
@@ -533,6 +534,7 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String) -> Result<String, 
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
+    log_activity(&app_handle, "pdf_export", &tab, 1);
     Ok("PDF opened in viewer. Press Ctrl+P to print.".to_string())
 }
 
@@ -615,7 +617,7 @@ fn merge_pdfs(pages: Vec<Vec<u8>>) -> Result<Vec<u8>, String> {
 }
 
 #[tauri::command]
-fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, save_path: Option<String>) -> Result<String, String> {
+fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, save_path: Option<String>, tab: String) -> Result<String, String> {
     let d = data_dir(&app_handle);
     let tmp_dir = d.join("tmp");
     fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create tmp dir: {}", e))?;
@@ -768,6 +770,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
+    log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     let msg = if save_path.is_some() { "PDF saved" } else { "Composite PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -784,6 +787,7 @@ fn composite_polaroid_pdf(
     layout: String,
     slots: Vec<PolaroidSlot>,
     save_path: Option<String>,
+    tab: String,
 ) -> Result<String, String> {
     let d = data_dir(&app_handle);
     let tmp_dir = d.join("tmp");
@@ -940,6 +944,7 @@ fn composite_polaroid_pdf(
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
+    log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     let msg = if save_path.is_some() { "PDF saved" } else { "Polaroid PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -953,6 +958,7 @@ fn composite_other_pdf(
     slots: Vec<PolaroidSlot>,
     save_path: Option<String>,
     sources: Option<Vec<String>>,
+    tab: String,
 ) -> Result<String, String> {
     let d = data_dir(&app_handle);
     let res = resource_dir(&app_handle);
@@ -1152,8 +1158,86 @@ fn composite_other_pdf(
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
+    log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     let msg = if save_path.is_some() { "PDF saved" } else { "Other PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
+}
+
+#[derive(Serialize)]
+struct ActivityStats {
+    pdf_exports: i32,
+    print_reminders: i32,
+    total_pages: i32,
+    multi_page_batches: i32,
+}
+
+#[derive(Serialize)]
+struct ActivityEntry {
+    id: i32,
+    event_type: String,
+    tab: String,
+    page_count: i32,
+    created_at: String,
+}
+
+#[tauri::command]
+fn get_activity_stats(app_handle: tauri::AppHandle) -> Result<ActivityStats, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+
+    let today = Utc::now().format("%Y-%m-%d").to_string();
+
+    let pdf_exports: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM activity_log WHERE event_type = 'pdf_export' AND date(created_at) = ?1",
+        rusqlite::params![today],
+        |row| row.get(0),
+    ).unwrap_or(0);
+
+    let print_reminders: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM activity_log WHERE event_type = 'print_reminder_shown' AND date(created_at) = ?1",
+        rusqlite::params![today],
+        |row| row.get(0),
+    ).unwrap_or(0);
+
+    let total_pages: i32 = conn.query_row(
+        "SELECT COALESCE(SUM(page_count), 0) FROM activity_log WHERE event_type = 'pdf_export' AND date(created_at) = ?1",
+        rusqlite::params![today],
+        |row| row.get(0),
+    ).unwrap_or(0);
+
+    let multi_page_batches: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM activity_log WHERE event_type = 'pdf_export' AND page_count > 1 AND date(created_at) = ?1",
+        rusqlite::params![today],
+        |row| row.get(0),
+    ).unwrap_or(0);
+
+    Ok(ActivityStats { pdf_exports, print_reminders, total_pages, multi_page_batches })
+}
+
+#[tauri::command]
+fn get_recent_activity(app_handle: tauri::AppHandle, limit: Option<usize>) -> Result<Vec<ActivityEntry>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+
+    let limit = limit.unwrap_or(15) as i32;
+    let mut stmt = conn.prepare(
+        "SELECT id, event_type, tab, page_count, created_at FROM activity_log ORDER BY id DESC LIMIT ?1"
+    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    let rows = stmt.query_map(rusqlite::params![limit], |row| {
+        Ok(ActivityEntry {
+            id: row.get(0)?,
+            event_type: row.get(1)?,
+            tab: row.get(2)?,
+            page_count: row.get(3)?,
+            created_at: row.get(4)?,
+        })
+    }).map_err(|e| format!("Failed to query activity: {}", e))?;
+
+    let entries = rows.filter_map(|r| r.ok()).collect();
+    Ok(entries)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1185,6 +1269,8 @@ pub fn run() {
              get_key_count,
              open_file,
              log_print_reminder,
+             get_activity_stats,
+             get_recent_activity,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

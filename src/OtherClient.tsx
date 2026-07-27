@@ -326,6 +326,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
           slots: processed,
           savePath: savePath ?? null,
           sources,
+          tab: "other",
         });
         if (!isMounted()) return;
         log(`✓ ${msg}`);

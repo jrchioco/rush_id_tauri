@@ -309,6 +309,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
       const msg = await invoke<string>("composite_multi_pdf", {
         clients,
         savePath: savePath ?? null,
+        tab: "passport",
       });
       if (!isMounted()) return;
       log(`✓ ${msg}`);

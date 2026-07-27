@@ -216,6 +216,7 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }, PolaroidCli
           layout,
           slots: processed,
           savePath: savePath ?? null,
+          tab: "polaroid",
         });
         if (!isMounted()) return;
         log(`✓ ${msg}`);

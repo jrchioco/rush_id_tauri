@@ -307,6 +307,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
       const msg = await invoke<string>("composite_multi_pdf", {
         clients,
         savePath: savePath ?? null,
+        tab: "multi",
       });
       if (!isMounted()) return;
       log(`✓ ${msg}`);
