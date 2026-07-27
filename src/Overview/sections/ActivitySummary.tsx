@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { invoke } from "./components/CompanionWidget/effieInvoke";
+import { invoke } from "../../components/CompanionWidget/effieInvoke";
 import { FileDown, Printer, Layers, Files } from "lucide-react";
-import type { ActivityStats, ActivityEntry } from "./types";
+import type { ActivityStats, ActivityEntry } from "../../types";
 
 function formatTime(iso: string): string {
   try {
@@ -43,7 +43,7 @@ function StatCard({ icon: Icon, label, value }: StatCardProps) {
   );
 }
 
-export default function Dashboard() {
+export default function ActivitySummary() {
   const [stats, setStats] = useState<ActivityStats | null>(null);
   const [recent, setRecent] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="mb-8">
-        <h1 className="text-lg font-bold text-[#e8e4da] tracking-wide">Dashboard</h1>
+        <h1 className="text-lg font-bold text-[#e8e4da] tracking-wide">Activity</h1>
         <p className="text-xs text-[#555] font-mono mt-1">Today's Activity</p>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "./components/CompanionWidget/effieInvoke";
-import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings, Ruler, LayoutDashboard } from "lucide-react";
+import { X, Scan, Layers, Sparkles, IdCard, Camera, Settings, Ruler, Home } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "./lib/utils";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -18,7 +18,7 @@ import AiStudioTab from "./AiStudioTab";
 import PassportClient from "./PassportClient";
 import PolaroidClient from "./PolaroidClient";
 import OtherClient from "./OtherClient";
-import Dashboard from "./Dashboard";
+import Overview from "./Overview/Overview";
 import { CompanionWidget } from "./components/CompanionWidget";
 import { GreetingOverlay } from "./components/CompanionWidget/GreetingOverlay";
 import { useEffieMood, setEffieMood } from "./components/CompanionWidget/moodStore";
@@ -26,10 +26,10 @@ import { useIsBrowsing, endBrowse } from "./components/CompanionWidget/browseSto
 import { useEffieSettings } from "./components/CompanionWidget/effieSettings";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 
-type Tab = "dashboard" | "single" | "multi" | "passport" | "polaroid" | "other" | "ai-studio";
+type Tab = "overview" | "single" | "multi" | "passport" | "polaroid" | "other" | "ai-studio";
 
 const TABS: { key: Tab; label: string; icon: typeof Scan }[] = [
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "overview", label: "Overview", icon: Home },
   { key: "single", label: "Single", icon: Scan },
   { key: "multi", label: "Multi", icon: Layers },
   { key: "passport", label: "Passport", icon: IdCard },
@@ -56,7 +56,7 @@ export default function App() {
   const [greetingDismissed, setGreetingDismissed] = useState(false);
   const [patchNotesDismissed, setPatchNotesDismissed] = useState(false);
   const tabRefs = useRef<Record<Tab, { hasUnsavedWork: () => boolean } | null>>({
-    dashboard: null, single: null, multi: null, passport: null, polaroid: null, other: null, "ai-studio": null,
+    overview: null, single: null, multi: null, passport: null, polaroid: null, other: null, "ai-studio": null,
   });
 
   const handleTabSwitch = useCallback((key: Tab) => {
@@ -298,7 +298,7 @@ export default function App() {
         </div>
       </header>
 
-      {activeTab === "dashboard" && <Dashboard />}
+      {activeTab === "overview" && <Overview />}
       {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} ref={(el) => { tabRefs.current.single = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
       {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
       {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
