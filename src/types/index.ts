@@ -25,3 +25,20 @@ export interface ActivityEntry {
   page_count: number;
   created_at: string;
 }
+
+export interface Material {
+  id: number;
+  name: string;
+  unit: string;
+  current_stock: number;
+  low_stock_threshold: number;
+  linked_tab: string | null;
+  deduct_per_export: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaterialsSummary {
+  total: number;
+  low_count: number;
+}

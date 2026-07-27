@@ -426,6 +426,7 @@ fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String,
 
     if pdf_path.exists() {
         log_activity(&app_handle, "pdf_export", &tab, 1);
+        deduct_materials_for_export(&app_handle, &tab, 1);
         Ok(pdf_path.to_string_lossy().to_string())
     } else {
         Err("PDF generation failed".to_string())
@@ -461,7 +462,27 @@ fn init_activity_db(app: &tauri::AppHandle) -> Result<(), String> {
             page_count INTEGER DEFAULT 1,
             created_at TEXT NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS idx_created_at ON activity_log(created_at);",
+        CREATE INDEX IF NOT EXISTS idx_created_at ON activity_log(created_at);
+
+        CREATE TABLE IF NOT EXISTS materials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            unit TEXT NOT NULL,
+            current_stock REAL NOT NULL,
+            low_stock_threshold REAL NOT NULL DEFAULT 0,
+            linked_tab TEXT,
+            deduct_per_export REAL NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS stock_adjustments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            material_id INTEGER NOT NULL REFERENCES materials(id),
+            change_amount REAL NOT NULL,
+            reason TEXT,
+            created_at TEXT NOT NULL
+        );",
     )
     .map_err(|e| format!("Failed to create activity_log table: {}", e))?;
     Ok(())
@@ -482,6 +503,214 @@ fn log_activity(app: &tauri::AppHandle, event_type: &str, tab: &str, page_count:
 fn log_print_reminder(app_handle: tauri::AppHandle, tab: String) -> Result<(), String> {
     log_activity(&app_handle, "print_reminder_shown", &tab, 1);
     Ok(())
+}
+
+#[derive(Debug, Serialize)]
+struct Material {
+    id: i64,
+    name: String,
+    unit: String,
+    current_stock: f64,
+    low_stock_threshold: f64,
+    linked_tab: Option<String>,
+    deduct_per_export: f64,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Serialize)]
+struct MaterialsSummary {
+    total: i32,
+    low_count: i32,
+}
+
+fn deduct_materials_for_export(app: &tauri::AppHandle, tab: &str, page_count: i32) {
+    let path = activity_db_path(app);
+    if let Ok(conn) = Connection::open(&path) {
+        let mut stmt = match conn.prepare(
+            "SELECT id, deduct_per_export FROM materials WHERE linked_tab = ?1"
+        ) {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+        let now = Utc::now().to_rfc3339();
+        let rows: Vec<(i64, f64)> = stmt.query_map(rusqlite::params![tab], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
+        .map(|r| r.filter_map(|x| x.ok()).collect())
+        .unwrap_or_default();
+
+        for (id, deduct) in rows {
+            let amount = deduct * page_count as f64;
+            let _ = conn.execute(
+                "UPDATE materials SET current_stock = current_stock - ?1, updated_at = ?2 WHERE id = ?3",
+                rusqlite::params![amount, now, id],
+            );
+            let _ = conn.execute(
+                "INSERT INTO stock_adjustments (material_id, change_amount, reason, created_at) VALUES (?1, ?2, 'Auto-deduct', ?3)",
+                rusqlite::params![id, -amount, now],
+            );
+        }
+    }
+}
+
+#[tauri::command]
+fn get_materials(app_handle: tauri::AppHandle) -> Result<Vec<Material>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let mut stmt = conn.prepare(
+        "SELECT id, name, unit, current_stock, low_stock_threshold, linked_tab, deduct_per_export, created_at, updated_at FROM materials ORDER BY name"
+    ).map_err(|e| e.to_string())?;
+    let materials = stmt.query_map([], |row| {
+        Ok(Material {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            unit: row.get(2)?,
+            current_stock: row.get(3)?,
+            low_stock_threshold: row.get(4)?,
+            linked_tab: row.get(5)?,
+            deduct_per_export: row.get(6)?,
+            created_at: row.get(7)?,
+            updated_at: row.get(8)?,
+        })
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok()).collect();
+    Ok(materials)
+}
+
+#[tauri::command]
+fn add_material(
+    app_handle: tauri::AppHandle,
+    name: String,
+    unit: String,
+    current_stock: f64,
+    low_stock_threshold: f64,
+    linked_tab: Option<String>,
+    deduct_per_export: Option<f64>,
+) -> Result<Material, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let now = Utc::now().to_rfc3339();
+    let deduct = deduct_per_export.unwrap_or(1.0);
+    conn.execute(
+        "INSERT INTO materials (name, unit, current_stock, low_stock_threshold, linked_tab, deduct_per_export, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![name, unit, current_stock, low_stock_threshold, linked_tab, deduct, now, now],
+    ).map_err(|e| e.to_string())?;
+    let id = conn.last_insert_rowid();
+    Ok(Material { id, name, unit, current_stock, low_stock_threshold, linked_tab, deduct_per_export: deduct, created_at: now.clone(), updated_at: now })
+}
+
+#[tauri::command]
+fn update_material(
+    app_handle: tauri::AppHandle,
+    id: i64,
+    name: String,
+    unit: String,
+    current_stock: f64,
+    low_stock_threshold: f64,
+    linked_tab: Option<String>,
+    deduct_per_export: Option<f64>,
+) -> Result<Material, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let now = Utc::now().to_rfc3339();
+    let deduct = deduct_per_export.unwrap_or(1.0);
+    conn.execute(
+        "UPDATE materials SET name = ?1, unit = ?2, current_stock = ?3, low_stock_threshold = ?4, linked_tab = ?5, deduct_per_export = ?6, updated_at = ?7 WHERE id = ?8",
+        rusqlite::params![name, unit, current_stock, low_stock_threshold, linked_tab, deduct, now, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(Material { id, name, unit, current_stock, low_stock_threshold, linked_tab, deduct_per_export: deduct, created_at: now.clone(), updated_at: now })
+}
+
+#[tauri::command]
+fn delete_material(app_handle: tauri::AppHandle, id: i64) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    conn.execute("DELETE FROM stock_adjustments WHERE material_id = ?1", rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM materials WHERE id = ?1", rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn restock_material(app_handle: tauri::AppHandle, id: i64, amount: f64) -> Result<Material, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE materials SET current_stock = current_stock + ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![amount, now, id],
+    ).map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO stock_adjustments (material_id, change_amount, reason, created_at) VALUES (?1, ?2, 'Restock', ?3)",
+        rusqlite::params![id, amount, now],
+    ).map_err(|e| e.to_string())?;
+    let mat = conn.query_row(
+        "SELECT id, name, unit, current_stock, low_stock_threshold, linked_tab, deduct_per_export, created_at, updated_at FROM materials WHERE id = ?1",
+        rusqlite::params![id],
+        |row| Ok(Material {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            unit: row.get(2)?,
+            current_stock: row.get(3)?,
+            low_stock_threshold: row.get(4)?,
+            linked_tab: row.get(5)?,
+            deduct_per_export: row.get(6)?,
+            created_at: row.get(7)?,
+            updated_at: row.get(8)?,
+        }),
+    ).map_err(|e| e.to_string())?;
+    Ok(mat)
+}
+
+#[tauri::command]
+fn adjust_stock(app_handle: tauri::AppHandle, id: i64, amount: f64, reason: Option<String>) -> Result<Material, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE materials SET current_stock = current_stock + ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![amount, now, id],
+    ).map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO stock_adjustments (material_id, change_amount, reason, created_at) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![id, amount, reason, now],
+    ).map_err(|e| e.to_string())?;
+    let mat = conn.query_row(
+        "SELECT id, name, unit, current_stock, low_stock_threshold, linked_tab, deduct_per_export, created_at, updated_at FROM materials WHERE id = ?1",
+        rusqlite::params![id],
+        |row| Ok(Material {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            unit: row.get(2)?,
+            current_stock: row.get(3)?,
+            low_stock_threshold: row.get(4)?,
+            linked_tab: row.get(5)?,
+            deduct_per_export: row.get(6)?,
+            created_at: row.get(7)?,
+            updated_at: row.get(8)?,
+        }),
+    ).map_err(|e| e.to_string())?;
+    Ok(mat)
+}
+
+#[tauri::command]
+fn get_materials_summary(app_handle: tauri::AppHandle) -> Result<MaterialsSummary, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let total: i32 = conn.query_row("SELECT COUNT(*) FROM materials", [], |row| row.get(0)).unwrap_or(0);
+    let low_count: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM materials WHERE current_stock <= low_stock_threshold", [], |row| row.get(0)
+    ).unwrap_or(0);
+    Ok(MaterialsSummary { total, low_count })
 }
 
 #[tauri::command]
@@ -535,6 +764,7 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String, tab: String) -> Re
     }
 
     log_activity(&app_handle, "pdf_export", &tab, 1);
+    deduct_materials_for_export(&app_handle, &tab, 1);
     Ok("PDF opened in viewer. Press Ctrl+P to print.".to_string())
 }
 
@@ -771,6 +1001,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
     }
 
     log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
+    deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
     let msg = if save_path.is_some() { "PDF saved" } else { "Composite PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -945,6 +1176,7 @@ fn composite_polaroid_pdf(
     }
 
     log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
+    deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
     let msg = if save_path.is_some() { "PDF saved" } else { "Polaroid PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -1159,6 +1391,7 @@ fn composite_other_pdf(
     }
 
     log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
+    deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
     let msg = if save_path.is_some() { "PDF saved" } else { "Other PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -1271,6 +1504,13 @@ pub fn run() {
              log_print_reminder,
              get_activity_stats,
              get_recent_activity,
+             get_materials,
+             add_material,
+             update_material,
+             delete_material,
+             restock_material,
+             adjust_stock,
+             get_materials_summary,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
