@@ -229,7 +229,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111110]">
+    <div className="h-screen bg-[#111110] overflow-hidden">
       {updateAvailable && (
         <div className="bg-[#1a1508] border-b border-[#c8881a]/30 px-6 py-2 text-[#c8881a] text-xs flex items-center justify-center gap-2 font-mono">
           <span>A new version is available.</span>
