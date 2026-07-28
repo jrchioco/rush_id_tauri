@@ -77,6 +77,7 @@ export default function SalesHistory() {
                 <tr className="border-b border-[#2a2a28]">
                   <th className="pb-3 text-xs font-mono text-[#555] font-normal">Time</th>
                   <th className="pb-3 text-xs font-mono text-[#555] font-normal">Tab</th>
+                  <th className="pb-3 text-xs font-mono text-[#555] font-normal">Template</th>
                   <th className="pb-3 text-xs font-mono text-[#555] font-normal text-right">Amount</th>
                   <th className="pb-3 text-xs font-mono text-[#555] font-normal text-right">Qty</th>
                   <th className="pb-3 text-xs font-mono text-[#555] font-normal">Source</th>
@@ -91,6 +92,7 @@ export default function SalesHistory() {
                   >
                     <td className="py-3 text-xs font-mono text-[#888]">{formatTime(sale.created_at)}</td>
                     <td className="py-3 text-xs font-mono text-[#888]">{formatTab(sale.tab)}</td>
+                    <td className="py-3 text-xs font-mono text-[#555]">{sale.template_key ?? "—"}</td>
                     <td className="py-3 text-xs font-mono text-[#e8e4da] text-right">₱{sale.amount.toLocaleString()}</td>
                     <td className="py-3 text-xs font-mono text-[#888] text-right">{sale.quantity}</td>
                     <td className="py-3 text-xs font-mono">

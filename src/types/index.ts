@@ -47,6 +47,7 @@ export interface Sale {
   id: number;
   source: string;
   tab: string | null;
+  template_key: string | null;
   amount: number;
   quantity: number;
   note: string | null;
@@ -59,8 +60,12 @@ export interface SalesSummary {
   today_count: number;
 }
 
-export interface ServicePrice {
-  tab: string;
+export interface Service {
+  id: number;
+  template_key: string;
+  display_name: string;
   price: number;
+  tab: string | null;
+  created_at: string;
   updated_at: string;
 }

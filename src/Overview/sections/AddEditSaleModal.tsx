@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { invoke } from "../../components/CompanionWidget/effieInvoke";
 import { ThemedModal } from "../../components/ThemedModal";
 import type { Sale } from "../../types";
@@ -24,24 +24,6 @@ export default function AddEditSaleModal({ sale, onClose, onSave }: Props) {
   const [quantity, setQuantity] = useState(String(sale?.quantity ?? "1"));
   const [note, setNote] = useState(sale?.note ?? "");
   const [saving, setSaving] = useState(false);
-  const [noPriceNote, setNoPriceNote] = useState(false);
-
-  useEffect(() => {
-    if (tab && !sale) {
-      invoke<number | null>("get_service_price_for_tab", { tab })
-        .then((price) => {
-          if (price !== null && price > 0) {
-            setAmount(String(price));
-            setNoPriceNote(false);
-          } else {
-            setNoPriceNote(true);
-          }
-        })
-        .catch(() => setNoPriceNote(true));
-    } else {
-      setNoPriceNote(false);
-    }
-  }, [tab, sale]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +32,7 @@ export default function AddEditSaleModal({ sale, onClose, onSave }: Props) {
     try {
       const params = {
         tab: tab || null,
+        templateKey: sale?.template_key ?? null,
         amount: parseFloat(amount),
         quantity: parseInt(quantity) || 1,
         note: note.trim() || null,
@@ -74,11 +57,19 @@ export default function AddEditSaleModal({ sale, onClose, onSave }: Props) {
         </h2>
 
         {sale && (
-          <div className="mb-3 px-3 py-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg">
-            <span className="text-xs font-mono text-[#555]">Source: </span>
-            <span className={`text-xs font-mono font-bold ${sale.source === "auto" ? "text-[#c8881a]" : "text-[#888]"}`}>
-              {sale.source === "auto" ? "Auto (export)" : "Manual"}
-            </span>
+          <div className="mb-3 space-y-2">
+            <div className="px-3 py-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg">
+              <span className="text-xs font-mono text-[#555]">Source: </span>
+              <span className={`text-xs font-mono font-bold ${sale.source === "auto" ? "text-[#c8881a]" : "text-[#888]"}`}>
+                {sale.source === "auto" ? "Auto (export)" : "Manual"}
+              </span>
+            </div>
+            {sale.template_key && (
+              <div className="px-3 py-2 bg-[#1a1a18] border border-[#2a2a28] rounded-lg">
+                <span className="text-xs font-mono text-[#555]">Template: </span>
+                <span className="text-xs font-mono text-[#e8e4da]">{sale.template_key}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -108,9 +99,6 @@ export default function AddEditSaleModal({ sale, onClose, onSave }: Props) {
                 className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-2 text-xs font-mono text-[#e8e4da] outline-none focus:border-[#c8881a] transition-colors"
                 required
               />
-              {noPriceNote && (
-                <p className="text-[10px] text-[#555] font-mono mt-1">No price set for this tab</p>
-              )}
             </div>
             <div>
               <label className="block text-xs text-[#555] font-mono mb-1">Quantity</label>
