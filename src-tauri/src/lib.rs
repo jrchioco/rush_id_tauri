@@ -669,9 +669,9 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
 
             let tab = if stem.to_lowercase().contains("passport") {
                 "passport"
-            } else if stem.starts_with("multi_") || stem.to_lowercase() == "mixed" {
+            } else if stem.starts_with("multi_") {
                 "multi"
-            } else if stem == "1x1" || stem == "2x2" || stem.starts_with("Dev ") {
+            } else if stem == "1x1" || stem == "2x2" || stem.starts_with("Dev ") || stem.to_lowercase() == "mixed" {
                 "single"
             } else if stem.starts_with("Polaroid") {
                 "polaroid"
@@ -683,6 +683,17 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
                 "INSERT OR IGNORE INTO services (template_key, display_name, price, tab, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?4, ?4)",
                 rusqlite::params![stem, display_name, tab, now],
             );
+            let _ = conn.execute(
+                "UPDATE services SET tab = ?1 WHERE template_key = ?2 AND tab != ?1",
+                rusqlite::params![tab, stem],
+            );
+            if stem.starts_with("multi_") {
+                let single_key = &stem[6..];
+                let _ = conn.execute(
+                    "UPDATE services SET price = (SELECT price FROM services WHERE LOWER(template_key) = LOWER(?1)) WHERE template_key = ?2",
+                    rusqlite::params![single_key, stem],
+                );
+            }
         }
     }
 }
@@ -960,6 +971,23 @@ fn update_service_price(app_handle: tauri::AppHandle, id: i64, price: f64) -> Re
         "UPDATE services SET price = ?1, updated_at = ?2 WHERE id = ?3",
         rusqlite::params![price, now, id],
     ).map_err(|e| e.to_string())?;
+    let template_key: String = conn.query_row(
+        "SELECT template_key FROM services WHERE id = ?1",
+        rusqlite::params![id],
+        |row| row.get(0),
+    ).unwrap_or_default();
+    let multi_key = match template_key.to_lowercase().as_str() {
+        "1x1" => Some("multi_1x1"),
+        "2x2" => Some("multi_2x2"),
+        "mixed" => Some("multi_mixed"),
+        _ => None,
+    };
+    if let Some(mk) = multi_key {
+        let _ = conn.execute(
+            "UPDATE services SET price = ?1, updated_at = ?2 WHERE template_key = ?3",
+            rusqlite::params![price, now, mk],
+        );
+    }
     Ok(())
 }
 
