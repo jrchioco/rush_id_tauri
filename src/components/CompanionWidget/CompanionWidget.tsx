@@ -53,6 +53,7 @@ export function CompanionWidget({
   actionKey,
   tier = "med",
   autoIdleAfter = 20000,
+  position = "right",
 }: Props) {
   const [idleVariant, setIdleVariant] = useState<string>("idle-canonical");
   // Drives the idle pose cycle (30s canonical -> 5s yawn/lookup -> repeat).
@@ -240,7 +241,7 @@ export function CompanionWidget({
   const showBubble = bubbleText.length > 0;
 
   return (
-    <div className="companion-widget">
+    <div className={`companion-widget${position === "left" ? " companion-widget--left" : ""}`}>
       <div className="companion-image-stack">
         <div className={`companion-image-inner${pulsing ? " is-pulsing" : ""}`}>
           {outgoingSrc && (

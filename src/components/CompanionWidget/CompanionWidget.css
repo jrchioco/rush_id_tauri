@@ -9,6 +9,22 @@
   pointer-events: none; /* widget itself doesn't block clicks... */
 }
 
+.companion-widget--left {
+  right: auto;
+  left: 16px;
+  align-items: flex-start;
+}
+
+.companion-widget--left .companion-bubble {
+  right: auto;
+  left: 0;
+}
+
+.companion-widget--left .companion-bubble::after {
+  right: auto;
+  left: 16px;
+}
+
 .companion-image-stack {
   position: relative;
   width: 150px; /* matches "med" tier default; override via CSS for other tiers */

@@ -18,4 +18,6 @@ export interface CompanionWidgetProps {
    * re-arms the timer).
    */
   autoIdleAfter?: number;
+  /** Position on screen: "right" (default) or "left" (e.g. for overview tab). */
+  position?: "left" | "right";
 }

@@ -327,6 +327,7 @@ export default function App() {
           actionKey={effie.actionKey}
           message={effie.message}
           tier={effieSettings.tier}
+          position={activeTab === "overview" ? "left" : "right"}
         />
       )}
 
