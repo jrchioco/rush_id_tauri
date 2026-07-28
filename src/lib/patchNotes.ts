@@ -10,9 +10,12 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
     date: "2026-07-28",
     notes: [
       "New Overview tab — your central hub for activity monitoring. Switches between Dashboard, Inventory, Sales History, and Service Pricing via a left sidebar.",
-      "Dashboard section — see today's export and print activity at a glance: PDFs exported, print reminders triggered, total pages, and multi-page batches.",
+      "Dashboard section — see today's export and print activity at a glance: PDFs exported, print reminders triggered, total pages, multi-page batches, and today's sales total.",
       "Inventory section — track materials with full CRUD: add, edit, delete, restock, and adjust stock. Materials can auto-deduct on export when linked to a tab.",
       "Low-stock alerts — materials below their threshold show an amber warning. Overview card shows count of low items.",
+      "Sales History — track every sale with full details: time, tab, template, amount, quantity, and source (auto-generated or manual). Add, edit, or delete sales anytime.",
+      "Service Pricing — set prices for your templates. Prices are grouped by category (Rush ID, Polaroid, Other) with inline editing. Multi, Dev, and passport templates sync prices automatically from their main counterparts.",
+      "Effie moves to the left — when you're in the Overview tab, Effie repositions to the bottom-left corner so she doesn't overlap your content.",
     ],
   },
   "1.19.5": {
