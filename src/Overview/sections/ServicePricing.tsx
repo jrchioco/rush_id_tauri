@@ -20,15 +20,15 @@ export default function ServicePricing() {
   const [editValue, setEditValue] = useState("");
   const [savedId, setSavedId] = useState<number | null>(null);
 
-  const fetchServices = useCallback(() => {
-    setLoading(true);
+  const fetchServices = useCallback((initial = false) => {
+    if (initial) setLoading(true);
     invoke<Service[]>("get_services")
       .then(setServices)
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (initial) setLoading(false); });
   }, []);
 
-  useEffect(() => { fetchServices(); }, [fetchServices]);
+  useEffect(() => { fetchServices(true); }, [fetchServices]);
 
   const grouped = TAB_ORDER.reduce((acc, tab) => {
     const items = services.filter((s) => s.tab === tab);
