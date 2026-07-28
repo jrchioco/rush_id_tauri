@@ -42,3 +42,25 @@ export interface MaterialsSummary {
   total: number;
   low_count: number;
 }
+
+export interface Sale {
+  id: number;
+  source: string;
+  tab: string | null;
+  amount: number;
+  quantity: number;
+  note: string | null;
+  activity_log_id: number | null;
+  created_at: string;
+}
+
+export interface SalesSummary {
+  today_total: number;
+  today_count: number;
+}
+
+export interface ServicePrice {
+  tab: string;
+  price: number;
+  updated_at: string;
+}

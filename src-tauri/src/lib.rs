@@ -425,8 +425,9 @@ fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String,
     fs::write(&pdf_path, &pdf_bytes).map_err(|e| format!("Failed to write PDF: {}", e))?;
 
     if pdf_path.exists() {
-        log_activity(&app_handle, "pdf_export", &tab, 1);
+        let log_id = log_activity(&app_handle, "pdf_export", &tab, 1);
         deduct_materials_for_export(&app_handle, &tab, 1);
+        auto_create_sale(&app_handle, &tab, log_id);
         Ok(pdf_path.to_string_lossy().to_string())
     } else {
         Err("PDF generation failed".to_string())
@@ -482,21 +483,41 @@ fn init_activity_db(app: &tauri::AppHandle) -> Result<(), String> {
             change_amount REAL NOT NULL,
             reason TEXT,
             created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS service_prices (
+            tab TEXT PRIMARY KEY,
+            price REAL NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS sales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            tab TEXT,
+            amount REAL NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            note TEXT,
+            activity_log_id INTEGER,
+            created_at TEXT NOT NULL
         );",
     )
     .map_err(|e| format!("Failed to create activity_log table: {}", e))?;
     Ok(())
 }
 
-fn log_activity(app: &tauri::AppHandle, event_type: &str, tab: &str, page_count: i32) {
+fn log_activity(app: &tauri::AppHandle, event_type: &str, tab: &str, page_count: i32) -> Option<i64> {
     let path = activity_db_path(app);
     if let Ok(conn) = Connection::open(&path) {
         let now = Utc::now().to_rfc3339();
-        let _ = conn.execute(
+        if conn.execute(
             "INSERT INTO activity_log (event_type, tab, page_count, created_at) VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params![event_type, tab, page_count, now],
-        );
+        ).is_ok() {
+            return Some(conn.last_insert_rowid());
+        }
     }
+    None
 }
 
 #[tauri::command]
@@ -522,6 +543,31 @@ struct Material {
 struct MaterialsSummary {
     total: i32,
     low_count: i32,
+}
+
+#[derive(Debug, Serialize)]
+struct Sale {
+    id: i64,
+    source: String,
+    tab: Option<String>,
+    amount: f64,
+    quantity: i32,
+    note: Option<String>,
+    activity_log_id: Option<i64>,
+    created_at: String,
+}
+
+#[derive(Debug, Serialize)]
+struct SalesSummary {
+    today_total: f64,
+    today_count: i32,
+}
+
+#[derive(Debug, Serialize)]
+struct ServicePrice {
+    tab: String,
+    price: f64,
+    updated_at: String,
 }
 
 fn deduct_materials_for_export(app: &tauri::AppHandle, tab: &str, page_count: i32) {
@@ -551,6 +597,27 @@ fn deduct_materials_for_export(app: &tauri::AppHandle, tab: &str, page_count: i3
                 rusqlite::params![id, -amount, now],
             );
         }
+    }
+}
+
+fn auto_create_sale(app: &tauri::AppHandle, tab: &str, activity_log_id: Option<i64>) {
+    let path = activity_db_path(app);
+    if let Ok(conn) = Connection::open(&path) {
+        let price: f64 = conn.query_row(
+            "SELECT price FROM service_prices WHERE tab = ?1",
+            rusqlite::params![tab],
+            |row| row.get(0),
+        ).unwrap_or(0.0);
+
+        if price <= 0.0 {
+            return;
+        }
+
+        let now = Utc::now().to_rfc3339();
+        let _ = conn.execute(
+            "INSERT INTO sales (source, tab, amount, quantity, note, activity_log_id, created_at) VALUES ('auto', ?1, ?2, 1, NULL, ?3, ?4)",
+            rusqlite::params![tab, price, activity_log_id, now],
+        );
     }
 }
 
@@ -714,6 +781,131 @@ fn get_materials_summary(app_handle: tauri::AppHandle) -> Result<MaterialsSummar
 }
 
 #[tauri::command]
+fn get_sales(app_handle: tauri::AppHandle, limit: i32) -> Result<Vec<Sale>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let mut stmt = conn.prepare(
+        "SELECT id, source, tab, amount, quantity, note, activity_log_id, created_at FROM sales ORDER BY created_at DESC LIMIT ?1"
+    ).map_err(|e| e.to_string())?;
+    let sales = stmt.query_map(rusqlite::params![limit], |row| {
+        Ok(Sale {
+            id: row.get(0)?,
+            source: row.get(1)?,
+            tab: row.get(2)?,
+            amount: row.get(3)?,
+            quantity: row.get(4)?,
+            note: row.get(5)?,
+            activity_log_id: row.get(6)?,
+            created_at: row.get(7)?,
+        })
+    })
+    .map(|r| r.filter_map(|x| x.ok()).collect())
+    .unwrap_or_default();
+    Ok(sales)
+}
+
+#[tauri::command]
+fn add_sale(app_handle: tauri::AppHandle, tab: Option<String>, amount: f64, quantity: i32, note: Option<String>) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO sales (source, tab, amount, quantity, note, activity_log_id, created_at) VALUES ('manual', ?1, ?2, ?3, ?4, NULL, ?5)",
+        rusqlite::params![tab, amount, quantity, note, now],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn update_sale(app_handle: tauri::AppHandle, id: i64, tab: Option<String>, amount: f64, quantity: i32, note: Option<String>) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    conn.execute(
+        "UPDATE sales SET tab = ?1, amount = ?2, quantity = ?3, note = ?4 WHERE id = ?5",
+        rusqlite::params![tab, amount, quantity, note, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_sale(app_handle: tauri::AppHandle, id: i64) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    conn.execute("DELETE FROM sales WHERE id = ?1", rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_sales_summary(app_handle: tauri::AppHandle) -> Result<SalesSummary, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let today = Utc::now().format("%Y-%m-%d").to_string();
+    let today_total: f64 = conn.query_row(
+        "SELECT COALESCE(SUM(amount * quantity), 0) FROM sales WHERE date(created_at) = ?1",
+        rusqlite::params![today],
+        |row| row.get(0),
+    ).unwrap_or(0.0);
+    let today_count: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sales WHERE date(created_at) = ?1",
+        rusqlite::params![today],
+        |row| row.get(0),
+    ).unwrap_or(0);
+    Ok(SalesSummary { today_total, today_count })
+}
+
+#[tauri::command]
+fn get_service_prices(app_handle: tauri::AppHandle) -> Result<Vec<ServicePrice>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let mut stmt = conn.prepare(
+        "SELECT tab, price, updated_at FROM service_prices ORDER BY tab"
+    ).map_err(|e| e.to_string())?;
+    let prices = stmt.query_map([], |row| {
+        Ok(ServicePrice {
+            tab: row.get(0)?,
+            price: row.get(1)?,
+            updated_at: row.get(2)?,
+        })
+    })
+    .map(|r| r.filter_map(|x| x.ok()).collect())
+    .unwrap_or_default();
+    Ok(prices)
+}
+
+#[tauri::command]
+fn set_service_price(app_handle: tauri::AppHandle, tab: String, price: f64) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO service_prices (tab, price, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(tab) DO UPDATE SET price = ?2, updated_at = ?3",
+        rusqlite::params![tab, price, now],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_service_price_for_tab(app_handle: tauri::AppHandle, tab: String) -> Result<Option<f64>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let result = conn.query_row(
+        "SELECT price FROM service_prices WHERE tab = ?1",
+        rusqlite::params![tab],
+        |row| row.get(0),
+    ).ok();
+    Ok(result)
+}
+
+#[tauri::command]
 fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
     let config = load_config(&app_handle)?;
     Ok(config.api_keys.poof.len() + config.api_keys.removebg.len())
@@ -763,8 +955,9 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String, tab: String) -> Re
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
-    log_activity(&app_handle, "pdf_export", &tab, 1);
+    let log_id = log_activity(&app_handle, "pdf_export", &tab, 1);
     deduct_materials_for_export(&app_handle, &tab, 1);
+    auto_create_sale(&app_handle, &tab, log_id);
     Ok("PDF opened in viewer. Press Ctrl+P to print.".to_string())
 }
 
@@ -1000,8 +1193,9 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
-    log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
+    let log_id = log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
+    auto_create_sale(&app_handle, &tab, log_id);
     let msg = if save_path.is_some() { "PDF saved" } else { "Composite PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -1175,8 +1369,9 @@ fn composite_polaroid_pdf(
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
-    log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
+    let log_id = log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
+    auto_create_sale(&app_handle, &tab, log_id);
     let msg = if save_path.is_some() { "PDF saved" } else { "Polaroid PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -1390,8 +1585,9 @@ fn composite_other_pdf(
             .map_err(|e| format!("Failed to open PDF viewer: {}", e))?;
     }
 
-    log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
+    let log_id = log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
+    auto_create_sale(&app_handle, &tab, log_id);
     let msg = if save_path.is_some() { "PDF saved" } else { "Other PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -1510,7 +1706,15 @@ pub fn run() {
              delete_material,
              restock_material,
              adjust_stock,
-             get_materials_summary,
+              get_materials_summary,
+              get_sales,
+              add_sale,
+              update_sale,
+              delete_sale,
+              get_sales_summary,
+              get_service_prices,
+              set_service_price,
+              get_service_price_for_tab,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

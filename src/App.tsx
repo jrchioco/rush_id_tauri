@@ -229,7 +229,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen bg-[#111110] overflow-hidden">
+    <div className="h-screen bg-[#111110] flex flex-col overflow-hidden">
       {updateAvailable && (
         <div className="bg-[#1a1508] border-b border-[#c8881a]/30 px-6 py-2 text-[#c8881a] text-xs flex items-center justify-center gap-2 font-mono">
           <span>A new version is available.</span>
@@ -298,13 +298,15 @@ export default function App() {
         </div>
       </header>
 
-      {activeTab === "overview" && <Overview />}
-      {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} ref={(el) => { tabRefs.current.single = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
-      {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
-      {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
-      {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
-      {activeTab === "other" && <ErrorBoundary><OtherClient key={configVersion} ref={(el) => { tabRefs.current.other = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
-      {activeTab === "ai-studio" && <ErrorBoundary><AiStudioTab key={configVersion} ref={(el) => { tabRefs.current["ai-studio"] = el; }} /></ErrorBoundary>}
+      <div className="flex-1 overflow-y-auto">
+        {activeTab === "overview" && <Overview />}
+        {activeTab === "single" && <ErrorBoundary><SingleClient key={configVersion} ref={(el) => { tabRefs.current.single = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+        {activeTab === "multi" && <ErrorBoundary><MultiClient key={configVersion} ref={(el) => { tabRefs.current.multi = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+        {activeTab === "passport" && <ErrorBoundary><PassportClient key={configVersion} ref={(el) => { tabRefs.current.passport = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+        {activeTab === "polaroid" && <ErrorBoundary><PolaroidClient key={configVersion} ref={(el) => { tabRefs.current.polaroid = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+        {activeTab === "other" && <ErrorBoundary><OtherClient key={configVersion} ref={(el) => { tabRefs.current.other = el; }} onPrintReminder={handlePrintReminder} /></ErrorBoundary>}
+        {activeTab === "ai-studio" && <ErrorBoundary><AiStudioTab key={configVersion} ref={(el) => { tabRefs.current["ai-studio"] = el; }} /></ErrorBoundary>}
+      </div>
 
       <SettingsModal
         open={settingsOpen}

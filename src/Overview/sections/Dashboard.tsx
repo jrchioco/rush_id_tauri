@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "../../components/CompanionWidget/effieInvoke";
-import { FileDown, Printer, Layers, Files } from "lucide-react";
-import type { ActivityStats, ActivityEntry } from "../../types";
+import { FileDown, Printer, Layers, Files, DollarSign } from "lucide-react";
+import type { ActivityStats, ActivityEntry, SalesSummary } from "../../types";
 
 function formatTime(iso: string): string {
   try {
@@ -29,16 +29,19 @@ interface StatCardProps {
   icon: typeof FileDown;
   label: string;
   value: number;
+  valueDisplay?: string;
+  subtitle?: string;
 }
 
-function StatCard({ icon: Icon, label, value }: StatCardProps) {
+function StatCard({ icon: Icon, label, value, valueDisplay, subtitle }: StatCardProps) {
   return (
     <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
       <div className="flex items-center justify-between mb-3">
         <Icon className="w-5 h-5 text-[#555]" />
       </div>
-      <p className="text-3xl font-bold text-[#c8881a] font-mono">{value}</p>
+      <p className="text-3xl font-bold text-[#c8881a] font-mono">{valueDisplay ?? value}</p>
       <p className="text-xs text-[#555] font-mono mt-1">{label}</p>
+      {subtitle && <p className="text-[10px] text-[#888] font-mono mt-0.5">{subtitle}</p>}
     </div>
   );
 }
@@ -46,16 +49,19 @@ function StatCard({ icon: Icon, label, value }: StatCardProps) {
 export default function Dashboard() {
   const [stats, setStats] = useState<ActivityStats | null>(null);
   const [recent, setRecent] = useState<ActivityEntry[]>([]);
+  const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       invoke<ActivityStats>("get_activity_stats"),
       invoke<ActivityEntry[]>("get_recent_activity", { limit: 15 }),
+      invoke<SalesSummary>("get_sales_summary"),
     ])
-      .then(([s, r]) => {
+      .then(([s, r, ss]) => {
         setStats(s);
         setRecent(r);
+        setSalesSummary(ss);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -63,11 +69,12 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-5 gap-4 mb-8">
         <StatCard icon={FileDown} label="PDFs Exported Today" value={stats?.pdf_exports ?? 0} />
         <StatCard icon={Printer} label="Print Reminders Today" value={stats?.print_reminders ?? 0} />
         <StatCard icon={Layers} label="Total Pages Exported" value={stats?.total_pages ?? 0} />
         <StatCard icon={Files} label="Multi-Page Batches" value={stats?.multi_page_batches ?? 0} />
+        <StatCard icon={DollarSign} label="Today's Sales" value={salesSummary?.today_count ?? 0} valueDisplay={`₱${(salesSummary?.today_total ?? 0).toLocaleString()}`} subtitle={`${salesSummary?.today_count ?? 0} sale${(salesSummary?.today_count ?? 0) === 1 ? "" : "s"} today`} />
       </div>
 
       <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
