@@ -19,7 +19,7 @@ export default function Overview() {
 
   return (
     <div className="flex">
-      <div className="w-48 shrink-0 bg-[#0c0c0b] border-r border-[#2a2a28] p-4 self-start sticky top-0">
+      <div className="w-56 shrink-0 bg-[#0c0c0b] border-r border-[#2a2a28] p-4 self-start sticky top-0">
         <h2 className="text-xs font-bold text-[#555] font-mono tracking-widest uppercase mb-4 px-3">Overview</h2>
         <nav className="space-y-1">
           {SECTIONS.map((section) => {
