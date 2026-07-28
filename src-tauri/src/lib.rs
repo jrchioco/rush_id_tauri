@@ -700,6 +700,13 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
                     [],
                 );
             }
+            if stem.starts_with("Dev ") {
+                let main_key = &stem[4..];
+                let _ = conn.execute(
+                    "UPDATE services SET price = (SELECT price FROM services WHERE LOWER(template_key) = LOWER(?1)) WHERE template_key = ?2",
+                    rusqlite::params![main_key, stem],
+                );
+            }
         }
     }
 }
@@ -998,6 +1005,18 @@ fn update_service_price(app_handle: tauri::AppHandle, id: i64, price: f64) -> Re
         let _ = conn.execute(
             "UPDATE services SET price = ?1 * 2, updated_at = ?2 WHERE template_key = 'passport2'",
             rusqlite::params![price, now],
+        );
+    }
+    let dev_key = match template_key.to_lowercase().as_str() {
+        "1x1" => Some("Dev 1x1"),
+        "2x2" => Some("Dev 2x2"),
+        "mixed" => Some("Dev Mixed"),
+        _ => None,
+    };
+    if let Some(dk) = dev_key {
+        let _ = conn.execute(
+            "UPDATE services SET price = ?1, updated_at = ?2 WHERE template_key = ?3",
+            rusqlite::params![price, now, dk],
         );
     }
     Ok(())
