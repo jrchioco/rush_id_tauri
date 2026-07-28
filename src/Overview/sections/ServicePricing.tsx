@@ -3,15 +3,11 @@ import { invoke } from "../../components/CompanionWidget/effieInvoke";
 import { DollarSign, Check } from "lucide-react";
 import type { Service } from "../../types";
 
-const TAB_ORDER = ["single", "multi", "passport", "polaroid", "other"] as const;
-
-const TAB_LABELS: Record<string, string> = {
-  single: "Single",
-  multi: "Multi",
-  passport: "Passport",
-  polaroid: "Polaroid",
-  other: "Other",
-};
+const DISPLAY_GROUPS = [
+  { label: "Rush ID", tabs: ["single", "passport"] },
+  { label: "Polaroid", tabs: ["polaroid"] },
+  { label: "Other", tabs: ["other"] },
+];
 
 export default function ServicePricing() {
   const [services, setServices] = useState<Service[]>([]);
@@ -32,11 +28,11 @@ export default function ServicePricing() {
 
   const isMainService = (s: Service) => !s.template_key.startsWith("multi_") && !s.template_key.startsWith("Dev ");
 
-  const grouped = TAB_ORDER.reduce((acc, tab) => {
-    const items = services.filter((s) => s.tab === tab && isMainService(s));
-    if (items.length > 0) acc.push({ tab, items });
+  const grouped = DISPLAY_GROUPS.reduce((acc, { label, tabs }) => {
+    const items = services.filter((s) => s.tab && tabs.includes(s.tab) && isMainService(s));
+    if (items.length > 0) acc.push({ label, items });
     return acc;
-  }, [] as { tab: string; items: Service[] }[]);
+  }, [] as { label: string; items: Service[] }[]);
 
   const mainServices = services.filter(isMainService);
   const pricedCount = mainServices.filter((s) => s.price > 0).length;
@@ -90,10 +86,10 @@ export default function ServicePricing() {
         </div>
       ) : (
         <div className="space-y-6">
-          {grouped.map(({ tab, items }) => (
-            <div key={tab} className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
+          {grouped.map(({ label, items }) => (
+            <div key={label} className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl overflow-hidden">
               <div className="px-5 py-3 border-b border-[#2a2a28] bg-[#111110]">
-                <h2 className="text-xs font-bold text-[#e8e4da] font-mono tracking-wide">{TAB_LABELS[tab] ?? tab}</h2>
+                <h2 className="text-xs font-bold text-[#e8e4da] font-mono tracking-wide">{label}</h2>
               </div>
               <div className="divide-y divide-[#2a2a28]/50">
                 {items.map((service) => (
