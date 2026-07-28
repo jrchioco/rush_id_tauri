@@ -30,13 +30,16 @@ export default function ServicePricing() {
 
   useEffect(() => { fetchServices(true); }, [fetchServices]);
 
+  const isMainService = (s: Service) => !s.template_key.startsWith("multi_") && !s.template_key.startsWith("Dev ");
+
   const grouped = TAB_ORDER.reduce((acc, tab) => {
-    const items = services.filter((s) => s.tab === tab);
+    const items = services.filter((s) => s.tab === tab && isMainService(s));
     if (items.length > 0) acc.push({ tab, items });
     return acc;
   }, [] as { tab: string; items: Service[] }[]);
 
-  const pricedCount = services.filter((s) => s.price > 0).length;
+  const mainServices = services.filter(isMainService);
+  const pricedCount = mainServices.filter((s) => s.price > 0).length;
 
   const startEdit = (service: Service) => {
     setEditingId(service.id);
@@ -70,7 +73,7 @@ export default function ServicePricing() {
           <p className="text-xs text-[#555] font-mono mt-1">Manage pricing for your templates</p>
         </div>
         <div className="text-xs font-mono text-[#888]">
-          {pricedCount} of {services.length} priced
+          {pricedCount} of {mainServices.length} priced
         </div>
       </div>
 
