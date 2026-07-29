@@ -428,7 +428,7 @@ fn export_pdf(app_handle: tauri::AppHandle, svg_path: String, save_path: String,
         let log_id = log_activity(&app_handle, "pdf_export", &tab, 1);
         deduct_materials_for_export(&app_handle, &tab, 1);
         let template_key = Path::new(&svg_path).file_stem().unwrap_or_default().to_string_lossy().to_string();
-        auto_create_sale(&app_handle, &tab, &template_key, 1, log_id);
+        auto_create_sale(&app_handle, &tab, &template_key, 1, log_id, None);
         Ok(pdf_path.to_string_lossy().to_string())
     } else {
         Err("PDF generation failed".to_string())
@@ -640,14 +640,86 @@ fn deduct_materials_for_export(app: &tauri::AppHandle, tab: &str, page_count: i3
     }
 }
 
-fn auto_create_sale(app: &tauri::AppHandle, tab: &str, template_key: &str, quantity: i32, activity_log_id: Option<i64>) {
+fn calculate_3r_price(base_2pcs: f64, base_4pcs: f64, layout: &str) -> f64 {
+    let n: i32 = layout.replace("pcs", "").parse().unwrap_or(0);
+    if n % 2 != 0 || n < 2 {
+        return 0.0;
+    }
+    let a4_pages = n / 4;
+    let a5_pages = (n % 4) / 2;
+    (a4_pages as f64 * base_4pcs) + (a5_pages as f64 * base_2pcs)
+}
+
+fn calculate_5r_price(base_1pc: f64, base_2pcs: f64, layout: &str) -> f64 {
+    let n: i32 = layout.replace("pcs", "").parse().unwrap_or(0);
+    if n < 1 || n > 10 {
+        return 0.0;
+    }
+    let a4_pages = n / 2;
+    let a5_pages = n % 2;
+    (a4_pages as f64 * base_2pcs) + (a5_pages as f64 * base_1pc)
+}
+
+fn get_base_price(conn: &Connection, service_id: i64, layout: &str) -> f64 {
+    conn.query_row(
+        "SELECT price FROM pricing_tiers WHERE service_id = ?1 AND layout = ?2",
+        rusqlite::params![service_id, layout],
+        |row| row.get(0),
+    ).unwrap_or(0.0)
+}
+
+fn get_price_for_layout(conn: &Connection, service_id: i64, template_key: &str, layout: &str) -> f64 {
+    // 1. Look up tier in pricing_tiers
+    let tier_price: Option<f64> = conn.query_row(
+        "SELECT price FROM pricing_tiers WHERE service_id = ?1 AND layout = ?2",
+        rusqlite::params![service_id, layout],
+        |row| row.get(0),
+    ).ok();
+
+    if let Some(price) = tier_price {
+        return price;
+    }
+
+    // 2. Calculate from base prices if applicable
+    match template_key {
+        "3r" => {
+            let base_2pcs = get_base_price(conn, service_id, "2pcs");
+            let base_4pcs = get_base_price(conn, service_id, "4pcs");
+            calculate_3r_price(base_2pcs, base_4pcs, layout)
+        }
+        "5r" => {
+            let base_1pc = get_base_price(conn, service_id, "1pcs");
+            let base_2pcs = get_base_price(conn, service_id, "2pcs");
+            calculate_5r_price(base_1pc, base_2pcs, layout)
+        }
+        _ => 0.0,
+    }
+}
+
+fn auto_create_sale(app: &tauri::AppHandle, tab: &str, template_key: &str, quantity: i32, activity_log_id: Option<i64>, layout: Option<&str>) {
     let path = activity_db_path(app);
     if let Ok(conn) = Connection::open(&path) {
-        let price: f64 = conn.query_row(
-            "SELECT price FROM services WHERE template_key = ?1",
+        // 1. Get service_id
+        let service_id: i64 = conn.query_row(
+            "SELECT id FROM services WHERE template_key = ?1",
             rusqlite::params![template_key],
             |row| row.get(0),
-        ).unwrap_or(0.0);
+        ).unwrap_or(0);
+
+        if service_id == 0 {
+            return;
+        }
+
+        // 2. Get price (tier-based or fallback)
+        let price = if let Some(layout) = layout {
+            get_price_for_layout(&conn, service_id, template_key, layout)
+        } else {
+            conn.query_row(
+                "SELECT price FROM services WHERE id = ?1",
+                rusqlite::params![service_id],
+                |row| row.get(0),
+            ).unwrap_or(0.0)
+        };
 
         if price <= 0.0 {
             return;
@@ -1184,7 +1256,7 @@ fn print_file(app_handle: tauri::AppHandle, svg_path: String, tab: String) -> Re
     let log_id = log_activity(&app_handle, "pdf_export", &tab, 1);
     deduct_materials_for_export(&app_handle, &tab, 1);
     let template_key = Path::new(&svg_path).file_stem().unwrap_or_default().to_string_lossy().to_string();
-    auto_create_sale(&app_handle, &tab, &template_key, 1, log_id);
+    auto_create_sale(&app_handle, &tab, &template_key, 1, log_id, None);
     Ok("PDF opened in viewer. Press Ctrl+P to print.".to_string())
 }
 
@@ -1428,7 +1500,7 @@ fn composite_multi_pdf(app_handle: tauri::AppHandle, clients: Vec<ClientSlot>, s
         *template_groups.entry(stem).or_insert(0) += 1;
     }
     for (template_key, qty) in &template_groups {
-        auto_create_sale(&app_handle, &tab, template_key, *qty, log_id);
+        auto_create_sale(&app_handle, &tab, template_key, *qty, log_id, None);
     }
     let msg = if save_path.is_some() { "PDF saved" } else { "Composite PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
@@ -1606,7 +1678,7 @@ fn composite_polaroid_pdf(
     let log_id = log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
     let template_key = svg_path.file_stem().unwrap_or_default().to_string_lossy().to_string();
-    auto_create_sale(&app_handle, &tab, &template_key, 1, log_id);
+    auto_create_sale(&app_handle, &tab, &template_key, 1, log_id, None);
     let msg = if save_path.is_some() { "PDF saved" } else { "Polaroid PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
@@ -1826,7 +1898,7 @@ fn composite_other_pdf(
         Some(s) if !s.is_empty() => Path::new(&s[0]).file_stem().unwrap_or_default().to_string_lossy().to_string(),
         _ => format!("{}_{}", size, layout.as_deref().unwrap_or("default")),
     };
-    auto_create_sale(&app_handle, &tab, &template_key, 1, log_id);
+    auto_create_sale(&app_handle, &tab, &template_key, 1, log_id, None);
     let msg = if save_path.is_some() { "PDF saved" } else { "Other PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
