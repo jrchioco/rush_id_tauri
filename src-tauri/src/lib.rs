@@ -652,7 +652,7 @@ fn calculate_3r_price(base_2pcs: f64, base_4pcs: f64, layout: &str) -> f64 {
 
 fn calculate_5r_price(base_1pc: f64, base_2pcs: f64, layout: &str) -> f64 {
     let n: i32 = layout.replace("pcs", "").parse().unwrap_or(0);
-    if n < 1 || n > 10 {
+    if n < 1 {
         return 0.0;
     }
     let a4_pages = n / 2;
@@ -707,6 +707,9 @@ fn get_price_for_layout(conn: &Connection, service_id: i64, template_key: &str, 
             let base_3pcs = get_base_price(conn, service_id, "3pcs");
             calculate_4r_price(base_2pcs, base_3pcs, layout)
         }
+        "8r" => {
+            get_base_price(conn, service_id, "1pcs")
+        }
         _ => 0.0,
     }
 }
@@ -740,10 +743,11 @@ fn auto_create_sale(app: &tauri::AppHandle, tab: &str, template_key: &str, quant
             return;
         }
 
+        let amount = price * quantity as f64;
         let now = Utc::now().to_rfc3339();
         let _ = conn.execute(
             "INSERT INTO sales (source, tab, template_key, amount, quantity, note, activity_log_id, created_at) VALUES ('auto', ?1, ?2, ?3, ?4, NULL, ?5, ?6)",
-            rusqlite::params![tab, template_key, price, quantity, activity_log_id, now],
+            rusqlite::params![tab, template_key, amount, quantity, activity_log_id, now],
         );
     }
 }
@@ -876,6 +880,22 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
                 rusqlite::params![service_id, layout, now],
             );
         }
+    }
+
+    // Seed unified 8r service with flat per-photo pricing
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO services (template_key, display_name, price, tab, created_at, updated_at) VALUES ('8r', '8r', 0, 'other', ?1, ?1)",
+        rusqlite::params![now],
+    );
+    if let Ok(service_id) = conn.query_row(
+        "SELECT id FROM services WHERE template_key = '8r'",
+        [],
+        |row| row.get::<_, i64>(0),
+    ) {
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, '1pcs', 0, ?2, ?2)",
+            rusqlite::params![service_id, now],
+        );
     }
 }
 

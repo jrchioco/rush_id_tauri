@@ -44,10 +44,6 @@ function hasSvg(size: OtherSize): boolean {
   return size === "wallet" || size === "3r" || size === "4r" || size === "5r" || size === "8r";
 }
 
-function hasDropdown(size: OtherSize): boolean {
-  return size === "5r" || size === "8r";
-}
-
 function getCanvasWidth(size: OtherSize, quality: "high" | "flash"): number {
   if (size === "wallet") {
     return quality === "high" ? 1000 : 625;
@@ -182,7 +178,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
       return;
     }
     setSelectedSize(size);
-    const defaultLayout: OtherLayout = size === "wallet" ? "2pcs" : hasDropdown(size) ? 2 as unknown as OtherLayout : "2pcs";
+    const defaultLayout: OtherLayout | number = size === "wallet" ? "2pcs" : size === "3r" ? 2 : 1;
     setLayout(defaultLayout);
     const slotCount = typeof defaultLayout === "number" ? defaultLayout : LAYOUT_SLOTS[defaultLayout];
     setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i)));
@@ -488,29 +484,30 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            {selectedSize === "3r" ? (
+            {(selectedSize === "3r" || selectedSize === "5r" || selectedSize === "8r") ? (
               <Tooltip content={TOOLTIPS.layoutSwitch}>
                 <div className="flex items-center gap-2 bg-[#111110] border border-[#2a2a28] rounded-lg px-3 py-1">
                   <span className="text-[10px] font-mono text-[#888]">Layout:</span>
                   <input
                     type="number"
-                    min="2"
+                    min={selectedSize === "3r" ? "2" : "1"}
                     max="100"
-                    step="2"
-                    value={typeof layout === "number" ? layout : 2}
+                    step={selectedSize === "3r" ? "2" : "1"}
+                    value={typeof layout === "number" ? layout : (selectedSize === "3r" ? 2 : 1)}
                     onChange={(e) => {
                       const val = parseInt(e.target.value);
                       if (isNaN(val)) return;
-                      if (val % 2 !== 0) {
+                      if (selectedSize === "3r" && val % 2 !== 0) {
                         toast.error("3R requires even number of photos (2, 4, 6, ...)");
                         return;
                       }
-                      if (val < 2) {
-                        toast.error("Minimum 2 photos for 3R");
+                      const min = selectedSize === "3r" ? 2 : 1;
+                      if (val < min) {
+                        toast.error(`Minimum ${min} photo${min > 1 ? "s" : ""} for ${selectedSize.toUpperCase()}`);
                         return;
                       }
                       if (val > 100) {
-                        toast.error("Maximum 100 photos for 3R");
+                        toast.error(`Maximum 100 photos for ${selectedSize.toUpperCase()}`);
                         return;
                       }
                       handleLayoutSwitch(val);
@@ -519,18 +516,6 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
                   />
                   <span className="text-[10px] font-mono text-[#555]">pcs</span>
                 </div>
-              </Tooltip>
-            ) : hasDropdown(selectedSize) ? (
-              <Tooltip content={TOOLTIPS.layoutSwitch}>
-                <select
-                  value={typeof layout === "number" ? layout : 2}
-                  onChange={(e) => handleLayoutSwitch(Number(e.target.value))}
-                  className="bg-[#111110] border border-[#2a2a28] rounded-lg px-3 py-1 text-xs font-mono font-bold text-[#c8881a] tracking-wide cursor-pointer appearance-auto"
-                >
-                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>{n}pcs</option>
-                  ))}
-                </select>
               </Tooltip>
             ) : (
               <Tooltip content={TOOLTIPS.layoutSwitch}>
