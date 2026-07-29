@@ -603,6 +603,13 @@ struct TemplateBreakdown {
 }
 
 #[derive(Debug, Serialize)]
+struct PricingExport {
+    exported_at: String,
+    services: HashMap<String, f64>,
+    tiers: HashMap<String, HashMap<String, f64>>,
+}
+
+#[derive(Debug, Serialize)]
 struct Service {
     id: i64,
     template_key: String,
@@ -1339,6 +1346,46 @@ fn update_service_price(app_handle: tauri::AppHandle, id: i64, price: f64) -> Re
         );
     }
     Ok(())
+}
+
+#[tauri::command]
+fn export_pricing(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+
+    let mut stmt = conn.prepare(
+        "SELECT template_key, price FROM services WHERE price > 0"
+    ).map_err(|e| e.to_string())?;
+    let services: HashMap<String, f64> = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+    })
+    .map(|r| r.filter_map(|x| x.ok()).collect())
+    .unwrap_or_default();
+
+    let mut stmt = conn.prepare(
+        "SELECT s.template_key, t.layout, t.price \
+         FROM pricing_tiers t JOIN services s ON t.service_id = s.id \
+         WHERE t.price > 0"
+    ).map_err(|e| e.to_string())?;
+    let rows: Vec<(String, String, f64)> = stmt.query_map([], |row| {
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+    })
+    .map(|r| r.filter_map(|x| x.ok()).collect())
+    .unwrap_or_default();
+
+    let mut tiers: HashMap<String, HashMap<String, f64>> = HashMap::new();
+    for (template_key, layout, price) in rows {
+        tiers.entry(template_key).or_default().insert(layout, price);
+    }
+
+    let export = PricingExport {
+        exported_at: Utc::now().to_rfc3339(),
+        services,
+        tiers,
+    };
+
+    serde_json::to_string_pretty(&export).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -2252,8 +2299,9 @@ pub fn run() {
               get_sales_trend,
               get_template_breakdown,
                get_services,
-               update_service_price,
-               get_services_summary,
+                update_service_price,
+                export_pricing,
+                get_services_summary,
                get_pricing_tiers,
                update_pricing_tier,
                add_pricing_tier,
