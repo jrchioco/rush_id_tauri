@@ -18,8 +18,8 @@ export default function Overview() {
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
 
   return (
-    <div className="flex">
-      <div className="w-56 shrink-0 bg-[#0c0c0b] border-r border-[#2a2a28] p-4 self-start sticky top-0">
+    <div className="flex h-full">
+      <div className="w-56 shrink-0 bg-[#0c0c0b] border-r border-[#2a2a28] p-4 self-stretch sticky top-0 flex flex-col overflow-y-auto">
         <h2 className="text-xs font-bold text-[#555] font-mono tracking-widest uppercase mb-4 px-3">Overview</h2>
         <nav className="space-y-1">
           {SECTIONS.map((section) => {
@@ -40,9 +40,15 @@ export default function Overview() {
             );
           })}
         </nav>
+        <div className="flex-1" />
+        <div className="bg-[#1a1508] border border-[#c8881a]/30 rounded-lg px-4 py-2.5 mt-4">
+          <p className="text-[10px] font-mono text-[#c8881a] leading-relaxed">
+            ⚠️ This overview section is experimental. Features and data may change in future updates.
+          </p>
+        </div>
       </div>
 
-      <div className="flex-1 px-8 py-8">
+      <div className="flex-1 px-8 py-8 overflow-y-auto">
         {activeSection === "dashboard" && <Dashboard onNavigate={(s) => setActiveSection(s as SectionKey)} />}
         {activeSection === "inventory" && <InventoryPage />}
         {activeSection === "sales-history" && <SalesHistory />}
