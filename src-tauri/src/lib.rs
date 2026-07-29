@@ -1939,7 +1939,7 @@ fn composite_other_pdf(
         Some(s) if !s.is_empty() => Path::new(&s[0]).file_stem().unwrap_or_default().to_string_lossy().to_string(),
         _ => format!("{}_{}", size, layout.as_deref().unwrap_or("default")),
     };
-    auto_create_sale(&app_handle, &tab, &template_key, 1, log_id, None);
+    auto_create_sale(&app_handle, &tab, &template_key, 1, log_id, layout.as_deref());
     let msg = if save_path.is_some() { "PDF saved" } else { "Other PDF opened in viewer. Press Ctrl+P to print." };
     Ok(msg.to_string())
 }
