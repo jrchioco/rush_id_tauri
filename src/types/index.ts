@@ -69,3 +69,12 @@ export interface Service {
   created_at: string;
   updated_at: string;
 }
+
+export interface PricingTier {
+  id: number;
+  service_id: number;
+  layout: string;
+  price: number;
+  created_at: string;
+  updated_at: string;
+}
