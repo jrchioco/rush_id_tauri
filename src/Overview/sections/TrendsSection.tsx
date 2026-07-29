@@ -209,7 +209,7 @@ export default function TrendsSection() {
                       const ly = (cy ?? 0) - lr * Math.sin(angle);
                       const anchor = lx > (cx ?? 0) ? "start" : "end";
                       return (
-                        <g>
+                        <g pointerEvents="none">
                           <text x={px} y={py} textAnchor="middle" dominantBaseline="central" fontSize={9} fontFamily="monospace" fill="#0c0c0b" fontWeight="bold">
                             {((percent ?? 0) * 100).toFixed(0)}%
                           </text>
