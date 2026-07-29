@@ -196,11 +196,30 @@ export default function TrendsSection() {
                     cornerRadius={4}
                     startAngle={90}
                     endAngle={-270}
-                    label={({ name, percent, x, y, textAnchor }: { name?: string; percent?: number; x?: number; y?: number; textAnchor?: "start" | "end" | "middle" | "inherit" }) => (
-                      <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={9} fontFamily="monospace" fill="#888">
-                        {name} {((percent ?? 0) * 100).toFixed(0)}%
-                      </text>
-                    )}
+                    label={({ name, percent, cx, cy, midAngle, innerRadius, outerRadius }: { name?: string; percent?: number; cx?: number; cy?: number; midAngle?: number; innerRadius?: number; outerRadius?: number }) => {
+                      const RADIAN = Math.PI / 180;
+                      const angle = (midAngle ?? 0) * RADIAN;
+                      const ir = innerRadius ?? 45;
+                      const or_ = outerRadius ?? 65;
+                      const midR = (ir + or_) / 2;
+                      const px = (cx ?? 0) + midR * Math.cos(angle);
+                      const py = (cy ?? 0) - midR * Math.sin(angle);
+                      const lr = or_ + 16;
+                      const lx = (cx ?? 0) + lr * Math.cos(angle);
+                      const ly = (cy ?? 0) - lr * Math.sin(angle);
+                      const anchor = lx > (cx ?? 0) ? "start" : "end";
+                      return (
+                        <g>
+                          <text x={px} y={py} textAnchor="middle" dominantBaseline="central" fontSize={9} fontFamily="monospace" fill="#0c0c0b" fontWeight="bold">
+                            {((percent ?? 0) * 100).toFixed(0)}%
+                          </text>
+                          <line x1={(cx ?? 0) + (or_ + 4) * Math.cos(angle)} y1={(cy ?? 0) - (or_ + 4) * Math.sin(angle)} x2={(cx ?? 0) + (or_ + 12) * Math.cos(angle)} y2={(cy ?? 0) - (or_ + 12) * Math.sin(angle)} stroke="#555" strokeWidth={0.5} />
+                          <text x={lx} y={ly} textAnchor={anchor} dominantBaseline="central" fontSize={9} fontFamily="monospace" fill="#888">
+                            {name}
+                          </text>
+                        </g>
+                      );
+                    }}
                     labelLine={false}
                     strokeWidth={0}
                   >
