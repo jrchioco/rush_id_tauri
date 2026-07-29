@@ -53,7 +53,7 @@ function TrendTooltip({ active, payload, label }: { active?: boolean; payload?: 
   );
 }
 
-const PIE_COLORS = ["#c8881a", "#5b8a72", "#b85c5c", "#6a7eb5", "#c27db5", "#7ab5d4", "#b5a24e", "#8b7bb5"];
+const PIE_COLORS = ["#c8881a", "#a66e15", "#d4a24e", "#7a5010", "#e8c878", "#4d3208", "#f0daa8", "#2a1b04"];
 
 function BreakdownTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; total: number; quantity: number } }> }) {
   if (!active || !payload?.length) return null;
