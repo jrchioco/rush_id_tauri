@@ -58,7 +58,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (section: strin
       invoke<ActivityStats>("get_activity_stats"),
       invoke<ActivityEntry[]>("get_recent_activity", { limit: 15 }),
       invoke<SalesSummary>("get_sales_summary"),
-      invoke<Sale[]>("get_sales", { limit: 5 }),
+      invoke<Sale[]>("get_sales", { filter: "today" }),
     ])
       .then(([s, r, ss, sales]) => {
         setStats(s);
