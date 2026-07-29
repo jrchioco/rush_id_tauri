@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "./components/CompanionWidget/effieInvoke";
 import { toast } from "sonner";
-import { Printer, RotateCw, Trash2, TriangleAlert } from "lucide-react";
+import { Printer, RotateCw, Trash2 } from "lucide-react";
 import { cn, fmt, loadImage } from "./lib/utils";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useIsMounted } from "./lib/hooks/useIsMounted";
@@ -385,14 +385,6 @@ const PolaroidClient = forwardRef<{ hasUnsavedWork: () => boolean }, PolaroidCli
                 </div>
               </label>
             </Tooltip>
-          </div>
-        </div>
-
-        <div className="bg-[#1a1508] border border-[#c8881a]/30 rounded-lg px-4 py-2.5 flex items-center gap-2">
-          <TriangleAlert className="w-4 h-4 text-[#c8881a] shrink-0" />
-          <div className="text-xs font-mono text-[#c8881a] leading-relaxed">
-            <p>This feature is experimental. Results may vary.</p>
-            <p>Rotation and preview rendering are still being refined.</p>
           </div>
         </div>
 
