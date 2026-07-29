@@ -801,6 +801,47 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
                     rusqlite::params![main_key, stem],
                 );
             }
+
+            // Seed pricing tiers for quantity-based templates
+            if stem == "3r" {
+                let service_id: i64 = conn.query_row(
+                    "SELECT id FROM services WHERE template_key = '3r'",
+                    [],
+                    |row| row.get(0),
+                ).unwrap_or(0);
+                for layout in &["2pcs", "4pcs"] {
+                    let _ = conn.execute(
+                        "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?3)",
+                        rusqlite::params![service_id, layout, now],
+                    );
+                }
+            }
+            if stem == "5r" {
+                let service_id: i64 = conn.query_row(
+                    "SELECT id FROM services WHERE template_key = '5r'",
+                    [],
+                    |row| row.get(0),
+                ).unwrap_or(0);
+                for layout in &["1pcs", "2pcs"] {
+                    let _ = conn.execute(
+                        "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?3)",
+                        rusqlite::params![service_id, layout, now],
+                    );
+                }
+            }
+            if stem == "wallet" {
+                let service_id: i64 = conn.query_row(
+                    "SELECT id FROM services WHERE template_key = 'wallet'",
+                    [],
+                    |row| row.get(0),
+                ).unwrap_or(0);
+                for layout in &["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"] {
+                    let _ = conn.execute(
+                        "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?3)",
+                        rusqlite::params![service_id, layout, now],
+                    );
+                }
+            }
         }
     }
 }
