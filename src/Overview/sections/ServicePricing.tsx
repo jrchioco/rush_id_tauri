@@ -18,7 +18,7 @@ interface TierConfig {
 const TIER_CONFIGS: TierConfig[] = [
   { templateKey: "3r", type: "base", layouts: ["2pcs", "4pcs"] },
   { templateKey: "5r", type: "base", layouts: ["1pcs", "2pcs"] },
-  { templateKey: "4r", type: "independent", layouts: ["2pcs", "3pcs", "5pcs", "6pcs"] },
+  { templateKey: "4r", type: "base", layouts: ["2pcs", "3pcs"] },
   { templateKey: "wallet", type: "independent", layouts: ["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"] },
 ];
 

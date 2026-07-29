@@ -660,6 +660,16 @@ fn calculate_5r_price(base_1pc: f64, base_2pcs: f64, layout: &str) -> f64 {
     (a4_pages as f64 * base_2pcs) + (a5_pages as f64 * base_1pc)
 }
 
+fn calculate_4r_price(base_2pcs: f64, base_3pcs: f64, layout: &str) -> f64 {
+    let n: i32 = layout.replace("pcs", "").parse().unwrap_or(0);
+    if n < 2 {
+        return 0.0;
+    }
+    let a4_pages = n / 3;
+    let a5_pages = n % 3;
+    (a4_pages as f64 * base_3pcs) + (a5_pages as f64 * base_2pcs)
+}
+
 fn get_base_price(conn: &Connection, service_id: i64, layout: &str) -> f64 {
     conn.query_row(
         "SELECT price FROM pricing_tiers WHERE service_id = ?1 AND layout = ?2",
@@ -691,6 +701,11 @@ fn get_price_for_layout(conn: &Connection, service_id: i64, template_key: &str, 
             let base_1pc = get_base_price(conn, service_id, "1pcs");
             let base_2pcs = get_base_price(conn, service_id, "2pcs");
             calculate_5r_price(base_1pc, base_2pcs, layout)
+        }
+        "4r" => {
+            let base_2pcs = get_base_price(conn, service_id, "2pcs");
+            let base_3pcs = get_base_price(conn, service_id, "3pcs");
+            calculate_4r_price(base_2pcs, base_3pcs, layout)
         }
         _ => 0.0,
     }
@@ -855,7 +870,7 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
         [],
         |row| row.get::<_, i64>(0),
     ) {
-        for layout in &["2pcs", "3pcs", "5pcs", "6pcs"] {
+        for layout in &["2pcs", "3pcs"] {
             let _ = conn.execute(
                 "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?3)",
                 rusqlite::params![service_id, layout, now],
