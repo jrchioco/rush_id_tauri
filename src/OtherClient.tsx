@@ -30,7 +30,7 @@ const OTHER_SIZES: Record<OtherSize, OtherSizeInfo> = {
   "8r": { label: "8R", inches: '8×10"', widthMm: 203, heightMm: 254 },
 };
 
-const LAYOUTS: OtherLayout[] = ["2pcs", "4pcs", "6pcs", "8pcs", "10pcs", "12pcs"];
+const LAYOUTS: OtherLayout[] = ["4pcs", "6pcs", "8pcs", "10pcs", "12pcs"];
 const WALLET_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"];
 const FOUR_R_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs", "5pcs", "6pcs"];
 const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "3pcs": 3, "4pcs": 4, "5pcs": 5, "6pcs": 6, "8pcs": 8, "9pcs": 9, "10pcs": 10, "12pcs": 12, "18pcs": 18, "27pcs": 27 };
@@ -488,7 +488,39 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            {hasDropdown(selectedSize) ? (
+            {selectedSize === "3r" ? (
+              <Tooltip content={TOOLTIPS.layoutSwitch}>
+                <div className="flex items-center gap-2 bg-[#111110] border border-[#2a2a28] rounded-lg px-3 py-1">
+                  <span className="text-[10px] font-mono text-[#888]">Layout:</span>
+                  <input
+                    type="number"
+                    min="2"
+                    max="100"
+                    step="2"
+                    value={typeof layout === "number" ? layout : 2}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (isNaN(val)) return;
+                      if (val % 2 !== 0) {
+                        toast.error("3R requires even number of photos (2, 4, 6, ...)");
+                        return;
+                      }
+                      if (val < 2) {
+                        toast.error("Minimum 2 photos for 3R");
+                        return;
+                      }
+                      if (val > 100) {
+                        toast.error("Maximum 100 photos for 3R");
+                        return;
+                      }
+                      handleLayoutSwitch(val);
+                    }}
+                    className="w-20 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs font-mono text-[#e8e4da] outline-none text-center"
+                  />
+                  <span className="text-[10px] font-mono text-[#555]">pcs</span>
+                </div>
+              </Tooltip>
+            ) : hasDropdown(selectedSize) ? (
               <Tooltip content={TOOLTIPS.layoutSwitch}>
                 <select
                   value={typeof layout === "number" ? layout : 2}
