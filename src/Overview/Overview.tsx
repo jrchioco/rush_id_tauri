@@ -43,7 +43,7 @@ export default function Overview() {
       </div>
 
       <div className="flex-1 px-8 py-8">
-        {activeSection === "dashboard" && <Dashboard />}
+        {activeSection === "dashboard" && <Dashboard onNavigate={(s) => setActiveSection(s as SectionKey)} />}
         {activeSection === "inventory" && <InventoryPage />}
         {activeSection === "sales-history" && <SalesHistory />}
         {activeSection === "service-pricing" && <ServicePricing />}
