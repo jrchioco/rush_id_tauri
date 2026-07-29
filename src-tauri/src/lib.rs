@@ -844,6 +844,24 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
             }
         }
     }
+
+    // Seed unified 4r service with tiered pricing (separate from 4r2pcs/4r3pcs SVGs)
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO services (template_key, display_name, price, tab, created_at, updated_at) VALUES ('4r', '4r', 0, 'other', ?1, ?1)",
+        rusqlite::params![now],
+    );
+    if let Ok(service_id) = conn.query_row(
+        "SELECT id FROM services WHERE template_key = '4r'",
+        [],
+        |row| row.get::<_, i64>(0),
+    ) {
+        for layout in &["2pcs", "3pcs", "5pcs", "6pcs"] {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?3)",
+                rusqlite::params![service_id, layout, now],
+            );
+        }
+    }
 }
 
 #[tauri::command]

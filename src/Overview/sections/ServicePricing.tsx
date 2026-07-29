@@ -18,8 +18,8 @@ interface TierConfig {
 const TIER_CONFIGS: TierConfig[] = [
   { templateKey: "3r", type: "base", layouts: ["2pcs", "4pcs"] },
   { templateKey: "5r", type: "base", layouts: ["1pcs", "2pcs"] },
+  { templateKey: "4r", type: "independent", layouts: ["2pcs", "3pcs", "5pcs", "6pcs"] },
   { templateKey: "wallet", type: "independent", layouts: ["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"] },
-  { templateKey: "4r", type: "flat" },
 ];
 
 function PriceInput({ value, onSave }: { value: number; onSave: (price: number) => void }) {
@@ -131,7 +131,7 @@ export default function ServicePricing() {
 
   useEffect(() => { fetchServices(true); }, [fetchServices]);
 
-  const isMainService = (s: Service) => !s.template_key.startsWith("multi_") && !s.template_key.startsWith("Dev ");
+  const isMainService = (s: Service) => !s.template_key.startsWith("multi_") && !s.template_key.startsWith("Dev ") && s.template_key !== "4r2pcs" && s.template_key !== "4r3pcs";
 
   const grouped = DISPLAY_GROUPS.reduce((acc, { label, tabs }) => {
     const items = services.filter((s) => s.tab && tabs.includes(s.tab) && isMainService(s));
