@@ -590,6 +590,19 @@ struct SalesSummary {
 }
 
 #[derive(Debug, Serialize)]
+struct SalesTrend {
+    date: String,
+    total: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct TemplateBreakdown {
+    template_key: String,
+    total: f64,
+    quantity: i32,
+}
+
+#[derive(Debug, Serialize)]
 struct Service {
     id: i64,
     template_key: String,
@@ -1148,6 +1161,51 @@ fn get_sales_summary(app_handle: tauri::AppHandle) -> Result<SalesSummary, Strin
         |row| row.get(0),
     ).unwrap_or(0);
     Ok(SalesSummary { today_total, today_count })
+}
+
+#[tauri::command]
+fn get_sales_trend(app_handle: tauri::AppHandle, days: u32) -> Result<Vec<SalesTrend>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let offset = format!("-{} days", days);
+    let mut stmt = conn.prepare(
+        "SELECT DATE(created_at) as date, SUM(amount * quantity) as total \
+         FROM sales WHERE created_at >= DATE('now', ?1) \
+         GROUP BY DATE(created_at) ORDER BY date ASC"
+    ).map_err(|e| e.to_string())?;
+    let trends = stmt.query_map(rusqlite::params![offset], |row| {
+        Ok(SalesTrend {
+            date: row.get(0)?,
+            total: row.get(1)?,
+        })
+    })
+    .map(|r| r.filter_map(|x| x.ok()).collect())
+    .unwrap_or_default();
+    Ok(trends)
+}
+
+#[tauri::command]
+fn get_template_breakdown(app_handle: tauri::AppHandle, days: u32) -> Result<Vec<TemplateBreakdown>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let offset = format!("-{} days", days);
+    let mut stmt = conn.prepare(
+        "SELECT template_key, SUM(amount * quantity) as total, SUM(quantity) as quantity \
+         FROM sales WHERE created_at >= DATE('now', ?1) AND template_key IS NOT NULL \
+         GROUP BY template_key ORDER BY total DESC"
+    ).map_err(|e| e.to_string())?;
+    let breakdowns = stmt.query_map(rusqlite::params![offset], |row| {
+        Ok(TemplateBreakdown {
+            template_key: row.get(0)?,
+            total: row.get(1)?,
+            quantity: row.get(2)?,
+        })
+    })
+    .map(|r| r.filter_map(|x| x.ok()).collect())
+    .unwrap_or_default();
+    Ok(breakdowns)
 }
 
 #[tauri::command]
@@ -2130,6 +2188,8 @@ pub fn run() {
               update_sale,
               delete_sale,
               get_sales_summary,
+              get_sales_trend,
+              get_template_breakdown,
                get_services,
                update_service_price,
                get_services_summary,

@@ -78,3 +78,14 @@ export interface PricingTier {
   created_at: string;
   updated_at: string;
 }
+
+export interface SalesTrend {
+  date: string;
+  total: number;
+}
+
+export interface TemplateBreakdown {
+  template_key: string;
+  total: number;
+  quantity: number;
+}
