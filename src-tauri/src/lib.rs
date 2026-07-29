@@ -506,7 +506,19 @@ fn init_activity_db(app: &tauri::AppHandle) -> Result<(), String> {
             note TEXT,
             activity_log_id INTEGER,
             created_at TEXT NOT NULL
-        );",
+        );
+
+        CREATE TABLE IF NOT EXISTS pricing_tiers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service_id INTEGER NOT NULL,
+            layout TEXT NOT NULL,
+            price REAL NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_pricing_tiers_service_id ON pricing_tiers(service_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_pricing_tiers_service_layout ON pricing_tiers(service_id, layout);",
     )
     .map_err(|e| format!("Failed to create activity_log table: {}", e))?;
 
@@ -584,6 +596,16 @@ struct Service {
     display_name: String,
     price: f64,
     tab: Option<String>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct PricingTier {
+    id: i64,
+    service_id: i64,
+    layout: String,
+    price: f64,
     created_at: String,
     updated_at: String,
 }
