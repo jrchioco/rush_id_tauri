@@ -910,6 +910,37 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
             rusqlite::params![service_id, now],
         );
     }
+
+    // Apply default prices from bundled JSON (first install only)
+    let default_pricing_path = resource_dir(app).join("default-pricing.json");
+    if let Ok(content) = fs::read_to_string(&default_pricing_path) {
+        if let Ok(defaults) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(services) = defaults.get("services").and_then(|v| v.as_object()) {
+                for (template_key, price) in services {
+                    if let Some(p) = price.as_f64() {
+                        let _ = conn.execute(
+                            "UPDATE services SET price = ?1, updated_at = ?2 WHERE LOWER(template_key) = LOWER(?3) AND price = 0",
+                            rusqlite::params![p, now, template_key],
+                        );
+                    }
+                }
+            }
+            if let Some(tiers) = defaults.get("tiers").and_then(|v| v.as_object()) {
+                for (service_key, layouts) in tiers {
+                    if let Some(layouts_obj) = layouts.as_object() {
+                        for (layout, price) in layouts_obj {
+                            if let Some(p) = price.as_f64() {
+                                let _ = conn.execute(
+                                    "UPDATE pricing_tiers SET price = ?1, updated_at = ?2 WHERE service_id = (SELECT id FROM services WHERE LOWER(template_key) = LOWER(?3)) AND LOWER(layout) = LOWER(?4) AND price = 0",
+                                    rusqlite::params![p, now, service_key, layout],
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[tauri::command]
