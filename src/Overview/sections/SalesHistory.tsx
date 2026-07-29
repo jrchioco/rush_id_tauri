@@ -23,14 +23,15 @@ export default function SalesHistory() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [activeFilter, setActiveFilter] = useState<"today" | "week" | "month" | "all">("today");
 
   const fetchSales = useCallback(() => {
     setLoading(true);
-    invoke<Sale[]>("get_sales", { limit: 15 })
+    invoke<Sale[]>("get_sales", { filter: activeFilter })
       .then(setSales)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeFilter]);
 
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
@@ -49,13 +50,30 @@ export default function SalesHistory() {
           <h1 className="text-lg font-bold text-[#e8e4da] tracking-wide">Sales History</h1>
           <p className="text-xs text-[#555] font-mono mt-1">Track your sales over time</p>
         </div>
-        <button
-          onClick={() => { setEditingSale(null); setModalOpen(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#c8881a] text-[#0c0c0b] rounded-lg text-xs font-mono font-bold hover:bg-[#d9992b] transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Sale
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
+            {(["today", "week", "month", "all"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveFilter(tab)}
+                className={`px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
+                  activeFilter === tab
+                    ? "bg-[#c8881a] text-[#0c0c0b] font-bold"
+                    : "text-[#888] hover:text-[#e8e4da] hover:bg-[#1a1a18]"
+                }`}
+              >
+                {tab === "today" ? "Today" : tab === "week" ? "This Week" : tab === "month" ? "This Month" : "All Time"}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => { setEditingSale(null); setModalOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-[#c8881a] text-[#0c0c0b] rounded-lg text-xs font-mono font-bold hover:bg-[#d9992b] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Sale
+          </button>
+        </div>
       </div>
 
       <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
