@@ -1055,6 +1055,83 @@ fn get_services_summary(app_handle: tauri::AppHandle) -> Result<(i32, i32), Stri
 }
 
 #[tauri::command]
+fn get_pricing_tiers(app_handle: tauri::AppHandle, service_id: i64) -> Result<Vec<PricingTier>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, service_id, layout, price, created_at, updated_at
+         FROM pricing_tiers
+         WHERE service_id = ?1
+         ORDER BY
+           CAST(REPLACE(layout, 'pcs', '') AS INTEGER),
+           layout"
+    ).map_err(|e| e.to_string())?;
+
+    let tiers = stmt.query_map(rusqlite::params![service_id], |row| {
+        Ok(PricingTier {
+            id: row.get(0)?,
+            service_id: row.get(1)?,
+            layout: row.get(2)?,
+            price: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        })
+    }).map_err(|e| e.to_string())?
+      .filter_map(|r| r.ok())
+      .collect();
+
+    Ok(tiers)
+}
+
+#[tauri::command]
+fn update_pricing_tier(app_handle: tauri::AppHandle, id: i64, price: f64) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+
+    conn.execute(
+        "UPDATE pricing_tiers SET price = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![price, now, id],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn add_pricing_tier(
+    app_handle: tauri::AppHandle,
+    service_id: i64,
+    layout: String,
+    price: f64
+) -> Result<i64, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+
+    conn.execute(
+        "INSERT INTO pricing_tiers (service_id, layout, price, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?4)",
+        rusqlite::params![service_id, layout, price, now],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+fn delete_pricing_tier(app_handle: tauri::AppHandle, id: i64) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "DELETE FROM pricing_tiers WHERE id = ?1",
+        rusqlite::params![id],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
 fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
     let config = load_config(&app_handle)?;
     Ok(config.api_keys.poof.len() + config.api_keys.removebg.len())
@@ -1878,6 +1955,10 @@ pub fn run() {
                get_services,
                update_service_price,
                get_services_summary,
+               get_pricing_tiers,
+               update_pricing_tier,
+               add_pricing_tier,
+               delete_pricing_tier,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
