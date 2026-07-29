@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "../../components/CompanionWidget/effieInvoke";
 import { FileDown, Printer, Layers, Files, DollarSign, TrendingUp } from "lucide-react";
 import type { ActivityStats, ActivityEntry, SalesSummary, Sale } from "../../types";
+import TrendsSection from "./TrendsSection";
 
 function formatTime(iso: string): string {
   try {
@@ -79,6 +80,8 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (section: strin
         <StatCard icon={Files} label="Multi-Page Batches" value={stats?.multi_page_batches ?? 0} />
         <StatCard icon={DollarSign} label="Today's Sales" value={salesSummary?.today_count ?? 0} valueDisplay={`₱${(salesSummary?.today_total ?? 0).toLocaleString()}`} subtitle={`${salesSummary?.today_count ?? 0} sale${(salesSummary?.today_count ?? 0) === 1 ? "" : "s"} today`} />
       </div>
+
+      <TrendsSection />
 
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
