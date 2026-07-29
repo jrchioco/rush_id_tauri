@@ -1,0 +1,31 @@
+{
+  "services": {
+    "1x1": 20,
+    "2x2": 20,
+    "4r2pcs": 20,
+    "4r3pcs": 30,
+    "8r": 30,
+    "Dev 1x1": 20,
+    "Dev 2x2": 20,
+    "Dev Mixed": 30,
+    "Mixed": 30,
+    "Polaroid 10pcs": 35,
+    "Polaroid 2pcs": 10,
+    "Polaroid 3pcs": 15,
+    "Polaroid 5pcs": 20,
+    "multi_1x1": 20,
+    "multi_2x2": 20,
+    "multi_mixed": 30,
+    "passport1": 30,
+    "passport2": 60,
+    "wallet2pcs": 15,
+    "wallet3pcs": 20,
+    "wallet9pcs": 35
+  },
+  "tiers": {
+    "3r": { "2pcs": 20, "4pcs": 30 },
+    "4r": { "2pcs": 20, "3pcs": 30 },
+    "5r": { "1pcs": 20, "2pcs": 30 },
+    "8r": { "1pcs": 30 }
+  }
+}
