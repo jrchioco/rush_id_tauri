@@ -204,6 +204,9 @@ export default function TrendsSection() {
                     innerRadius={50}
                     outerRadius={80}
                     paddingAngle={2}
+                    cornerRadius={4}
+                    startAngle={90}
+                    endAngle={-270}
                     label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`}
                     labelLine={false}
                     strokeWidth={0}
