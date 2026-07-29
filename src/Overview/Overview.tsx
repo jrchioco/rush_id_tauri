@@ -40,10 +40,11 @@ export default function Overview() {
             );
           })}
         </nav>
-        <div className="flex-1" />
-        <div className="bg-[#1a1508] border border-[#c8881a]/30 rounded-lg px-4 py-2.5 mt-4">
-          <p className="text-[10px] font-mono text-[#c8881a] leading-relaxed">
-            ⚠️ This overview section is experimental. Features and data may change in future updates.
+        <div className="border-t border-[#2a2a28] my-3" />
+        <div className="bg-[#1a1508] border border-[#c8881a]/30 rounded-lg px-4 py-4 text-center">
+          <p className="text-3xl mb-2">⚠️</p>
+          <p className="text-sm font-mono text-[#c8881a] leading-relaxed">
+            This overview section is experimental. Features and data may change in future updates.
           </p>
         </div>
       </div>
