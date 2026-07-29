@@ -121,6 +121,12 @@ export default function TrendsSection() {
     }));
   }, [breakdownData]);
 
+  const topDays = useMemo(() => {
+    return [...trendData]
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 3);
+  }, [trendData]);
+
   const hasTrendData = trendData.length > 0;
   const hasBreakdownData = breakdownData.length > 0;
 
@@ -168,6 +174,19 @@ export default function TrendsSection() {
                 />
               </LineChart>
             </ResponsiveContainer>
+          )}
+          {hasTrendData && topDays.length > 0 && (
+            <div className="mt-3">
+              <h3 className="text-[10px] font-mono text-[#555] mb-2">Top 3 Days</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {topDays.map((day, i) => (
+                  <div key={day.date} className={`flex items-center justify-center gap-7 ${i < 2 ? "pr-2 border-r border-[#2a2a28]" : ""}`}>
+                    <span className="text-[10px] font-mono text-[#888]">{formatDate(day.date)}</span>
+                    <span className="text-[10px] font-mono text-[#c8881a]">₱{day.total.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
