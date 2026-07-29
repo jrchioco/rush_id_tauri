@@ -133,7 +133,7 @@ export default function TrendsSection() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sales Trend Line Chart */}
-        <div>
+        <div className="lg:border-r lg:border-[#2a2a28] lg:pr-6">
           <h3 className="text-xs font-mono text-[#c8881a] mb-3">Sales Trend</h3>
           {loading ? (
             <div className="h-48 bg-[#1a1a18] rounded animate-pulse" />
@@ -190,8 +190,8 @@ export default function TrendsSection() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    innerRadius={45}
+                    outerRadius={65}
                     paddingAngle={2}
                     cornerRadius={4}
                     startAngle={90}
