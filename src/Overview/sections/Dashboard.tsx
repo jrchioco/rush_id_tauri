@@ -80,8 +80,8 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (section: strin
         <StatCard icon={DollarSign} label="Today's Sales" value={salesSummary?.today_count ?? 0} valueDisplay={`₱${(salesSummary?.today_total ?? 0).toLocaleString()}`} subtitle={`${salesSummary?.today_count ?? 0} sale${(salesSummary?.today_count ?? 0) === 1 ? "" : "s"} today`} />
       </div>
 
-      <div className="flex gap-4">
-        <div className="flex-1 bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
+      <div className="grid grid-cols-2 gap-6">
+        <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
           <h2 className="text-sm font-bold text-[#e8e4da] tracking-wide mb-4">Recent Activity</h2>
 
           {loading ? (
@@ -123,7 +123,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (section: strin
           )}
         </div>
 
-        <div className="w-96 shrink-0 bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
+        <div className="bg-[#0c0c0b] border border-[#2a2a28] rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-[#e8e4da] tracking-wide">Today's Sales</h2>
             <button
