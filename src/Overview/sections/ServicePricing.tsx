@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "../../components/CompanionWidget/effieInvoke";
-import { DollarSign, Check, Download } from "lucide-react";
+import { DollarSign, Check, Download, Upload } from "lucide-react";
+import { ThemedModal } from "../../components/ThemedModal";
 import type { Service, PricingTier } from "../../types";
 
 const DISPLAY_GROUPS = [
@@ -157,6 +158,37 @@ export default function ServicePricing() {
     } catch {}
   };
 
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importJson, setImportJson] = useState<string | null>(null);
+
+  const handleImport = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const filePath = await open({
+        multiple: false,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (!filePath) return;
+      const content = await invoke<string>("read_file", { path: filePath });
+      setImportJson(content);
+      setImportModalOpen(true);
+    } catch {
+      // import failed silently
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!importJson) return;
+    try {
+      await invoke("import_pricing", { json: importJson });
+      setImportModalOpen(false);
+      setImportJson(null);
+      fetchServices();
+    } catch {
+      // import failed silently
+    }
+  };
+
   const renderService = (service: Service) => {
     const config = TIER_CONFIGS.find((c) => c.templateKey === service.template_key);
 
@@ -211,6 +243,13 @@ export default function ServicePricing() {
             <Download className="w-3.5 h-3.5" />
             Export
           </button>
+          <button
+            onClick={handleImport}
+            className="flex items-center gap-2 px-3 py-1.5 bg-[#1a1a18] border border-[#2a2a28] text-[#888] rounded-lg text-xs font-mono hover:text-[#e8e4da] hover:border-[#c8881a] transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Import
+          </button>
         </div>
       </div>
 
@@ -242,6 +281,31 @@ export default function ServicePricing() {
             </div>
           ))}
         </div>
+      )}
+
+      {importModalOpen && (
+        <ThemedModal open onClose={() => { setImportModalOpen(false); setImportJson(null); }}>
+          <div className="p-6">
+            <h2 className="text-sm font-bold text-[#e8e4da] mb-2">Import Pricing</h2>
+            <p className="text-xs text-[#888] font-mono mb-6">
+              This will overwrite all current prices with the imported values. Are you sure?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setImportModalOpen(false); setImportJson(null); }}
+                className="px-4 py-2 text-xs font-mono text-[#888] hover:text-[#e8e4da] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmImport}
+                className="px-4 py-2 bg-[#c8881a] text-[#0c0c0b] rounded-lg text-xs font-mono font-bold hover:bg-[#d9992b] transition-colors"
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        </ThemedModal>
       )}
     </div>
   );
