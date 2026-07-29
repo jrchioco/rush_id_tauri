@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "../../components/CompanionWidget/effieInvoke";
-import { DollarSign, Check } from "lucide-react";
+import { DollarSign, Check, Download } from "lucide-react";
 import type { Service, PricingTier } from "../../types";
 
 const DISPLAY_GROUPS = [
@@ -178,6 +178,21 @@ export default function ServicePricing() {
     return <FlatPriceInput service={service} onSave={(price) => saveServicePrice(service, price)} />;
   };
 
+  const handleExport = async () => {
+    try {
+      const json = await invoke<string>("export_pricing");
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const savePath = await save({
+        defaultPath: "pricing-config.json",
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (!savePath) return;
+      await invoke("write_file", { path: savePath, content: json });
+    } catch {
+      // export failed silently
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -185,8 +200,17 @@ export default function ServicePricing() {
           <h1 className="text-lg font-bold text-[#e8e4da] tracking-wide">Service Pricing</h1>
           <p className="text-xs text-[#555] font-mono mt-1">Manage pricing for your templates</p>
         </div>
-        <div className="text-xs font-mono text-[#888]">
-          {pricedCount} of {mainServices.length} priced
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-mono text-[#888]">
+            {pricedCount} of {mainServices.length} priced
+          </span>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-1.5 bg-[#1a1a18] border border-[#2a2a28] text-[#888] rounded-lg text-xs font-mono hover:text-[#e8e4da] hover:border-[#c8881a] transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export
+          </button>
         </div>
       </div>
 

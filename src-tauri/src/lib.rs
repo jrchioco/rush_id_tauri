@@ -1389,6 +1389,11 @@ fn export_pricing(app_handle: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn write_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_services_summary(app_handle: tauri::AppHandle) -> Result<(i32, i32), String> {
     let path = activity_db_path(&app_handle);
     let conn = Connection::open(&path)
@@ -2301,6 +2306,7 @@ pub fn run() {
                get_services,
                 update_service_price,
                 export_pricing,
+                write_file,
                 get_services_summary,
                get_pricing_tiers,
                update_pricing_tier,
