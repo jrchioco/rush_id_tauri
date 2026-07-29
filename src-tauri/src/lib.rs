@@ -1059,14 +1059,26 @@ fn get_materials_summary(app_handle: tauri::AppHandle) -> Result<MaterialsSummar
 }
 
 #[tauri::command]
-fn get_sales(app_handle: tauri::AppHandle, limit: i32) -> Result<Vec<Sale>, String> {
+fn get_sales(app_handle: tauri::AppHandle, filter: Option<String>) -> Result<Vec<Sale>, String> {
     let path = activity_db_path(&app_handle);
     let conn = Connection::open(&path)
         .map_err(|e| format!("Failed to open activity.db: {}", e))?;
-    let mut stmt = conn.prepare(
-        "SELECT id, source, tab, template_key, amount, quantity, note, activity_log_id, created_at FROM sales ORDER BY created_at DESC LIMIT ?1"
-    ).map_err(|e| e.to_string())?;
-    let sales = stmt.query_map(rusqlite::params![limit], |row| {
+
+    let (where_clause, limit): (&str, i32) = match filter.as_deref() {
+        Some("today") => ("WHERE created_at >= DATE('now')", 1000),
+        Some("week") => ("WHERE created_at >= DATE('now', 'weekday 0', '-6 days')", 1000),
+        Some("month") => ("WHERE created_at >= DATE('now', 'start of month')", 1000),
+        _ => ("", 1000),
+    };
+
+    let sql = format!(
+        "SELECT id, source, tab, template_key, amount, quantity, note, activity_log_id, created_at \
+         FROM sales {} ORDER BY created_at DESC LIMIT {}",
+        where_clause, limit
+    );
+
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+    let sales = stmt.query_map([], |row| {
         Ok(Sale {
             id: row.get(0)?,
             source: row.get(1)?,
