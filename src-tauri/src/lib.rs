@@ -1192,19 +1192,49 @@ fn get_template_breakdown(app_handle: tauri::AppHandle, days: u32) -> Result<Vec
         .map_err(|e| format!("Failed to open activity.db: {}", e))?;
     let offset = format!("-{} days", days);
     let mut stmt = conn.prepare(
-        "SELECT template_key, SUM(amount * quantity) as total, SUM(quantity) as quantity \
-         FROM sales WHERE created_at >= DATE('now', ?1) AND template_key IS NOT NULL \
-         GROUP BY template_key ORDER BY total DESC"
+        "SELECT template_key, amount, quantity \
+         FROM sales WHERE created_at >= DATE('now', ?1) AND template_key IS NOT NULL"
     ).map_err(|e| e.to_string())?;
-    let breakdowns = stmt.query_map(rusqlite::params![offset], |row| {
-        Ok(TemplateBreakdown {
-            template_key: row.get(0)?,
-            total: row.get(1)?,
-            quantity: row.get(2)?,
-        })
+    let rows: Vec<(String, f64, i32)> = stmt.query_map(rusqlite::params![offset], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?, row.get::<_, i32>(2)?))
     })
     .map(|r| r.filter_map(|x| x.ok()).collect())
     .unwrap_or_default();
+
+    use std::collections::HashMap;
+    let mut groups: HashMap<&str, (f64, i32)> = HashMap::new();
+
+    for (template_key, amount, quantity) in &rows {
+        let revenue = amount * *quantity as f64;
+        let key = match template_key.to_lowercase().as_str() {
+            "1x1" | "dev_1x1" | "multi_1x1" => "Rush ID 1x1",
+            "2x2" | "dev_2x2" | "multi_2x2" => "Rush ID 2x2",
+            "mixed" | "dev_mixed" | "multi_mixed" => "Rush ID Mixed",
+            "passport1" => "Passport",
+            "passport2" => "Passport",
+            k if k.starts_with("polaroid") => "Polaroid",
+            k if k.starts_with("wallet") => "Wallet",
+            "3r" | "4r" | "5r" | "8r" => "Other",
+            _ => continue,
+        };
+        let entry = groups.entry(key).or_insert((0.0, 0));
+        if template_key.to_lowercase() == "passport2" {
+            entry.0 += revenue * 2.0;
+            entry.1 += *quantity * 2;
+        } else {
+            entry.0 += revenue;
+            entry.1 += *quantity;
+        }
+    }
+
+    let mut breakdowns: Vec<TemplateBreakdown> = groups.into_iter()
+        .map(|(key, (total, quantity))| TemplateBreakdown {
+            template_key: key.to_string(),
+            total,
+            quantity,
+        })
+        .collect();
+    breakdowns.sort_by(|a, b| b.total.partial_cmp(&a.total).unwrap_or(std::cmp::Ordering::Equal));
     Ok(breakdowns)
 }
 

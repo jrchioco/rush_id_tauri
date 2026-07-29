@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { invoke } from "../../components/CompanionWidget/effieInvoke";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import type { SalesTrend, TemplateBreakdown, Service } from "../../types";
+import type { SalesTrend, TemplateBreakdown } from "../../types";
 
 function formatDate(iso: string): string {
   try {
@@ -84,7 +84,6 @@ export default function TrendsSection() {
   const [range, setRange] = useState(7);
   const [trendData, setTrendData] = useState<SalesTrend[]>([]);
   const [breakdownData, setBreakdownData] = useState<TemplateBreakdown[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -92,12 +91,10 @@ export default function TrendsSection() {
     Promise.all([
       invoke<SalesTrend[]>("get_sales_trend", { days: range }),
       invoke<TemplateBreakdown[]>("get_template_breakdown", { days: range }),
-      invoke<Service[]>("get_services"),
     ])
-      .then(([trend, breakdown, svcs]) => {
+      .then(([trend, breakdown]) => {
         setTrendData(trend);
         setBreakdownData(breakdown);
-        setServices(svcs);
       })
       .catch(() => {
         setTrendData([]);
@@ -105,14 +102,6 @@ export default function TrendsSection() {
       })
       .finally(() => setLoading(false));
   }, [range]);
-
-  const displayNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const s of services) {
-      map.set(s.template_key, s.display_name);
-    }
-    return map;
-  }, [services]);
 
   const chartData = useMemo(() => {
     const allDates = generateDateRange(range);
@@ -125,12 +114,12 @@ export default function TrendsSection() {
 
   const breakdownChartData = useMemo(() => {
     return breakdownData.map((d, i) => ({
-      name: displayNameMap.get(d.template_key) ?? d.template_key,
+      name: d.template_key,
       total: d.total,
       quantity: d.quantity,
       color: PIE_COLORS[i % PIE_COLORS.length],
     }));
-  }, [breakdownData, displayNameMap]);
+  }, [breakdownData]);
 
   const hasTrendData = trendData.length > 0;
   const hasBreakdownData = breakdownData.length > 0;
@@ -145,7 +134,7 @@ export default function TrendsSection() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sales Trend Line Chart */}
         <div>
-          <h3 className="text-xs font-mono text-[#555] mb-3">Sales Trend</h3>
+          <h3 className="text-xs font-mono text-[#c8881a] mb-3">Sales Trend</h3>
           {loading ? (
             <div className="h-48 bg-[#1a1a18] rounded animate-pulse" />
           ) : !hasTrendData ? (
@@ -184,7 +173,7 @@ export default function TrendsSection() {
 
         {/* Template Breakdown Donut Chart */}
         <div>
-          <h3 className="text-xs font-mono text-[#555] mb-3">Template Breakdown</h3>
+          <h3 className="text-xs font-mono text-[#c8881a] mb-3">Template Breakdown</h3>
           {loading ? (
             <div className="h-48 bg-[#1a1a18] rounded animate-pulse" />
           ) : !hasBreakdownData ? (
@@ -207,7 +196,11 @@ export default function TrendsSection() {
                     cornerRadius={4}
                     startAngle={90}
                     endAngle={-270}
-                    label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                    label={({ name, percent, x, y, textAnchor }: { name?: string; percent?: number; x?: number; y?: number; textAnchor?: "start" | "end" | "middle" | "inherit" }) => (
+                      <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={9} fontFamily="monospace" fill="#888">
+                        {name} {((percent ?? 0) * 100).toFixed(0)}%
+                      </text>
+                    )}
                     labelLine={false}
                     strokeWidth={0}
                   >
