@@ -1394,6 +1394,45 @@ fn write_file(path: String, content: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn import_pricing(app_handle: tauri::AppHandle, json: String) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let now = Utc::now().to_rfc3339();
+
+    let data: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|e| format!("Invalid JSON: {}", e))?;
+
+    if let Some(services) = data.get("services").and_then(|v| v.as_object()) {
+        for (template_key, price) in services {
+            if let Some(p) = price.as_f64() {
+                let _ = conn.execute(
+                    "UPDATE services SET price = ?1, updated_at = ?2 WHERE LOWER(template_key) = LOWER(?3)",
+                    rusqlite::params![p, now, template_key],
+                );
+            }
+        }
+    }
+
+    if let Some(tiers) = data.get("tiers").and_then(|v| v.as_object()) {
+        for (service_key, layouts) in tiers {
+            if let Some(layouts_obj) = layouts.as_object() {
+                for (layout, price) in layouts_obj {
+                    if let Some(p) = price.as_f64() {
+                        let _ = conn.execute(
+                            "UPDATE pricing_tiers SET price = ?1, updated_at = ?2 WHERE service_id = (SELECT id FROM services WHERE LOWER(template_key) = LOWER(?3)) AND LOWER(layout) = LOWER(?4)",
+                            rusqlite::params![p, now, service_key, layout],
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 fn get_services_summary(app_handle: tauri::AppHandle) -> Result<(i32, i32), String> {
     let path = activity_db_path(&app_handle);
     let conn = Connection::open(&path)
@@ -2307,6 +2346,7 @@ pub fn run() {
                 update_service_price,
                 export_pricing,
                 write_file,
+                import_pricing,
                 get_services_summary,
                get_pricing_tiers,
                update_pricing_tier,
