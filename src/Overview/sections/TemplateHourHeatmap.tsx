@@ -28,13 +28,11 @@ interface HeatmapRow {
   total: number;
 }
 
-function CellTooltip({ name, hour, count, total }: { name: string; hour: number; count: number; total: number }) {
+function CellTooltip({ name, hour, total }: { name: string; hour: number; total: number }) {
   return (
     <div className="flex flex-col gap-0.5">
       <p className="text-[10px] font-mono text-[#c8881a] font-bold">{name}</p>
-      <p className="text-[10px] font-mono text-[#888]">
-        {formatHour(hour)} · {count} photo{count === 1 ? "" : "s"}
-      </p>
+      <p className="text-[10px] font-mono text-[#888]">{formatHour(hour)}</p>
       <p className="text-[10px] font-mono text-[#e8e4da]">₱{total.toLocaleString()}</p>
     </div>
   );
@@ -87,7 +85,7 @@ export default function TemplateHourHeatmap({ data, loading }: { data: TemplateH
                       <Tooltip
                         key={h}
                         className="w-full"
-                        content={<CellTooltip name={row.display_name} hour={h} count={cell.count} total={cell.total} />}
+                        content={<CellTooltip name={row.display_name} hour={h} total={cell.total} />}
                       >
                         <div
                           className="w-full h-4 rounded-[2px]"
