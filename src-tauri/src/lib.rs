@@ -695,7 +695,7 @@ fn calculate_4r_price(base_2pcs: f64, base_3pcs: f64, layout: &str) -> f64 {
         return 0.0;
     }
     let a4_pages = n / 3;
-    let a5_pages = n % 3;
+    let a5_pages = (n % 3) / 2;
     (a4_pages as f64 * base_3pcs) + (a5_pages as f64 * base_2pcs)
 }
 
@@ -739,11 +739,7 @@ fn get_price_for_layout(conn: &Connection, service_id: i64, template_key: &str, 
         "8r" => {
             get_base_price(conn, service_id, "1pcs")
         }
-        _ => conn.query_row(
-            "SELECT price FROM services WHERE id = ?1",
-            rusqlite::params![service_id],
-            |row| row.get(0),
-        ).unwrap_or(0.0),
+        _ => 0.0,
     }
 }
 
@@ -913,6 +909,10 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
                 rusqlite::params![service_id, layout, now],
             );
         }
+        let _ = conn.execute(
+            "DELETE FROM pricing_tiers WHERE service_id = ?1 AND layout IN ('5pcs', '6pcs')",
+            rusqlite::params![service_id],
+        );
     }
 
     // Seed unified 8r service with flat per-photo pricing
@@ -2257,9 +2257,13 @@ fn composite_other_pdf(
 
     let log_id = log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
-    let template_key = match &sources {
-        Some(s) if !s.is_empty() => Path::new(&s[0]).file_stem().unwrap_or_default().to_string_lossy().to_string(),
-        _ => format!("{}_{}", size, layout.as_deref().unwrap_or("default")),
+    let template_key = if size == "4r" {
+        "4r".to_string()
+    } else {
+        match &sources {
+            Some(s) if !s.is_empty() => Path::new(&s[0]).file_stem().unwrap_or_default().to_string_lossy().to_string(),
+            _ => format!("{}_{}", size, layout.as_deref().unwrap_or("default")),
+        }
     };
     auto_create_sale(&app_handle, &tab, &template_key, 1, log_id, layout.as_deref());
     let msg = if save_path.is_some() { "PDF saved" } else { "Other PDF opened in viewer. Press Ctrl+P to print." };
