@@ -603,6 +603,14 @@ struct TemplateBreakdown {
 }
 
 #[derive(Debug, Serialize)]
+struct TemplateHourCell {
+    template_key: String,
+    display_name: String,
+    hour: i32,
+    count: i32,
+}
+
+#[derive(Debug, Serialize)]
 struct PricingExport {
     exported_at: String,
     services: HashMap<String, f64>,
@@ -1208,9 +1216,9 @@ fn get_sales_trend(app_handle: tauri::AppHandle, days: u32) -> Result<Vec<SalesT
         .map_err(|e| format!("Failed to open activity.db: {}", e))?;
     let offset = format!("-{} days", days);
     let mut stmt = conn.prepare(
-        "SELECT DATE(created_at) as date, SUM(amount * quantity) as total \
-         FROM sales WHERE created_at >= DATE('now', ?1) \
-         GROUP BY DATE(created_at) ORDER BY date ASC"
+        "SELECT DATE(created_at, 'localtime') as date, SUM(amount * quantity) as total \
+         FROM sales WHERE created_at >= DATE('now', ?1, 'localtime') \
+         GROUP BY DATE(created_at, 'localtime') ORDER BY date ASC"
     ).map_err(|e| e.to_string())?;
     let trends = stmt.query_map(rusqlite::params![offset], |row| {
         Ok(SalesTrend {
@@ -1231,7 +1239,7 @@ fn get_template_breakdown(app_handle: tauri::AppHandle, days: u32) -> Result<Vec
     let offset = format!("-{} days", days);
     let mut stmt = conn.prepare(
         "SELECT template_key, amount, quantity \
-         FROM sales WHERE created_at >= DATE('now', ?1) AND template_key IS NOT NULL"
+         FROM sales WHERE created_at >= DATE('now', ?1, 'localtime') AND template_key IS NOT NULL"
     ).map_err(|e| e.to_string())?;
     let rows: Vec<(String, f64, i32)> = stmt.query_map(rusqlite::params![offset], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?, row.get::<_, i32>(2)?))
@@ -1274,6 +1282,34 @@ fn get_template_breakdown(app_handle: tauri::AppHandle, days: u32) -> Result<Vec
         .collect();
     breakdowns.sort_by(|a, b| b.total.partial_cmp(&a.total).unwrap_or(std::cmp::Ordering::Equal));
     Ok(breakdowns)
+}
+
+#[tauri::command]
+fn get_template_hour_heatmap(app_handle: tauri::AppHandle, days: u32) -> Result<Vec<TemplateHourCell>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path)
+        .map_err(|e| format!("Failed to open activity.db: {}", e))?;
+    let offset = format!("-{} days", days);
+    let mut stmt = conn.prepare(
+        "SELECT s.template_key, COALESCE(sv.display_name, s.template_key) AS display_name, \
+         CAST(strftime('%H', a.created_at, 'localtime') AS INTEGER) AS hour, SUM(s.quantity) AS count \
+         FROM activity_log a \
+         JOIN sales s ON s.activity_log_id = a.id \
+         LEFT JOIN services sv ON sv.template_key = s.template_key \
+         WHERE a.event_type = 'pdf_export' AND a.created_at >= DATE('now', ?1, 'localtime') \
+         GROUP BY s.template_key, display_name, hour"
+    ).map_err(|e| e.to_string())?;
+    let cells = stmt.query_map(rusqlite::params![offset], |row| {
+        Ok(TemplateHourCell {
+            template_key: row.get(0)?,
+            display_name: row.get(1)?,
+            hour: row.get(2)?,
+            count: row.get(3)?,
+        })
+    })
+    .map(|r| r.filter_map(|x| x.ok()).collect())
+    .unwrap_or_default();
+    Ok(cells)
 }
 
 #[tauri::command]
@@ -2345,8 +2381,9 @@ pub fn run() {
               update_sale,
               delete_sale,
               get_sales_summary,
-              get_sales_trend,
-              get_template_breakdown,
+               get_sales_trend,
+               get_template_breakdown,
+               get_template_hour_heatmap,
                get_services,
                 update_service_price,
                 export_pricing,

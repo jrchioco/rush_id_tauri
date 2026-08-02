@@ -89,3 +89,10 @@ export interface TemplateBreakdown {
   total: number;
   quantity: number;
 }
+
+export interface TemplateHourCell {
+  template_key: string;
+  display_name: string;
+  hour: number;
+  count: number;
+}

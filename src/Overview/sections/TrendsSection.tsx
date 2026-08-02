@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { invoke } from "../../components/CompanionWidget/effieInvoke";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import type { SalesTrend, TemplateBreakdown } from "../../types";
+import type { SalesTrend, TemplateBreakdown, TemplateHourCell } from "../../types";
+import TemplateHourHeatmap from "./TemplateHourHeatmap";
 
 function formatDate(iso: string): string {
   try {
@@ -84,6 +85,7 @@ export default function TrendsSection() {
   const [range, setRange] = useState(7);
   const [trendData, setTrendData] = useState<SalesTrend[]>([]);
   const [breakdownData, setBreakdownData] = useState<TemplateBreakdown[]>([]);
+  const [heatmapData, setHeatmapData] = useState<TemplateHourCell[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -91,14 +93,17 @@ export default function TrendsSection() {
     Promise.all([
       invoke<SalesTrend[]>("get_sales_trend", { days: range }),
       invoke<TemplateBreakdown[]>("get_template_breakdown", { days: range }),
+      invoke<TemplateHourCell[]>("get_template_hour_heatmap", { days: range }),
     ])
-      .then(([trend, breakdown]) => {
+      .then(([trend, breakdown, heatmap]) => {
         setTrendData(trend);
         setBreakdownData(breakdown);
+        setHeatmapData(heatmap);
       })
       .catch(() => {
         setTrendData([]);
         setBreakdownData([]);
+        setHeatmapData([]);
       })
       .finally(() => setLoading(false));
   }, [range]);
@@ -254,6 +259,8 @@ export default function TrendsSection() {
           )}
         </div>
       </div>
+
+      <TemplateHourHeatmap data={heatmapData} loading={loading} />
     </div>
   );
 }
