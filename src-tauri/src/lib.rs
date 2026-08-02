@@ -739,7 +739,11 @@ fn get_price_for_layout(conn: &Connection, service_id: i64, template_key: &str, 
         "8r" => {
             get_base_price(conn, service_id, "1pcs")
         }
-        _ => 0.0,
+        _ => conn.query_row(
+            "SELECT price FROM services WHERE id = ?1",
+            rusqlite::params![service_id],
+            |row| row.get(0),
+        ).unwrap_or(0.0),
     }
 }
 
