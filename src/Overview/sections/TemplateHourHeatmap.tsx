@@ -15,7 +15,7 @@ function shadeFor(count: number, max: number): string {
 }
 
 function formatHour(h: number): string {
-  const period = h < 12 ? "a" : "p";
+  const period = h < 12 ? "am" : "pm";
   const hr = h % 12 === 0 ? 12 : h % 12;
   return `${hr}${period}`;
 }
@@ -83,8 +83,8 @@ export default function TemplateHourHeatmap({ data, loading }: { data: TemplateH
 
           <div className="flex items-center gap-2 mt-1.5">
             <span className="w-24 shrink-0" />
-            <div className="flex-1 grid grid-cols-6">
-              {[0, 4, 8, 12, 16, 20].map((h) => (
+            <div className="flex-1 grid grid-cols-12">
+              {[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map((h) => (
                 <div key={h} className="text-center text-[9px] font-mono text-[#555]">
                   {formatHour(h)}
                 </div>
