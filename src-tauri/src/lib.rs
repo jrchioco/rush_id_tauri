@@ -707,6 +707,14 @@ fn calculate_wallet_price(base_9pcs: f64, layout: &str) -> f64 {
     (n / 9) as f64 * base_9pcs
 }
 
+fn calculate_8r_price(base_1pc: f64, layout: &str) -> f64 {
+    let n: i32 = layout.replace("pcs", "").parse().unwrap_or(0);
+    if n < 1 {
+        return 0.0;
+    }
+    n as f64 * base_1pc
+}
+
 fn get_base_price(conn: &Connection, service_id: i64, layout: &str) -> f64 {
     conn.query_row(
         "SELECT price FROM pricing_tiers WHERE service_id = ?1 AND layout = ?2",
@@ -745,7 +753,8 @@ fn get_price_for_layout(conn: &Connection, service_id: i64, template_key: &str, 
             calculate_4r_price(base_2pcs, base_3pcs, layout)
         }
         "8r" => {
-            get_base_price(conn, service_id, "1pcs")
+            let base_1pc = get_base_price(conn, service_id, "1pcs");
+            calculate_8r_price(base_1pc, layout)
         }
         "wallet" => {
             let base_9pcs = get_base_price(conn, service_id, "9pcs");
