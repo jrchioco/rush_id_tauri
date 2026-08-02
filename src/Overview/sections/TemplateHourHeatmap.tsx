@@ -6,6 +6,18 @@ const EMPTY_SHADE = "#1a1408";
 const BAND_SHADES = ["#241a0a", "#5c3e0c", "#9c6a14", "#c8881a"];
 const BAND_LABELS = ["Mellow", "Moderate", "Busy", "Peak"];
 
+function categoryFor(templateKey: string): string | null {
+  const k = templateKey.toLowerCase();
+  if (["1x1", "dev_1x1", "multi_1x1"].includes(k)) return "Rush ID 1x1";
+  if (["2x2", "dev_2x2", "multi_2x2"].includes(k)) return "Rush ID 2x2";
+  if (["mixed", "dev_mixed", "multi_mixed"].includes(k)) return "Rush ID Mixed";
+  if (["passport1", "passport2"].includes(k)) return "Passport";
+  if (["3r", "4r", "5r", "8r"].includes(k)) return "Other";
+  if (k.startsWith("polaroid")) return "Polaroid";
+  if (k.startsWith("wallet")) return "Wallet";
+  return null;
+}
+
 function shadeFor(count: number, max: number): string {
   if (count === 0 || max <= 0) return EMPTY_SHADE;
   const ratio = count / max;
@@ -42,14 +54,18 @@ export default function TemplateHourHeatmap({ data, loading }: { data: TemplateH
   const rows = useMemo<HeatmapRow[]>(() => {
     const map = new Map<string, HeatmapRow>();
     for (const cell of data) {
-      const entry = map.get(cell.template_key) ?? {
-        template_key: cell.template_key,
-        display_name: cell.display_name,
+      const category = categoryFor(cell.template_key);
+      if (!category) continue;
+      const entry = map.get(category) ?? {
+        template_key: category,
+        display_name: category,
         cells: Array.from({ length: 24 }, () => ({ count: 0, total: 0 })),
         total: 0,
       };
-      entry.cells[cell.hour] = { count: cell.count, total: cell.total };
-      map.set(cell.template_key, entry);
+      const slot = entry.cells[cell.hour];
+      slot.count += cell.count;
+      slot.total += cell.total;
+      map.set(category, entry);
     }
     const list = [...map.values()];
     for (const row of list) {
