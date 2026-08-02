@@ -5,6 +5,18 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.20.1": {
+    title: "What's New in v1.20.1",
+    date: "2026-08-03",
+    notes: [
+      "Template Activity by Hour — a new heatmap in the Overview Trends section shows which templates sell at each hour of the day, so you can spot your busy periods at a glance.",
+      "Revenue totals corrected — sales were being counted twice in the charts (the amount already includes quantity). Today's total, the sales trend, and the template breakdown now match your Sales History exactly.",
+      "4R prices fixed — 5 prints now cost ₱50 and 6 prints ₱60, calculated automatically from your 2pcs/3pcs prices.",
+      "Wallet prints now show up in sales — wallet exports previously recorded nothing. They now log under a single Wallet service priced from your 2pcs/3pcs/9pcs tiers; 18 and 27 prints are calculated as 2× and 3× of the 9pcs price.",
+      "8R priced per sheet — 8R is one photo per sheet, so ordering more prints now costs more (n × your per-photo price) instead of a flat amount.",
+      "Charts agree — the heatmap and the breakdown chart now use the same 7 product categories, so they always tell the same story.",
+    ],
+  },
   "1.20.0": {
     title: "What's New in v1.20.0",
     date: "2026-07-28",
