@@ -1293,12 +1293,11 @@ fn get_template_hour_heatmap(app_handle: tauri::AppHandle, days: u32) -> Result<
     let offset = format!("-{} days", days);
     let mut stmt = conn.prepare(
         "SELECT s.template_key, COALESCE(sv.display_name, s.template_key) AS display_name, \
-         CAST(strftime('%H', a.created_at, 'localtime') AS INTEGER) AS hour, SUM(s.quantity) AS count, \
-         SUM(s.amount * s.quantity) AS total \
-         FROM activity_log a \
-         JOIN sales s ON s.activity_log_id = a.id \
+         CAST(strftime('%H', s.created_at, 'localtime') AS INTEGER) AS hour, SUM(s.quantity) AS count, \
+         SUM(s.amount) AS total \
+         FROM sales s \
          LEFT JOIN services sv ON sv.template_key = s.template_key \
-         WHERE a.event_type = 'pdf_export' AND a.created_at >= DATE('now', ?1, 'localtime') \
+         WHERE s.created_at >= DATE('now', ?1, 'localtime') \
          GROUP BY s.template_key, display_name, hour"
     ).map_err(|e| e.to_string())?;
     let cells = stmt.query_map(rusqlite::params![offset], |row| {
