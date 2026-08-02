@@ -699,6 +699,14 @@ fn calculate_4r_price(base_2pcs: f64, base_3pcs: f64, layout: &str) -> f64 {
     (a4_pages as f64 * base_3pcs) + (a5_pages as f64 * base_2pcs)
 }
 
+fn calculate_wallet_price(base_9pcs: f64, layout: &str) -> f64 {
+    let n: i32 = layout.replace("pcs", "").parse().unwrap_or(0);
+    if n < 9 || n % 9 != 0 {
+        return 0.0;
+    }
+    (n / 9) as f64 * base_9pcs
+}
+
 fn get_base_price(conn: &Connection, service_id: i64, layout: &str) -> f64 {
     conn.query_row(
         "SELECT price FROM pricing_tiers WHERE service_id = ?1 AND layout = ?2",
@@ -738,6 +746,10 @@ fn get_price_for_layout(conn: &Connection, service_id: i64, template_key: &str, 
         }
         "8r" => {
             get_base_price(conn, service_id, "1pcs")
+        }
+        "wallet" => {
+            let base_9pcs = get_base_price(conn, service_id, "9pcs");
+            calculate_wallet_price(base_9pcs, layout)
         }
         _ => 0.0,
     }
@@ -877,19 +889,6 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
                     );
                 }
             }
-            if stem == "wallet" {
-                let service_id: i64 = conn.query_row(
-                    "SELECT id FROM services WHERE template_key = 'wallet'",
-                    [],
-                    |row| row.get(0),
-                ).unwrap_or(0);
-                for layout in &["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"] {
-                    let _ = conn.execute(
-                        "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?3)",
-                        rusqlite::params![service_id, layout, now],
-                    );
-                }
-            }
         }
     }
 
@@ -928,6 +927,28 @@ fn seed_services_from_svg(app: &tauri::AppHandle) {
         let _ = conn.execute(
             "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, '1pcs', 0, ?2, ?2)",
             rusqlite::params![service_id, now],
+        );
+    }
+
+    // Seed unified wallet service with tiered pricing (separate from wallet2pcs/3pcs/9pcs SVGs)
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO services (template_key, display_name, price, tab, created_at, updated_at) VALUES ('wallet', 'Wallet', 0, 'other', ?1, ?1)",
+        rusqlite::params![now],
+    );
+    if let Ok(service_id) = conn.query_row(
+        "SELECT id FROM services WHERE template_key = 'wallet'",
+        [],
+        |row| row.get::<_, i64>(0),
+    ) {
+        for layout in &["2pcs", "3pcs", "9pcs"] {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO pricing_tiers (service_id, layout, price, created_at, updated_at) VALUES (?1, ?2, 0, ?3, ?3)",
+                rusqlite::params![service_id, layout, now],
+            );
+        }
+        let _ = conn.execute(
+            "DELETE FROM pricing_tiers WHERE service_id = ?1 AND layout IN ('18pcs', '27pcs')",
+            rusqlite::params![service_id],
         );
     }
 
@@ -2257,8 +2278,8 @@ fn composite_other_pdf(
 
     let log_id = log_activity(&app_handle, "pdf_export", &tab, all_chunks.len() as i32);
     deduct_materials_for_export(&app_handle, &tab, all_chunks.len() as i32);
-    let template_key = if size == "4r" {
-        "4r".to_string()
+    let template_key = if size == "4r" || size == "wallet" {
+        size.to_string()
     } else {
         match &sources {
             Some(s) if !s.is_empty() => Path::new(&s[0]).file_stem().unwrap_or_default().to_string_lossy().to_string(),
