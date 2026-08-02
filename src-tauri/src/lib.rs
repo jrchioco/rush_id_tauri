@@ -1198,7 +1198,7 @@ fn get_sales_summary(app_handle: tauri::AppHandle) -> Result<SalesSummary, Strin
         .map_err(|e| format!("Failed to open activity.db: {}", e))?;
     let today = Utc::now().format("%Y-%m-%d").to_string();
     let today_total: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(amount * quantity), 0) FROM sales WHERE date(created_at) = ?1",
+        "SELECT COALESCE(SUM(amount), 0) FROM sales WHERE date(created_at) = ?1",
         rusqlite::params![today],
         |row| row.get(0),
     ).unwrap_or(0.0);
@@ -1217,7 +1217,7 @@ fn get_sales_trend(app_handle: tauri::AppHandle, days: u32) -> Result<Vec<SalesT
         .map_err(|e| format!("Failed to open activity.db: {}", e))?;
     let offset = format!("-{} days", days);
     let mut stmt = conn.prepare(
-        "SELECT DATE(created_at, 'localtime') as date, SUM(amount * quantity) as total \
+        "SELECT DATE(created_at, 'localtime') as date, SUM(amount) as total \
          FROM sales WHERE created_at >= DATE('now', ?1, 'localtime') \
          GROUP BY DATE(created_at, 'localtime') ORDER BY date ASC"
     ).map_err(|e| e.to_string())?;
@@ -1252,7 +1252,7 @@ fn get_template_breakdown(app_handle: tauri::AppHandle, days: u32) -> Result<Vec
     let mut groups: HashMap<&str, (f64, i32)> = HashMap::new();
 
     for (template_key, amount, quantity) in &rows {
-        let revenue = amount * *quantity as f64;
+        let revenue = *amount;
         let key = match template_key.to_lowercase().as_str() {
             "1x1" | "dev_1x1" | "multi_1x1" => "Rush ID 1x1",
             "2x2" | "dev_2x2" | "multi_2x2" => "Rush ID 2x2",
@@ -1266,7 +1266,7 @@ fn get_template_breakdown(app_handle: tauri::AppHandle, days: u32) -> Result<Vec
         };
         let entry = groups.entry(key).or_insert((0.0, 0));
         if template_key.to_lowercase() == "passport2" {
-            entry.0 += revenue * 2.0;
+            entry.0 += revenue;
             entry.1 += *quantity * 2;
         } else {
             entry.0 += revenue;
