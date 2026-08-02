@@ -86,10 +86,11 @@ export default function TemplateHourHeatmap({ data, loading }: { data: TemplateH
                     cell.count > 0 ? (
                       <Tooltip
                         key={h}
+                        className="w-full"
                         content={<CellTooltip name={row.display_name} hour={h} count={cell.count} total={cell.total} />}
                       >
                         <div
-                          className="h-4 rounded-[2px]"
+                          className="w-full h-4 rounded-[2px]"
                           style={{ backgroundColor: shadeFor(cell.count, max) }}
                         />
                       </Tooltip>
