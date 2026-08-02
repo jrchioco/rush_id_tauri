@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { TemplateHourCell } from "../../types";
+import { Tooltip } from "../../components/Tooltip";
 
 const EMPTY_SHADE = "#1a1408";
 const BAND_SHADES = ["#241a0a", "#5c3e0c", "#9c6a14", "#c8881a"];
@@ -23,8 +24,20 @@ function formatHour(h: number): string {
 interface HeatmapRow {
   template_key: string;
   display_name: string;
-  cells: number[];
+  cells: { count: number; total: number }[];
   total: number;
+}
+
+function CellTooltip({ name, hour, count, total }: { name: string; hour: number; count: number; total: number }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="text-[10px] font-mono text-[#c8881a] font-bold">{name}</p>
+      <p className="text-[10px] font-mono text-[#888]">
+        {formatHour(hour)} · {count} photo{count === 1 ? "" : "s"}
+      </p>
+      <p className="text-[10px] font-mono text-[#e8e4da]">₱{total.toLocaleString()}</p>
+    </div>
+  );
 }
 
 export default function TemplateHourHeatmap({ data, loading }: { data: TemplateHourCell[]; loading: boolean }) {
@@ -34,21 +47,21 @@ export default function TemplateHourHeatmap({ data, loading }: { data: TemplateH
       const entry = map.get(cell.template_key) ?? {
         template_key: cell.template_key,
         display_name: cell.display_name,
-        cells: Array(24).fill(0),
+        cells: Array.from({ length: 24 }, () => ({ count: 0, total: 0 })),
         total: 0,
       };
-      entry.cells[cell.hour] = cell.count;
+      entry.cells[cell.hour] = { count: cell.count, total: cell.total };
       map.set(cell.template_key, entry);
     }
     const list = [...map.values()];
     for (const row of list) {
-      row.total = row.cells.reduce((a, b) => a + b, 0);
+      row.total = row.cells.reduce((a, c) => a + c.count, 0);
     }
     list.sort((a, b) => b.total - a.total);
     return list;
   }, [data]);
 
-  const max = useMemo(() => rows.reduce((m, r) => Math.max(m, ...r.cells), 0), [rows]);
+  const max = useMemo(() => rows.reduce((m, r) => Math.max(m, ...r.cells.map((c) => c.count)), 0), [rows]);
 
   return (
     <div className="border-t border-[#2a2a28] pt-6 mt-6">
@@ -69,13 +82,25 @@ export default function TemplateHourHeatmap({ data, loading }: { data: TemplateH
                   {row.display_name}
                 </span>
                 <div className="flex-1 grid gap-0.5 grid-cols-[repeat(24,minmax(0,1fr))]">
-                  {row.cells.map((count, h) => (
-                    <div
-                      key={h}
-                      className="h-4 rounded-[2px]"
-                      style={{ backgroundColor: shadeFor(count, max) }}
-                    />
-                  ))}
+                  {row.cells.map((cell, h) =>
+                    cell.count > 0 ? (
+                      <Tooltip
+                        key={h}
+                        content={<CellTooltip name={row.display_name} hour={h} count={cell.count} total={cell.total} />}
+                      >
+                        <div
+                          className="h-4 rounded-[2px]"
+                          style={{ backgroundColor: shadeFor(cell.count, max) }}
+                        />
+                      </Tooltip>
+                    ) : (
+                      <div
+                        key={h}
+                        className="h-4 rounded-[2px]"
+                        style={{ backgroundColor: shadeFor(0, max) }}
+                      />
+                    ),
+                  )}
                 </div>
               </div>
             ))}

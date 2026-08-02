@@ -608,6 +608,7 @@ struct TemplateHourCell {
     display_name: String,
     hour: i32,
     count: i32,
+    total: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -1292,7 +1293,8 @@ fn get_template_hour_heatmap(app_handle: tauri::AppHandle, days: u32) -> Result<
     let offset = format!("-{} days", days);
     let mut stmt = conn.prepare(
         "SELECT s.template_key, COALESCE(sv.display_name, s.template_key) AS display_name, \
-         CAST(strftime('%H', a.created_at, 'localtime') AS INTEGER) AS hour, SUM(s.quantity) AS count \
+         CAST(strftime('%H', a.created_at, 'localtime') AS INTEGER) AS hour, SUM(s.quantity) AS count, \
+         SUM(s.amount * s.quantity) AS total \
          FROM activity_log a \
          JOIN sales s ON s.activity_log_id = a.id \
          LEFT JOIN services sv ON sv.template_key = s.template_key \
@@ -1305,6 +1307,7 @@ fn get_template_hour_heatmap(app_handle: tauri::AppHandle, days: u32) -> Result<
             display_name: row.get(1)?,
             hour: row.get(2)?,
             count: row.get(3)?,
+            total: row.get(4)?,
         })
     })
     .map(|r| r.filter_map(|x| x.ok()).collect())

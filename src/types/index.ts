@@ -95,4 +95,5 @@ export interface TemplateHourCell {
   display_name: string;
   hour: number;
   count: number;
+  total: number;
 }
