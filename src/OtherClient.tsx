@@ -367,11 +367,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
 
         log("Compositing PDF...");
         const layoutStr = typeof layout === "number" ? String(layout) : layout;
-        const sources = selectedSize === "4r" && layoutStr === "5pcs"
-          ? ["4r3pcs.svg", "4r2pcs.svg"]
-          : selectedSize === "4r" && layoutStr === "6pcs"
-            ? ["4r3pcs.svg", "4r3pcs.svg"]
-            : getSources(selectedSize, layout);
+        const sources = getSources(selectedSize, layout);
         const msg = await invoke<string>("composite_other_pdf", {
           size: selectedSize,
           layout: layoutStr,
