@@ -41,7 +41,9 @@ interface SlotData {
   fontChoice: FontChoice;
 }
 
-const LABELS = ["Passport 1", "Passport 2", "Passport 3", "Passport 4", "Passport 5"];
+function slotLabel(i: number) {
+  return `Passport ${i + 1}`;
+}
 
 function freshSlot(i: number, defaultTemplate = ""): SlotData {
   return {
@@ -55,7 +57,7 @@ function freshSlot(i: number, defaultTemplate = ""): SlotData {
     resultPath: null,
     bgColor: "#ffffff",
     selectedTemplate: defaultTemplate,
-    name: LABELS[i],
+    name: slotLabel(i),
     labelMode: "off",
     signatureDataUrl: null,
     fontChoice: "black",
@@ -166,7 +168,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
           return next;
         });
         results.forEach((r, idx) =>
-          logRef.current(`${LABELS[emptyIndices[idx]]}: ${r.fileName}`),
+          logRef.current(`${slotLabel(emptyIndices[idx])}: ${r.fileName}`),
         );
       })
       .catch((e) => toast.error(`Read error: ${e}`));
@@ -196,7 +198,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
         zoom: 1,
         rotation: 0,
       });
-      log(`${LABELS[i]}: Loaded ${result.fileName}`);
+      log(`${slotLabel(i)}: Loaded ${result.fileName}`);
     } catch (e) {
       toast.error(`Failed to load image: ${e}`);
     }
@@ -577,7 +579,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
                   type="text"
                   value={slot.name}
                   onChange={(e) => handleSlotNameChange(i, e.target.value)}
-                  placeholder={LABELS[i]}
+                  placeholder={slotLabel(i)}
                   maxLength={60}
                   className={cn(
                     "flex-1 min-w-0 bg-transparent text-xs font-semibold font-mono tracking-widest uppercase",
