@@ -65,10 +65,10 @@ interface MultiClientProps {
 }
 
 const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientProps>(function MultiClient({ onPrintReminder }, ref) {
+  const [slotCount, _setSlotCount] = useState(5);
   const [slots, setSlots] = useState<SlotData[]>(() =>
     Array.from({ length: slotCount }, (_, i) => freshSlot(i)),
   );
-  const [slotCount, _setSlotCount] = useState(5);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [testMode, setTestMode] = useState(false);
