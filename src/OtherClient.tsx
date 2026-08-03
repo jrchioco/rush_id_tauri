@@ -54,11 +54,19 @@ function getCanvasWidth(size: OtherSize, quality: "high" | "flash"): number {
 }
 
 function getSources(size: OtherSize, layout: OtherLayout | number): string[] | null {
+  const slotCount = typeof layout === "number" ? layout : LAYOUT_SLOTS[layout];
+  if (!slotCount) return null;
+  if (size === "4r") {
+    const a4 = Math.floor(slotCount / 3);
+    const a5 = Math.floor((slotCount % 3) / 2);
+    return [
+      ...Array.from({ length: a4 }, () => "4r3pcs.svg"),
+      ...Array.from({ length: a5 }, () => "4r2pcs.svg"),
+    ];
+  }
   const slotsPerSvg: Record<string, number> = { "3r": 2, "5r": 1, "8r": 1 };
   const per = slotsPerSvg[size];
   if (!per) return null;
-  const slotCount = typeof layout === "number" ? layout : LAYOUT_SLOTS[layout];
-  if (!slotCount) return null;
   return Array.from({ length: Math.ceil(slotCount / per) }, () => `${size}.svg`);
 }
 
