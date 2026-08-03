@@ -84,6 +84,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const sigFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const countInputRef = useRef<HTMLInputElement | null>(null);
   const compositeIdRefs = useRef<Map<number, number>>(new Map());
   const cropperWheelRef = useCallback((node: HTMLElement | null) => {
     if (!node) return;
@@ -118,6 +119,23 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
   slotsRef.current = slots;
   const logRef = useRef(log);
   logRef.current = log;
+
+  const stepCountRef = useRef<(dir: 1 | -1, shift: boolean) => void>(() => {});
+  stepCountRef.current = stepCount;
+
+  useEffect(() => {
+    const node = countInputRef.current;
+    if (!node) return;
+    const listener = (e: WheelEvent) => {
+      e.preventDefault();
+      const dx = Math.abs(e.deltaX);
+      const dy = Math.abs(e.deltaY);
+      const dir = (dx > dy ? e.deltaX : e.deltaY) > 0 ? (-1 as const) : (1 as const);
+      stepCountRef.current(dir, e.shiftKey);
+    };
+    node.addEventListener("wheel", listener, { passive: false });
+    return () => node.removeEventListener("wheel", listener);
+  }, []);
 
   useEffect(() => {
     const fallback = multiTemplates.length > 0 ? multiTemplates[0] : templates[0];
@@ -539,6 +557,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
               <div className="flex items-center gap-1.5 bg-[#111110] border border-[#2a2a28] rounded-lg px-2 py-1">
                 <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">Slots:</span>
                 <input
+                  ref={countInputRef}
                   type="number"
                   min="6"
                   max="100"
@@ -560,10 +579,6 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
                       e.preventDefault();
                       commitCount();
                     }
-                  }}
-                  onWheel={(e) => {
-                    e.preventDefault();
-                    stepCount(e.deltaY > 0 ? -1 : 1, e.shiftKey);
                   }}
                   className={cn(
                     "w-16 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-0.5 text-xs font-mono outline-none text-center",
