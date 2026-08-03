@@ -39,7 +39,9 @@ interface SlotData {
   fontChoice: FontChoice;
 }
 
-const LABELS = ["Client A", "Client B", "Client C", "Client D", "Client E"];
+function slotLabel(i: number) {
+  return `Client ${i + 1}`;
+}
 
 function freshSlot(i: number, defaultTemplate = ""): SlotData {
   return {
@@ -53,7 +55,7 @@ function freshSlot(i: number, defaultTemplate = ""): SlotData {
     resultPath: null,
     bgColor: "#ffffff",
     selectedTemplate: defaultTemplate,
-    name: LABELS[i],
+    name: slotLabel(i),
     labelMode: "off",
     signatureDataUrl: null,
     fontChoice: "black",
@@ -164,7 +166,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
           return next;
         });
         results.forEach((r, idx) =>
-          logRef.current(`${LABELS[emptyIndices[idx]]}: ${r.fileName}`),
+          logRef.current(`${slotLabel(emptyIndices[idx])}: ${r.fileName}`),
         );
       })
       .catch((e) => toast.error(`Read error: ${e}`));
@@ -194,7 +196,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
         zoom: 1,
         rotation: 0,
       });
-      log(`${LABELS[i]}: Loaded ${result.fileName}`);
+      log(`${slotLabel(i)}: Loaded ${result.fileName}`);
     } catch (e) {
       toast.error(`Failed to load image: ${e}`);
     }
@@ -576,7 +578,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
                   type="text"
                   value={slot.name}
                   onChange={(e) => handleSlotNameChange(i, e.target.value)}
-                  placeholder={LABELS[i]}
+                  placeholder={slotLabel(i)}
                   maxLength={60}
                   className={cn(
                     "flex-1 min-w-0 bg-transparent text-xs font-semibold font-mono tracking-widest uppercase",
