@@ -32,7 +32,6 @@ const OTHER_SIZES: Record<OtherSize, OtherSizeInfo> = {
 
 const LAYOUTS: OtherLayout[] = ["4pcs", "6pcs", "8pcs", "10pcs", "12pcs"];
 const WALLET_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs", "9pcs", "18pcs", "27pcs"];
-const FOUR_R_LAYOUTS: OtherLayout[] = ["2pcs", "3pcs", "5pcs", "6pcs"];
 const LAYOUT_SLOTS: Record<OtherLayout, number> = { "2pcs": 2, "3pcs": 3, "4pcs": 4, "5pcs": 5, "6pcs": 6, "8pcs": 8, "9pcs": 9, "10pcs": 10, "12pcs": 12, "18pcs": 18, "27pcs": 27 };
 
 function getAspect(size: OtherSize): number {
@@ -68,6 +67,27 @@ function getSources(size: OtherSize, layout: OtherLayout | number): string[] | n
   const per = slotsPerSvg[size];
   if (!per) return null;
   return Array.from({ length: Math.ceil(slotCount / per) }, () => `${size}.svg`);
+}
+
+const FOUR_R_MIN = 2;
+const FOUR_R_MAX = 99;
+
+function fourRNext(n: number): number {
+  let next = n + 1;
+  if (next % 3 === 1) next += 1;
+  return Math.min(next, FOUR_R_MAX);
+}
+
+function fourRPrev(n: number): number {
+  let prev = n - 1;
+  if (prev % 3 === 1) prev -= 1;
+  return Math.max(prev, FOUR_R_MIN);
+}
+
+function fourRSnap(n: number): number {
+  const clamped = Math.min(Math.max(n, FOUR_R_MIN), FOUR_R_MAX);
+  if (clamped % 3 !== 1) return clamped;
+  return Math.min(clamped + 1, FOUR_R_MAX);
 }
 
 function freshSlot(id: number): OtherSlotState {
@@ -155,6 +175,7 @@ interface OtherClientProps {
 const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientProps>(function OtherClient({ onPrintReminder }, ref) {
   const [selectedSize, setSelectedSize] = useState<OtherSize | null>(null);
   const [layout, setLayout] = useState<OtherLayout | number>("2pcs");
+  const [fourRDraft, setFourRDraft] = useState<string>("3");
   const [slots, setSlots] = useState<OtherSlotState[]>(() =>
     Array.from({ length: 2 }, (_, i) => freshSlot(i)),
   );
@@ -186,8 +207,10 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
       return;
     }
     setSelectedSize(size);
-    const defaultLayout: OtherLayout | number = size === "wallet" ? "2pcs" : size === "3r" ? 2 : 1;
+    const defaultLayout: OtherLayout | number =
+  size === "wallet" ? "2pcs" : size === "3r" ? 2 : size === "4r" ? 3 : 1;
     setLayout(defaultLayout);
+    if (size === "4r") setFourRDraft(String(3));
     const slotCount = typeof defaultLayout === "number" ? defaultLayout : LAYOUT_SLOTS[defaultLayout];
     setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i)));
     setLogs([]);
@@ -222,6 +245,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
             label: "Reset",
             onClick: () => {
               setLayout(newLayout);
+              if (selectedSize === "4r") setFourRDraft(String(newLayout));
               setSlots(Array.from({ length: newSlotCount }, (_, i) => freshSlot(i)));
               setLogs([]);
             },
@@ -229,10 +253,29 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
         });
       } else {
         setLayout(newLayout);
+        if (selectedSize === "4r") setFourRDraft(String(newLayout));
         setSlots(Array.from({ length: newSlotCount }, (_, i) => freshSlot(i)));
       }
     },
-    [layout, slots],
+    [layout, slots, selectedSize],
+  );
+
+  const commitFourR = useCallback(() => {
+    const val = parseInt(fourRDraft, 10);
+    if (isNaN(val)) return;
+    const snapped = fourRSnap(val);
+    if (snapped !== val) setFourRDraft(String(snapped));
+    handleLayoutSwitch(snapped);
+  }, [fourRDraft, handleLayoutSwitch]);
+
+  const stepFourR = useCallback(
+    (dir: 1 | -1) => {
+      const current = typeof layout === "number" ? layout : FOUR_R_MIN;
+      const target = dir === 1 ? fourRNext(current) : fourRPrev(current);
+      if (target === current) return;
+      handleLayoutSwitch(target);
+    },
+    [layout, handleLayoutSwitch],
   );
 
   const updateSlot = useCallback((index: number, updates: Partial<OtherSlotState>) => {
@@ -492,43 +535,68 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            {(selectedSize === "3r" || selectedSize === "5r" || selectedSize === "8r") ? (
+            {(selectedSize === "3r" || selectedSize === "4r" || selectedSize === "5r" || selectedSize === "8r") ? (
               <Tooltip content={TOOLTIPS.layoutSwitch}>
                 <div className="flex items-center gap-2 bg-[#111110] border border-[#2a2a28] rounded-lg px-3 py-1">
                   <span className="text-[10px] font-mono text-[#888]">Layout:</span>
-                  <input
-                    type="number"
-                    min={selectedSize === "3r" ? "2" : "1"}
-                    max="100"
-                    step={selectedSize === "3r" ? "2" : "1"}
-                    value={typeof layout === "number" ? layout : (selectedSize === "3r" ? 2 : 1)}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (isNaN(val)) return;
-                      if (selectedSize === "3r" && val % 2 !== 0) {
-                        toast.error("3R requires even number of photos (2, 4, 6, ...)");
-                        return;
-                      }
-                      const min = selectedSize === "3r" ? 2 : 1;
-                      if (val < min) {
-                        toast.error(`Minimum ${min} photo${min > 1 ? "s" : ""} for ${selectedSize.toUpperCase()}`);
-                        return;
-                      }
-                      if (val > 100) {
-                        toast.error(`Maximum 100 photos for ${selectedSize.toUpperCase()}`);
-                        return;
-                      }
-                      handleLayoutSwitch(val);
-                    }}
-                    className="w-20 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs font-mono text-[#e8e4da] outline-none text-center"
-                  />
+                  {selectedSize === "4r" ? (
+                    <input
+                      type="number"
+                      min="2"
+                      max="99"
+                      step="1"
+                      value={fourRDraft}
+                      onChange={(e) => setFourRDraft(e.target.value)}
+                      onBlur={commitFourR}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitFourR();
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          stepFourR(1);
+                        } else if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          stepFourR(-1);
+                        }
+                      }}
+                      className="w-20 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs font-mono text-[#e8e4da] outline-none text-center"
+                    />
+                  ) : (
+                    <input
+                      type="number"
+                      min={selectedSize === "3r" ? "2" : "1"}
+                      max="100"
+                      step={selectedSize === "3r" ? "2" : "1"}
+                      value={typeof layout === "number" ? layout : (selectedSize === "3r" ? 2 : 1)}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (isNaN(val)) return;
+                        if (selectedSize === "3r" && val % 2 !== 0) {
+                          toast.error("3R requires even number of photos (2, 4, 6, ...)");
+                          return;
+                        }
+                        const min = selectedSize === "3r" ? 2 : 1;
+                        if (val < min) {
+                          toast.error(`Minimum ${min} photo${min > 1 ? "s" : ""} for ${selectedSize.toUpperCase()}`);
+                          return;
+                        }
+                        if (val > 100) {
+                          toast.error(`Maximum 100 photos for ${selectedSize.toUpperCase()}`);
+                          return;
+                        }
+                        handleLayoutSwitch(val);
+                      }}
+                      className="w-20 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs font-mono text-[#e8e4da] outline-none text-center"
+                    />
+                  )}
                   <span className="text-[10px] font-mono text-[#555]">pcs</span>
                 </div>
               </Tooltip>
             ) : (
               <Tooltip content={TOOLTIPS.layoutSwitch}>
                 <div className="flex gap-1 bg-[#111110] border border-[#2a2a28] rounded-lg p-0.5">
-                  {(selectedSize === "wallet" ? WALLET_LAYOUTS : selectedSize === "4r" ? FOUR_R_LAYOUTS : LAYOUTS).map((l) => (
+                  {(selectedSize === "wallet" ? WALLET_LAYOUTS : LAYOUTS).map((l) => (
                     <button
                       key={l}
                       onClick={() => handleLayoutSwitch(l)}
