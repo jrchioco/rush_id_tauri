@@ -41,7 +41,6 @@ interface SlotData {
   fontChoice: FontChoice;
 }
 
-const SLOT_COUNT = 5;
 const LABELS = ["Passport 1", "Passport 2", "Passport 3", "Passport 4", "Passport 5"];
 
 function freshSlot(i: number, defaultTemplate = ""): SlotData {
@@ -68,8 +67,9 @@ interface PassportClientProps {
 }
 
 const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportClientProps>(function PassportClient({ onPrintReminder }, ref) {
+  const [slotCount, _setSlotCount] = useState(5);
   const [slots, setSlots] = useState<SlotData[]>(() =>
-    Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)),
+    Array.from({ length: slotCount }, (_, i) => freshSlot(i)),
   );
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
@@ -466,7 +466,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
 
   function handleResetAll() {
     const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
-    setSlots(Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i, fallback?.path ?? "")));
+    setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i, fallback?.path ?? "")));
     setLogs([]);
   }
 
@@ -483,7 +483,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
       <div className="border-t border-[#2a2a28] p-3 grid grid-cols-2 gap-2">
         {[
           { label: "API KEY", value: `Key ${activeKeyIndex + 1}/${keyCount}`, accent: true },
-          { label: "SLOTS", value: `${slots.filter((s) => s.step !== "empty").length}/${SLOT_COUNT}`, accent: false },
+          { label: "SLOTS", value: `${slots.filter((s) => s.step !== "empty").length}/${slotCount}`, accent: false },
         ].map(({ label, value, accent }) => (
           <div key={label} className="bg-[#111110] border border-[#2a2a28] rounded-md p-2">
             <div className="text-[9px] text-[#444] font-mono tracking-widest uppercase mb-1">{label}</div>
@@ -506,7 +506,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
 
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">
-            Passport — {SLOT_COUNT} Slots
+            Passport — {slotCount} Slots
           </h2>
           <div className="flex items-center gap-3">
             <Tooltip
