@@ -12,7 +12,6 @@ import { buildSavePath, setLastSaveDir } from "./lib/savePath";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
 import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
-import { useCropperWheel } from "./lib/hooks/useCropperWheel";
 import { useIsMounted } from "./lib/hooks/useIsMounted";
 import { useApiLogs } from "./lib/hooks/useApiLogs";
 import { RotationSidebar } from "./components/RotationSidebar";
@@ -82,13 +81,16 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const sigFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const compositeIdRefs = useRef<Map<number, number>>(new Map());
-  const cropperWrapRefs = [
-    useCropperWheel({ onRotate: (delta) => updateSlotRotation(0, delta) }),
-    useCropperWheel({ onRotate: (delta) => updateSlotRotation(1, delta) }),
-    useCropperWheel({ onRotate: (delta) => updateSlotRotation(2, delta) }),
-    useCropperWheel({ onRotate: (delta) => updateSlotRotation(3, delta) }),
-    useCropperWheel({ onRotate: (delta) => updateSlotRotation(4, delta) }),
-  ];
+  const cropperWheelRef = useCallback((node: HTMLElement | null) => {
+    if (!node) return;
+    const handler = (e: WheelEvent) => {
+      if (!e.altKey) return;
+      e.preventDefault();
+      updateSlotRotation(Number(node.dataset.slotIndex), -Math.sign(e.deltaY));
+    };
+    node.addEventListener("wheel", handler, { passive: false });
+    return () => node.removeEventListener("wheel", handler);
+  }, []);
 
   const { templates, keyCount, loading: templatesLoading } = useTemplates();
   const activeKeyIndex = useKeyUsed();
@@ -643,7 +645,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
                     onChange={(r) => updateSlot(i, { rotation: r })}
                     size="sm"
                   />
-                  <div ref={cropperWrapRefs[i]} className="flex-1 relative">
+                  <div ref={cropperWheelRef} data-slot-index={i} className="flex-1 relative">
                     <Cropper
                       image={slot.originalImage}
                       crop={slot.crop}
