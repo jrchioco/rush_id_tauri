@@ -67,13 +67,15 @@ interface MultiClientProps {
 }
 
 const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientProps>(function MultiClient({ onPrintReminder }, ref) {
-  const [slotCount, _setSlotCount] = useState(5);
+  const [slotCount, setSlotCount] = useState(5);
   const [slots, setSlots] = useState<SlotData[]>(() =>
     Array.from({ length: slotCount }, (_, i) => freshSlot(i)),
   );
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [testMode, setTestMode] = useState(false);
+  const [countDraft, setCountDraft] = useState("5");
+  const [invalidCountDraft, setInvalidCountDraft] = useState<string | null>(null);
   const [retouchOpen, setRetouchOpen] = useState(false);
   const [retouchSlotIndex, setRetouchSlotIndex] = useState(0);
   const [retouchImageData, setRetouchImageData] = useState("");
@@ -465,6 +467,21 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
     });
   }
 
+  function applySlotCount(newCount: number) {
+    setSlotCount(newCount);
+    const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
+    setSlots(Array.from({ length: newCount }, (_, i) => freshSlot(i, fallback?.path ?? "")));
+  }
+
+  function commitCount() {
+    const val = parseInt(countDraft, 10);
+    if (isNaN(val)) {
+      setCountDraft(String(slotCount));
+      return;
+    }
+    applySlotCount(Math.min(100, Math.max(6, val)));
+  }
+
   function handleResetAll() {
     const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
     setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i, fallback?.path ?? "")));
@@ -506,9 +523,44 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
       <div className="space-y-4">
 
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">
-            Batch — {slotCount} Slots
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">
+              Batch — {slotCount} Slots
+            </h2>
+            <Tooltip content="Number of client slots (6–100)">
+              <div className="flex items-center gap-1.5 bg-[#111110] border border-[#2a2a28] rounded-lg px-2 py-1">
+                <span className="text-[10px] font-mono text-[#555] tracking-wider uppercase">Slots:</span>
+                <input
+                  type="number"
+                  min="6"
+                  max="100"
+                  step="1"
+                  value={countDraft}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCountDraft(val);
+                    const num = parseInt(val, 10);
+                    if (isNaN(num) || num < 6 || num > 100) {
+                      setInvalidCountDraft(val);
+                    } else {
+                      setInvalidCountDraft(null);
+                    }
+                  }}
+                  onBlur={commitCount}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitCount();
+                    }
+                  }}
+                  className={cn(
+                    "w-16 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-0.5 text-xs font-mono outline-none text-center",
+                    invalidCountDraft !== null ? "text-red-400" : "text-[#e8e4da]",
+                  )}
+                />
+              </div>
+            </Tooltip>
+          </div>
           <div className="flex items-center gap-3">
             <Tooltip
               content={testMode ? TOOLTIPS.testMode.on : TOOLTIPS.testMode.off}
