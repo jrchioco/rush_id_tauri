@@ -5,6 +5,17 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.20.2": {
+    title: "What's New in v1.20.2",
+    date: "2026-08-04",
+    notes: [
+      "4R is now fully flexible — instead of fixed 2/3/5/6 buttons, type any photo count (2–99). The app automatically tiles your photos across 3-print and 2-print 4R sheets, and snaps awkward counts like 4 or 7 to the nearest layout that fits neatly.",
+      "Multi and Passport let you set how many people you're working with — a new Slots field (6–100, default 5) in the header adds or removes client slots on the fly.",
+      "Mouse-wheel the Slots field to adjust the count in tick — scroll to bump by 1, hold Shift while scrolling to jump by 5, and the page won't scroll while you're cranking it.",
+      "Losing work is protected — increasing the slot count keeps everything you've already filled. Reducing it past a filled slot asks for confirmation first, and clicking away cancels instead of silently deleting.",
+      "Fixed: today's sales could disappear from the Sales Trend chart late at night — the graph now uses your local timezone for its date labels, so sales made just after midnight show up immediately.",
+    ],
+  },
   "1.20.1": {
     title: "What's New in v1.20.1",
     date: "2026-08-03",
