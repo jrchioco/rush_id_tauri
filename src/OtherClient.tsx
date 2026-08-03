@@ -72,6 +72,10 @@ function getSources(size: OtherSize, layout: OtherLayout | number): string[] | n
 const FOUR_R_MIN = 2;
 const FOUR_R_MAX = 99;
 
+function isFourRValid(n: number): boolean {
+  return Number.isInteger(n) && n >= FOUR_R_MIN && n <= FOUR_R_MAX && n % 3 !== 1;
+}
+
 function fourRNext(n: number): number {
   let next = n + 1;
   if (next % 3 === 1) next += 1;
@@ -176,6 +180,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
   const [selectedSize, setSelectedSize] = useState<OtherSize | null>(null);
   const [layout, setLayout] = useState<OtherLayout | number>("2pcs");
   const [fourRDraft, setFourRDraft] = useState<string>("3");
+  const [invalidCountDraft, setInvalidCountDraft] = useState<string | null>(null);
   const [slots, setSlots] = useState<OtherSlotState[]>(() =>
     Array.from({ length: 2 }, (_, i) => freshSlot(i)),
   );
@@ -207,6 +212,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
       return;
     }
     setSelectedSize(size);
+    setInvalidCountDraft(null);
     const defaultLayout: OtherLayout | number =
   size === "wallet" ? "2pcs" : size === "3r" ? 2 : size === "4r" ? 3 : 1;
     setLayout(defaultLayout);
@@ -492,6 +498,9 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
 
   const sizeInfo = OTHER_SIZES[selectedSize];
 
+  const parsedFourR = parseInt(fourRDraft, 10);
+  const fourRInvalid = !isNaN(parsedFourR) && !isFourRValid(parsedFourR);
+
   const statFooter = (
     <div className="border-t border-[#2a2a28] p-3 grid grid-cols-3 gap-2">
       {[
@@ -560,7 +569,10 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
                           stepFourR(-1);
                         }
                       }}
-                      className="w-20 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs font-mono text-[#e8e4da] outline-none text-center"
+                      className={cn(
+                        "w-20 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs font-mono outline-none text-center",
+                        fourRInvalid ? "text-red-400" : "text-[#e8e4da]",
+                      )}
                     />
                   ) : (
                     <input
@@ -568,26 +580,34 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
                       min={selectedSize === "3r" ? "2" : "1"}
                       max="100"
                       step={selectedSize === "3r" ? "2" : "1"}
-                      value={typeof layout === "number" ? layout : (selectedSize === "3r" ? 2 : 1)}
+                      value={invalidCountDraft ?? (typeof layout === "number" ? layout : (selectedSize === "3r" ? 2 : 1))}
                       onChange={(e) => {
                         const val = parseInt(e.target.value);
                         if (isNaN(val)) return;
                         if (selectedSize === "3r" && val % 2 !== 0) {
                           toast.error("3R requires even number of photos (2, 4, 6, ...)");
+                          setInvalidCountDraft(e.target.value);
                           return;
                         }
                         const min = selectedSize === "3r" ? 2 : 1;
                         if (val < min) {
                           toast.error(`Minimum ${min} photo${min > 1 ? "s" : ""} for ${selectedSize.toUpperCase()}`);
+                          setInvalidCountDraft(e.target.value);
                           return;
                         }
                         if (val > 100) {
                           toast.error(`Maximum 100 photos for ${selectedSize.toUpperCase()}`);
+                          setInvalidCountDraft(e.target.value);
                           return;
                         }
+                        setInvalidCountDraft(null);
                         handleLayoutSwitch(val);
                       }}
-                      className="w-20 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs font-mono text-[#e8e4da] outline-none text-center"
+                      onBlur={() => setInvalidCountDraft(null)}
+                      className={cn(
+                        "w-20 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs font-mono outline-none text-center",
+                        invalidCountDraft !== null ? "text-red-400" : "text-[#e8e4da]",
+                      )}
                     />
                   )}
                   <span className="text-[10px] font-mono text-[#555]">pcs</span>
