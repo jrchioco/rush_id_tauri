@@ -88,6 +88,7 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
   const sigFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const countInputRef = useRef<HTMLInputElement | null>(null);
   const compositeIdRefs = useRef<Map<number, number>>(new Map());
+  const pendingShrinkRef = useRef<number | null>(null);
   const cropperWheelRef = useCallback((node: HTMLElement | null) => {
     if (!node) return;
     const handler = (e: WheelEvent) => {
@@ -487,9 +488,53 @@ const PassportClient = forwardRef<{ hasUnsavedWork: () => boolean }, PassportCli
   }
 
   function applySlotCount(newCount: number) {
-    setSlotCount(newCount);
+    if (newCount === slots.length) {
+      setCountDraft(String(newCount));
+      return;
+    }
     const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
-    setSlots(Array.from({ length: newCount }, (_, i) => freshSlot(i, fallback?.path ?? "")));
+    if (newCount > slots.length) {
+      setSlots((prev) => [
+        ...prev,
+        ...Array.from({ length: newCount - prev.length }, (_, i) =>
+          freshSlot(prev.length + i, fallback?.path ?? ""),
+        ),
+      ]);
+      setSlotCount(newCount);
+      setCountDraft(String(newCount));
+      return;
+    }
+    const dropped = slots.slice(newCount);
+    const hasContent = dropped.some((s) => s.step !== "empty");
+    if (!hasContent) {
+      setSlots((prev) => prev.slice(0, newCount));
+      setSlotCount(newCount);
+      setCountDraft(String(newCount));
+      return;
+    }
+    pendingShrinkRef.current = newCount;
+    setCountDraft(String(newCount));
+    toast(
+      `Reduce to ${newCount} slots? ${dropped.filter((s) => s.step !== "empty").length} filled slot(s) at slot ${newCount + 1}+ will be cleared.`,
+      {
+        action: {
+          label: "Reduce",
+          onClick: () => {
+            pendingShrinkRef.current = null;
+            setSlots((prev) => prev.slice(0, newCount));
+            setSlotCount(newCount);
+            setCountDraft(String(newCount));
+          },
+        },
+        onDismiss: () => {
+          if (pendingShrinkRef.current !== null) {
+            pendingShrinkRef.current = null;
+            setCountDraft(String(slotCount));
+            setSlotCount(slotCount);
+          }
+        },
+      },
+    );
   }
 
   function stepCount(dir: 1 | -1, shift: boolean) {
