@@ -473,6 +473,14 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
     setSlots(Array.from({ length: newCount }, (_, i) => freshSlot(i, fallback?.path ?? "")));
   }
 
+  function stepCount(dir: 1 | -1, shift: boolean) {
+    const step = (shift ? 5 : 1) * dir;
+    const next = slotCount + step;
+    if (next < 6 || next > 100) return;
+    applySlotCount(next);
+    setCountDraft(String(next));
+  }
+
   function commitCount() {
     const val = parseInt(countDraft, 10);
     if (isNaN(val)) {
@@ -552,6 +560,10 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
                       e.preventDefault();
                       commitCount();
                     }
+                  }}
+                  onWheel={(e) => {
+                    e.preventDefault();
+                    stepCount(e.deltaY > 0 ? -1 : 1, e.shiftKey);
                   }}
                   className={cn(
                     "w-16 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-0.5 text-xs font-mono outline-none text-center",
