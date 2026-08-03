@@ -39,7 +39,6 @@ interface SlotData {
   fontChoice: FontChoice;
 }
 
-const SLOT_COUNT = 5;
 const LABELS = ["Client A", "Client B", "Client C", "Client D", "Client E"];
 
 function freshSlot(i: number, defaultTemplate = ""): SlotData {
@@ -67,8 +66,9 @@ interface MultiClientProps {
 
 const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientProps>(function MultiClient({ onPrintReminder }, ref) {
   const [slots, setSlots] = useState<SlotData[]>(() =>
-    Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i)),
+    Array.from({ length: slotCount }, (_, i) => freshSlot(i)),
   );
+  const [slotCount, _setSlotCount] = useState(5);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [testMode, setTestMode] = useState(false);
@@ -465,7 +465,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
 
   function handleResetAll() {
     const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
-    setSlots(Array.from({ length: SLOT_COUNT }, (_, i) => freshSlot(i, fallback?.path ?? "")));
+    setSlots(Array.from({ length: slotCount }, (_, i) => freshSlot(i, fallback?.path ?? "")));
     setLogs([]);
   }
 
@@ -482,7 +482,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
       <div className="border-t border-[#2a2a28] p-3 grid grid-cols-2 gap-2">
         {[
           { label: "API KEY", value: `Key ${activeKeyIndex + 1}/${keyCount}`, accent: true },
-          { label: "SLOTS", value: `${slots.filter((s) => s.step !== "empty").length}/${SLOT_COUNT}`, accent: false },
+          { label: "SLOTS", value: `${slots.filter((s) => s.step !== "empty").length}/${slotCount}`, accent: false },
         ].map(({ label, value, accent }) => (
           <div key={label} className="bg-[#111110] border border-[#2a2a28] rounded-md p-2">
             <div className="text-[9px] text-[#444] font-mono tracking-widest uppercase mb-1">{label}</div>
@@ -505,7 +505,7 @@ const MultiClient = forwardRef<{ hasUnsavedWork: () => boolean }, MultiClientPro
 
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">
-            Batch — {SLOT_COUNT} Slots
+            Batch — {slotCount} Slots
           </h2>
           <div className="flex items-center gap-3">
             <Tooltip
