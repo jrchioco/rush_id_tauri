@@ -133,7 +133,7 @@ export default function ServicePricing() {
 
   useEffect(() => { fetchServices(true); }, [fetchServices]);
 
-  const isMainService = (s: Service) => !s.template_key.startsWith("multi_") && !s.template_key.startsWith("Dev ") && s.template_key !== "4r2pcs" && s.template_key !== "4r3pcs";
+  const isMainService = (s: Service) => !s.template_key.startsWith("multi_") && !s.template_key.startsWith("Dev ") && s.template_key !== "4r2pcs" && s.template_key !== "4r3pcs" && s.template_key !== "wallet2pcs" && s.template_key !== "wallet3pcs" && s.template_key !== "wallet9pcs";
 
   const grouped = DISPLAY_GROUPS.reduce((acc, { label, tabs }) => {
     const items = services.filter((s) => s.tab && tabs.includes(s.tab) && isMainService(s));
