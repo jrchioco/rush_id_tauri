@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { X, Images, FolderOpen } from "lucide-react";
+import { X, Images, FolderOpen, Loader2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useTauriDragDrop } from "../../lib/hooks/useTauriDragDrop";
 import { Tooltip } from "../../components/Tooltip";
@@ -120,10 +120,18 @@ function Tile({ item, tileSize, onToggle, onRemove }: {
   );
 }
 
+interface BatchSummary {
+  total: number;
+  succeeded: number;
+  failed: { file: string; reason: string }[];
+  batch_dir: string;
+}
+
 export default function BatchConverter() {
   const [items, setItems] = useState<BatchItem[]>([]);
   const [target, setTarget] = useState<TargetFormat>("png");
   const [tileSize, setTileSize] = useState(140);
+  const [converting, setConverting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const checkedCount = items.filter((i) => i.checked).length;
@@ -190,6 +198,32 @@ export default function BatchConverter() {
     e.target.value = "";
     toast.info("Use drag & drop or Browse to add files via Tauri dialog for best preview.");
   }, []);
+
+  const handleConvert = useCallback(async () => {
+    const checked = items.filter((i) => i.checked);
+    if (checked.length === 0) return;
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const dest = await open({ directory: true, multiple: false, title: "Choose destination folder" });
+      if (!dest || Array.isArray(dest)) return;
+      setConverting(true);
+      const summary = await invoke<BatchSummary>("convert_images_batch", {
+        sourcePaths: checked.map((c) => c.path),
+        targetFormat: target,
+        destParent: dest as string,
+      });
+      toast.success(`${summary.succeeded}/${summary.total} converted — ${summary.batch_dir}`);
+      if (summary.failed.length > 0) {
+        toast.error(`${summary.failed.length} failed: ${summary.failed.map((f) => `${f.file} (${f.reason})`).join(", ")}`);
+      }
+      // Crude Phase 3 verification: log full summary
+      console.log("[convert] summary", summary);
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setConverting(false);
+    }
+  }, [items, target]);
 
   return (
     <div className="flex flex-col h-full min-h-[520px]">
@@ -287,13 +321,15 @@ export default function BatchConverter() {
 
       <div className="flex items-center gap-3 mt-4">
         <button
-          disabled={checkedCount === 0}
+          onClick={handleConvert}
+          disabled={checkedCount === 0 || converting}
           className="flex-1 px-4 py-2.5 rounded-lg font-bold text-sm tracking-wide flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030] disabled:bg-[#2a2a28] disabled:text-[#555]"
           title={checkedCount === 0 ? "Select at least one image" : `Convert ${checkedCount} image(s) to ${target.toUpperCase()}`}
         >
-          Convert {checkedCount > 0 ? `(${checkedCount}) → ${target.toUpperCase()}` : ""}
+          {converting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {converting ? "Converting..." : `Convert ${checkedCount > 0 ? `(${checkedCount}) → ${target.toUpperCase()}` : ""}`}
         </button>
-        <span className="text-xs font-mono text-[#444]">No conversion yet — Phase 3</span>
+        <span className="text-xs font-mono text-[#444]">{converting ? "Pick destination, then converting..." : "End-to-end via Rust image crate"}</span>
       </div>
     </div>
   );

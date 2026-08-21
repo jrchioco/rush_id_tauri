@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use tauri::{Emitter, Manager};
+use image::ImageEncoder;
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 struct ApiKeys {
@@ -2377,6 +2378,158 @@ fn get_recent_activity(app_handle: tauri::AppHandle, limit: Option<usize>) -> Re
     Ok(entries)
 }
 
+#[derive(Debug, Serialize)]
+struct ConvertFailed {
+    file: String,
+    reason: String,
+}
+
+#[derive(Debug, Serialize)]
+struct BatchSummary {
+    total: usize,
+    succeeded: usize,
+    failed: Vec<ConvertFailed>,
+    batch_dir: String,
+}
+
+#[tauri::command]
+fn convert_images_batch(
+    app_handle: tauri::AppHandle,
+    source_paths: Vec<String>,
+    target_format: String,
+    dest_parent: String,
+) -> Result<BatchSummary, String> {
+    if source_paths.is_empty() {
+        return Err("No source files provided".to_string());
+    }
+    let fmt = target_format.to_lowercase();
+    let (target_ext, target_label) = match fmt.as_str() {
+        "png" => ("png", "png"),
+        "jpeg" | "jpg" => ("jpg", "jpeg"),
+        "webp" => ("webp", "webp"),
+        _ => return Err(format!("Unsupported target format: {}", target_format)),
+    };
+
+    let dest_parent_path = PathBuf::from(&dest_parent);
+    if !dest_parent_path.exists() {
+        return Err(format!("Destination folder does not exist: {}", dest_parent));
+    }
+    if !dest_parent_path.is_dir() {
+        return Err(format!("Destination is not a directory: {}", dest_parent));
+    }
+
+    let ts = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
+    let batch_dir = dest_parent_path.join(format!("batch-convert-{}", ts));
+    fs::create_dir_all(&batch_dir).map_err(|e| format!("Failed to create batch folder: {}", e))?;
+
+    let total = source_paths.len();
+    let mut succeeded = 0usize;
+    let mut failed: Vec<ConvertFailed> = Vec::new();
+    let mut used_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for (idx, src) in source_paths.iter().enumerate() {
+        let src_path = Path::new(src);
+        let file_name = src_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+
+        let mut reason: Option<String> = None;
+        let mut out_path: Option<PathBuf> = None;
+
+        // Collision-safe output name
+        let stem = src_path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+        let base = if stem.is_empty() { "image".to_string() } else { stem };
+        let mut candidate = format!("{}.{}", base, target_ext);
+        let mut counter = 1;
+        let candidate_lower = candidate.to_lowercase();
+        if used_names.contains(&candidate_lower) {
+            loop {
+                let c = format!("{}-{}.{}", base, counter, target_ext);
+                if !used_names.contains(&c.to_lowercase()) {
+                    candidate = c;
+                    break;
+                }
+                counter += 1;
+                if counter > 1000 { break; }
+            }
+        }
+        used_names.insert(candidate.to_lowercase());
+        let dest_path = batch_dir.join(&candidate);
+
+        // Decode + encode
+        let result: Result<(), String> = (|| {
+            let img = image::open(src_path).map_err(|e| e.to_string())?;
+            let file = std::fs::File::create(&dest_path).map_err(|e| e.to_string())?;
+            let mut writer = std::io::BufWriter::new(file);
+            match target_label {
+                "png" => {
+                    let rgba = img.to_rgba8();
+                    let (w, h) = (rgba.width(), rgba.height());
+                    let encoder = image::codecs::png::PngEncoder::new(&mut writer);
+                    encoder
+                        .write_image(&rgba, w, h, image::ExtendedColorType::Rgba8)
+                        .map_err(|e| e.to_string())?;
+                }
+                "jpeg" => {
+                    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut writer, 90);
+                    encoder.encode_image(&img).map_err(|e| e.to_string())?;
+                }
+                "webp" => {
+                    // image 0.25 WebP encoder is lossless; quality param not exposed — best-effort lossless
+                    let rgba = img.to_rgba8();
+                    let (w, h) = (rgba.width(), rgba.height());
+                    let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut writer);
+                    encoder
+                        .write_image(&rgba, w, h, image::ExtendedColorType::Rgba8)
+                        .map_err(|e| e.to_string())?;
+                }
+                _ => unreachable!(),
+            }
+            Ok(())
+        })();
+
+        match result {
+            Ok(_) => {
+                succeeded += 1;
+                out_path = Some(dest_path);
+                reason = None;
+            }
+            Err(e) => {
+                reason = Some(e);
+                failed.push(ConvertFailed { file: file_name.clone(), reason: reason.clone().unwrap() });
+                // Clean partial output if any
+                if let Some(p) = &out_path {
+                    let _ = fs::remove_file(p);
+                } else {
+                    let _ = fs::remove_file(&dest_path);
+                }
+            }
+        }
+
+        let done = idx + 1;
+        let ok = reason.is_none();
+        app_handle
+            .emit(
+                "convert_progress",
+                serde_json::json!({
+                    "done": done,
+                    "total": total,
+                    "current": src,
+                    "file": file_name,
+                    "ok": ok,
+                    "error": reason,
+                    "output": out_path.as_ref().map(|p| p.to_string_lossy().to_string()),
+                }),
+            )
+            .ok();
+    }
+
+    Ok(BatchSummary {
+        total,
+        succeeded,
+        failed,
+        batch_dir: batch_dir.to_string_lossy().to_string(),
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     cleanup_temp_pdfs();
@@ -2391,6 +2544,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             check_config,
             save_config,
@@ -2405,36 +2559,37 @@ pub fn run() {
             composite_polaroid_pdf,
             composite_other_pdf,
              get_key_count,
-             open_file,
-             log_print_reminder,
-             get_activity_stats,
-             get_recent_activity,
-             get_materials,
-             add_material,
-             update_material,
-             delete_material,
-             restock_material,
-             adjust_stock,
-              get_materials_summary,
-              get_sales,
-              add_sale,
-              update_sale,
-              delete_sale,
-              get_sales_summary,
-               get_sales_trend,
-               get_template_breakdown,
-               get_template_hour_heatmap,
-               get_services,
-                update_service_price,
-                export_pricing,
-                write_file,
-                read_file,
-                import_pricing,
-                get_services_summary,
-               get_pricing_tiers,
-               update_pricing_tier,
-               add_pricing_tier,
-               delete_pricing_tier,
+              open_file,
+              log_print_reminder,
+              get_activity_stats,
+              get_recent_activity,
+              get_materials,
+              add_material,
+              update_material,
+              delete_material,
+              restock_material,
+              adjust_stock,
+               get_materials_summary,
+               get_sales,
+               add_sale,
+               update_sale,
+               delete_sale,
+               get_sales_summary,
+                get_sales_trend,
+                get_template_breakdown,
+                get_template_hour_heatmap,
+                get_services,
+                 update_service_price,
+                 export_pricing,
+                 write_file,
+                 read_file,
+                 import_pricing,
+                 get_services_summary,
+                get_pricing_tiers,
+                update_pricing_tier,
+                add_pricing_tier,
+                delete_pricing_tier,
+                convert_images_batch,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
