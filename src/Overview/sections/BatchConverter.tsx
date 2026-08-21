@@ -85,26 +85,30 @@ function Tile({ item, tileSize, onToggle, onRemove }: {
           </div>
         )}
 
-        <label
-          className="absolute top-1.5 left-1.5 w-5 h-5 rounded bg-[#0c0c0b]/90 border border-[#2a2a28] flex items-center justify-center cursor-pointer hover:border-[#c8881a]/50 transition-colors"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            checked={item.checked}
-            onChange={onToggle}
-            className="sr-only"
-          />
-          {item.checked && <span className="w-2.5 h-2.5 rounded-sm bg-[#c8881a]" />}
-        </label>
+        <Tooltip content={TOOLTIPS.converterTileCheck}>
+          <label
+            className="absolute top-1.5 left-1.5 w-5 h-5 rounded bg-[#0c0c0b]/90 border border-[#2a2a28] flex items-center justify-center cursor-pointer hover:border-[#c8881a]/50 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              checked={item.checked}
+              onChange={onToggle}
+              className="sr-only"
+            />
+            {item.checked && <span className="w-2.5 h-2.5 rounded-sm bg-[#c8881a]" />}
+          </label>
+        </Tooltip>
 
-        <button
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#0c0c0b]/90 border border-[#2a2a28] flex items-center justify-center text-[#888] hover:text-red-400 hover:border-red-400/30 opacity-0 group-hover:opacity-100 transition-all"
-          aria-label="Remove"
-        >
-          <X className="w-3 h-3" />
-        </button>
+        <Tooltip content={TOOLTIPS.converterTileRemove}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#0c0c0b]/90 border border-[#2a2a28] flex items-center justify-center text-[#888] hover:text-red-400 hover:border-red-400/30 opacity-0 group-hover:opacity-100 transition-all"
+            aria-label="Remove"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </Tooltip>
 
         {item.status === "success" && (
           <span className="absolute bottom-1 left-1 text-[9px] font-mono bg-[#4caf78] text-[#0c0c0b] px-1.5 py-0.5 rounded font-bold">done</span>
