@@ -32,6 +32,21 @@ export const TOOLTIPS = {
   removeSlot: "Remove this slot",
   settings: "API keys, preferences and configuration",
 
+  // Batch Converter
+  converterTargetPng: "PNG — lossless, larger file, best for graphics / line art",
+  converterTargetJpeg: "JPEG — lossy ~90 quality, smaller file, best for photos",
+  converterTargetWebp: "WebP — modern, ~90 quality, smaller than JPEG/PNG",
+  converterSelectAll: "Check all tiles for next Convert",
+  converterDeselectAll: "Uncheck all tiles",
+  converterDensity: "Adjust tile size — changes grid density",
+  converterBrowse: "Browse via system dialog — pick PNG/JPEG/WebP files",
+  converterConvert: "Convert checked images to target format in a timestamped folder",
+  converterConvertDisabled: "Select at least one image to convert",
+  converterOpenFolder: "Reveal batch folder in file manager",
+  converterTileCheck: "Include in next Convert — unchecked tiles are skipped",
+  converterTileRemove: "Remove from batch (does not delete original file)",
+  converterDropzone: "Drop PNG, JPEG, or WebP here — mixed formats allowed, one target for all",
+
   // Retouch Window
   closeRetouch: "Close without saving",
   cloneStamp: "Copy pixels from source area: Alt+Click to set source",

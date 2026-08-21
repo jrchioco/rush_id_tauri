@@ -5,6 +5,7 @@ import { X, Images, FolderOpen, Loader2, ExternalLink } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useTauriDragDrop } from "../../lib/hooks/useTauriDragDrop";
 import { Tooltip } from "../../components/Tooltip";
+import { TOOLTIPS } from "../../lib/tooltips";
 import { setEffieMood } from "../../components/CompanionWidget/moodStore";
 
 type TargetFormat = "png" | "jpeg" | "webp";
@@ -295,7 +296,7 @@ export default function BatchConverter() {
           </h3>
           <p className="text-xs font-mono text-[#555] mt-0.5">Drag in WebP, JPEG, or PNG — convert all checked to one target format.</p>
         </div>
-        <Tooltip content="Browse via system dialog">
+        <Tooltip content={TOOLTIPS.converterBrowse}>
           <button
             onClick={handleBrowse}
             className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5 transition-colors"
@@ -310,45 +311,54 @@ export default function BatchConverter() {
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono text-[#555] tracking-widest uppercase">Target</span>
           <div className="flex rounded-lg border border-[#2a2a28] overflow-hidden">
-            {(["png", "jpeg", "webp"] as TargetFormat[]).map((fmt) => (
-              <button
-                key={fmt}
-                onClick={() => setTarget(fmt)}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-mono font-bold tracking-wide transition-colors",
-                  target === fmt ? "bg-[#c8881a] text-[#0c0c0b]" : "bg-[#111110] text-[#888] hover:text-[#e8e4da]"
-                )}
-              >
-                {fmt.toUpperCase()}
-              </button>
-            ))}
+            {(["png", "jpeg", "webp"] as TargetFormat[]).map((fmt) => {
+              const tip =
+                fmt === "png" ? TOOLTIPS.converterTargetPng : fmt === "jpeg" ? TOOLTIPS.converterTargetJpeg : TOOLTIPS.converterTargetWebp;
+              return (
+                <Tooltip key={fmt} content={tip}>
+                  <button
+                    onClick={() => setTarget(fmt)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-mono font-bold tracking-wide transition-colors",
+                      target === fmt ? "bg-[#c8881a] text-[#0c0c0b]" : "bg-[#111110] text-[#888] hover:text-[#e8e4da]"
+                    )}
+                  >
+                    {fmt.toUpperCase()}
+                  </button>
+                </Tooltip>
+              );
+            })}
           </div>
         </div>
 
         <div className="w-px h-6 bg-[#2a2a28]" />
 
-        <button
-          onClick={handleSelectAll}
-          disabled={items.length === 0}
-          className="text-xs font-mono text-[#c8881a] hover:text-[#e8a030] disabled:text-[#444] disabled:cursor-not-allowed transition-colors"
-        >
-          {allChecked ? "Deselect All" : "Select All"}
-        </button>
+        <Tooltip content={allChecked ? TOOLTIPS.converterDeselectAll : TOOLTIPS.converterSelectAll}>
+          <button
+            onClick={handleSelectAll}
+            disabled={items.length === 0}
+            className="text-xs font-mono text-[#c8881a] hover:text-[#e8a030] disabled:text-[#444] disabled:cursor-not-allowed transition-colors"
+          >
+            {allChecked ? "Deselect All" : "Select All"}
+          </button>
+        </Tooltip>
         <span className="text-xs font-mono text-[#555]">{checkedCount}/{items.length} selected</span>
 
         <div className="flex-1" />
 
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono text-[#555] tracking-widest uppercase">Density</span>
-          <input
-            type="range"
-            min={80}
-            max={200}
-            step={10}
-            value={tileSize}
-            onChange={(e) => setTileSize(Number(e.target.value))}
-            className="w-24 accent-[#c8881a]"
-          />
+          <Tooltip content={TOOLTIPS.converterDensity}>
+            <input
+              type="range"
+              min={80}
+              max={200}
+              step={10}
+              value={tileSize}
+              onChange={(e) => setTileSize(Number(e.target.value))}
+              className="w-24 accent-[#c8881a]"
+            />
+          </Tooltip>
           <span className="text-[10px] font-mono text-[#444] w-8">{tileSize}px</span>
         </div>
       </div>
@@ -382,22 +392,28 @@ export default function BatchConverter() {
 
       <div className="flex flex-col gap-2 mt-4">
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleConvert}
-            disabled={checkedCount === 0 || converting}
-            className="flex-1 px-4 py-2.5 rounded-lg font-bold text-sm tracking-wide flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030] disabled:bg-[#2a2a28] disabled:text-[#555]"
-            title={checkedCount === 0 ? "Select at least one image" : `Convert ${checkedCount} image(s) to ${target.toUpperCase()}`}
+          <Tooltip
+            content={checkedCount === 0 ? TOOLTIPS.converterConvertDisabled : `${TOOLTIPS.converterConvert} — ${checkedCount} → ${target.toUpperCase()}`}
+            className="flex-1"
           >
-            {converting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {converting && progress ? `Converting ${progress.done}/${progress.total}...` : converting ? "Converting..." : `Convert ${checkedCount > 0 ? `(${checkedCount}) → ${target.toUpperCase()}` : ""}`}
-          </button>
-          {lastBatchDir && !converting && (
             <button
-              onClick={handleOpenFolder}
-              className="px-4 py-2.5 rounded-lg font-bold text-sm tracking-wide flex items-center justify-center gap-2 border border-[#c8881a] text-[#c8881a] hover:bg-[#c8881a]/10 transition-colors"
+              onClick={handleConvert}
+              disabled={checkedCount === 0 || converting}
+              className="flex-1 w-full px-4 py-2.5 rounded-lg font-bold text-sm tracking-wide flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030] disabled:bg-[#2a2a28] disabled:text-[#555]"
             >
-              <ExternalLink className="w-4 h-4" /> Open Folder
+              {converting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {converting && progress ? `Converting ${progress.done}/${progress.total}...` : converting ? "Converting..." : `Convert ${checkedCount > 0 ? `(${checkedCount}) → ${target.toUpperCase()}` : ""}`}
             </button>
+          </Tooltip>
+          {lastBatchDir && !converting && (
+            <Tooltip content={TOOLTIPS.converterOpenFolder}>
+              <button
+                onClick={handleOpenFolder}
+                className="px-4 py-2.5 rounded-lg font-bold text-sm tracking-wide flex items-center justify-center gap-2 border border-[#c8881a] text-[#c8881a] hover:bg-[#c8881a]/10 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" /> Open Folder
+              </button>
+            </Tooltip>
           )}
         </div>
         {converting && progress ? (
