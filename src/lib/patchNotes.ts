@@ -5,6 +5,18 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.21.0": {
+    title: "What's New in v1.21.0",
+    date: "2026-08-22",
+    notes: [
+      "Batch Image Converter is here — find it under the new TOOLS section in Overview. Drag in any mix of PNG, JPEG, and WebP, see them as a thumbnail grid, check what you want, and convert everything to one format in a single click.",
+      "Thumbs load instantly via the native file path — no extra decoding — with a fallback if the preview fails, so even big WebPs show up.",
+      "Density slider resizes the tiles on the fly, and Select All / Deselect All plus per-tile check and × keep the batch tidy.",
+      "Converting creates a timestamped batch-convert-YYYYMMDD-HHMMSS folder in the folder you pick — original names are kept, copies get -1, -2, and one bad file won’t stop the rest.",
+      "While it runs, you’ll see Converting 3/20 and Effie gets busy; on finish Effie cheers on clean batches and looks worried when something fails so you know to retry. Good files auto-uncheck, failed ones stay checked — just hit Convert again.",
+      "Your batch folder pops open automatically, and Open Folder stays there if you close it. Every control now has a hover tip explaining what it does.",
+    ],
+  },
   "1.20.2": {
     title: "What's New in v1.20.2",
     date: "2026-08-04",
