@@ -4,7 +4,7 @@ import Dashboard from "./sections/Dashboard";
 import InventoryPage from "./sections/InventoryPage";
 import SalesHistory from "./sections/SalesHistory";
 import ServicePricing from "./sections/ServicePricing";
-import BatchConverterPlaceholder from "./sections/BatchConverterPlaceholder";
+import BatchConverter from "./sections/BatchConverter";
 
 const SECTIONS = [
   { key: "dashboard", label: "Dashboard", icon: ActivitySquare },
@@ -80,7 +80,7 @@ export default function Overview() {
         {activeSection === "inventory" && <InventoryPage />}
         {activeSection === "sales-history" && <SalesHistory />}
         {activeSection === "service-pricing" && <ServicePricing />}
-        {activeSection === "batch-converter" && <BatchConverterPlaceholder />}
+        {activeSection === "batch-converter" && <BatchConverter />}
       </div>
     </div>
   );
