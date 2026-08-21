@@ -2431,7 +2431,7 @@ fn convert_images_batch(
         let src_path = Path::new(src);
         let file_name = src_path.file_name().unwrap_or_default().to_string_lossy().to_string();
 
-        let mut reason: Option<String> = None;
+        let reason: Option<String>;
         let mut out_path: Option<PathBuf> = None;
 
         // Collision-safe output name
