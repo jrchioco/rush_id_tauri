@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { X, Images, FolderOpen, Loader2 } from "lucide-react";
+import { X, Images, FolderOpen, Loader2, ExternalLink } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useTauriDragDrop } from "../../lib/hooks/useTauriDragDrop";
 import { Tooltip } from "../../components/Tooltip";
+import { setEffieMood } from "../../components/CompanionWidget/moodStore";
 
 type TargetFormat = "png" | "jpeg" | "webp";
 
@@ -132,6 +133,9 @@ export default function BatchConverter() {
   const [target, setTarget] = useState<TargetFormat>("png");
   const [tileSize, setTileSize] = useState(140);
   const [converting, setConverting] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [lastBatchDir, setLastBatchDir] = useState<string | null>(null);
+  const [lastSummary, setLastSummary] = useState<BatchSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const checkedCount = items.filter((i) => i.checked).length;
@@ -206,24 +210,81 @@ export default function BatchConverter() {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const dest = await open({ directory: true, multiple: false, title: "Choose destination folder" });
       if (!dest || Array.isArray(dest)) return;
+      const checkedPaths = checked.map((c) => c.path);
       setConverting(true);
-      const summary = await invoke<BatchSummary>("convert_images_batch", {
-        sourcePaths: checked.map((c) => c.path),
-        targetFormat: target,
-        destParent: dest as string,
-      });
-      toast.success(`${summary.succeeded}/${summary.total} converted — ${summary.batch_dir}`);
-      if (summary.failed.length > 0) {
-        toast.error(`${summary.failed.length} failed: ${summary.failed.map((f) => `${f.file} (${f.reason})`).join(", ")}`);
+      setProgress({ done: 0, total: checkedPaths.length });
+      setLastSummary(null);
+      setEffieMood("working");
+
+      let unlisten: (() => void) | null = null;
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        unlisten = await listen<{ done: number; total: number }>("convert_progress", (e) => {
+          setProgress({ done: e.payload.done, total: e.payload.total });
+        });
+      } catch {
+        // listen not critical
       }
-      // Crude Phase 3 verification: log full summary
-      console.log("[convert] summary", summary);
+
+      try {
+        const summary = await invoke<BatchSummary>("convert_images_batch", {
+          sourcePaths: checkedPaths,
+          targetFormat: target,
+          destParent: dest as string,
+        });
+        setLastBatchDir(summary.batch_dir);
+        setLastSummary(summary);
+
+        // Per-file handling: success -> uncheck, failed -> keep checked for retry
+        const failedFiles = new Set(summary.failed.map((f) => f.file));
+        setItems((prev) =>
+          prev.map((it) => {
+            if (!checkedPaths.includes(it.path)) return it;
+            if (failedFiles.has(it.filename)) {
+              const reason = summary.failed.find((f) => f.file === it.filename)?.reason ?? "failed";
+              return { ...it, status: "error" as const, error: reason, checked: true };
+            }
+            return { ...it, status: "success" as const, checked: false, error: undefined };
+          })
+        );
+
+        if (summary.failed.length === 0) {
+          toast.success(`${summary.succeeded}/${summary.total} converted — ${summary.batch_dir}`);
+          setEffieMood("success");
+        } else {
+          toast.warning(`${summary.succeeded}/${summary.total} converted, ${summary.failed.length} failed — ${summary.failed.map((f) => `${f.file} (${f.reason})`).join(", ")}`);
+          setEffieMood("error");
+        }
+
+        // Auto-open batch folder
+        try {
+          const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+          await revealItemInDir(summary.batch_dir);
+        } catch {
+          // fallback toast already shows path
+        }
+        console.log("[convert] summary", summary);
+      } finally {
+        unlisten?.();
+        setProgress(null);
+      }
     } catch (e) {
       toast.error(String(e));
+      setEffieMood("error");
     } finally {
       setConverting(false);
     }
   }, [items, target]);
+
+  const handleOpenFolder = useCallback(async () => {
+    if (!lastBatchDir) return;
+    try {
+      const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+      await revealItemInDir(lastBatchDir);
+    } catch (e) {
+      toast.error(String(e));
+    }
+  }, [lastBatchDir]);
 
   return (
     <div className="flex flex-col h-full min-h-[520px]">
@@ -319,17 +380,39 @@ export default function BatchConverter() {
         )}
       </div>
 
-      <div className="flex items-center gap-3 mt-4">
-        <button
-          onClick={handleConvert}
-          disabled={checkedCount === 0 || converting}
-          className="flex-1 px-4 py-2.5 rounded-lg font-bold text-sm tracking-wide flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030] disabled:bg-[#2a2a28] disabled:text-[#555]"
-          title={checkedCount === 0 ? "Select at least one image" : `Convert ${checkedCount} image(s) to ${target.toUpperCase()}`}
-        >
-          {converting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          {converting ? "Converting..." : `Convert ${checkedCount > 0 ? `(${checkedCount}) → ${target.toUpperCase()}` : ""}`}
-        </button>
-        <span className="text-xs font-mono text-[#444]">{converting ? "Pick destination, then converting..." : "End-to-end via Rust image crate"}</span>
+      <div className="flex flex-col gap-2 mt-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleConvert}
+            disabled={checkedCount === 0 || converting}
+            className="flex-1 px-4 py-2.5 rounded-lg font-bold text-sm tracking-wide flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed bg-[#c8881a] text-[#0c0c0b] hover:bg-[#e8a030] disabled:bg-[#2a2a28] disabled:text-[#555]"
+            title={checkedCount === 0 ? "Select at least one image" : `Convert ${checkedCount} image(s) to ${target.toUpperCase()}`}
+          >
+            {converting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {converting && progress ? `Converting ${progress.done}/${progress.total}...` : converting ? "Converting..." : `Convert ${checkedCount > 0 ? `(${checkedCount}) → ${target.toUpperCase()}` : ""}`}
+          </button>
+          {lastBatchDir && !converting && (
+            <button
+              onClick={handleOpenFolder}
+              className="px-4 py-2.5 rounded-lg font-bold text-sm tracking-wide flex items-center justify-center gap-2 border border-[#c8881a] text-[#c8881a] hover:bg-[#c8881a]/10 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" /> Open Folder
+            </button>
+          )}
+        </div>
+        {converting && progress ? (
+          <p className="text-xs font-mono text-[#c8881a]">Converting {progress.done}/{progress.total} — {target.toUpperCase()} @ ~90 quality</p>
+        ) : lastSummary ? (
+          <p className="text-xs font-mono">
+            <span className="text-[#4caf78]">{lastSummary.succeeded}/{lastSummary.total} converted</span>
+            {lastSummary.failed.length > 0 && (
+              <span className="text-red-400">, {lastSummary.failed.length} failed — {lastSummary.failed.map((f) => `${f.file} (${f.reason})`).join(", ")}</span>
+            )}
+            <span className="text-[#555]"> — {lastBatchDir}</span>
+          </p>
+        ) : (
+          <p className="text-xs font-mono text-[#444]">{converting ? "Pick destination, then converting..." : "End-to-end via Rust image crate — failures stay checked for retry"}</p>
+        )}
       </div>
     </div>
   );
