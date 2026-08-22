@@ -1608,6 +1608,90 @@ fn delete_pricing_tier(app_handle: tauri::AppHandle, id: i64) -> Result<(), Stri
     Ok(())
 }
 
+#[derive(Debug, Serialize)]
+struct Resume {
+    id: i64,
+    full_name: String,
+    template_key: String,
+    data_json: String,
+    docx_path: Option<String>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Serialize)]
+struct ResumeSummary {
+    id: i64,
+    full_name: String,
+    template_key: String,
+    updated_at: String,
+}
+
+#[tauri::command]
+fn create_resume(app_handle: tauri::AppHandle, data_json: String, template_key: String, full_name: String) -> Result<i64, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO resumes (full_name, template_key, data_json, docx_path, created_at, updated_at) VALUES (?1, ?2, ?3, NULL, ?4, ?4)",
+        rusqlite::params![full_name, template_key, data_json, now],
+    ).map_err(|e| e.to_string())?;
+    Ok(conn.last_insert_rowid())
+}
+
+#[tauri::command]
+fn update_resume(app_handle: tauri::AppHandle, id: i64, data_json: String, template_key: String, full_name: String) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE resumes SET full_name = ?1, template_key = ?2, data_json = ?3, updated_at = ?4 WHERE id = ?5",
+        rusqlite::params![full_name, template_key, data_json, now, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_resume(app_handle: tauri::AppHandle, id: i64) -> Result<Resume, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    conn.query_row(
+        "SELECT id, full_name, template_key, data_json, docx_path, created_at, updated_at FROM resumes WHERE id = ?1",
+        rusqlite::params![id],
+        |row| Ok(Resume {
+            id: row.get(0)?,
+            full_name: row.get(1)?,
+            template_key: row.get(2)?,
+            data_json: row.get(3)?,
+            docx_path: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
+        }),
+    ).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn list_resumes(app_handle: tauri::AppHandle) -> Result<Vec<ResumeSummary>, String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, full_name, template_key, updated_at FROM resumes ORDER BY updated_at DESC").map_err(|e| e.to_string())?;
+    let rows = stmt.query_map([], |row| Ok(ResumeSummary {
+        id: row.get(0)?,
+        full_name: row.get(1)?,
+        template_key: row.get(2)?,
+        updated_at: row.get(3)?,
+    })).map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
+    Ok(rows)
+}
+
+#[tauri::command]
+fn delete_resume(app_handle: tauri::AppHandle, id: i64) -> Result<(), String> {
+    let path = activity_db_path(&app_handle);
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM resumes WHERE id = ?1", rusqlite::params![id]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
     let config = load_config(&app_handle)?;
@@ -2601,6 +2685,11 @@ pub fn run() {
                 add_pricing_tier,
                 delete_pricing_tier,
                 convert_images_batch,
+                create_resume,
+                update_resume,
+                get_resume,
+                list_resumes,
+                delete_resume,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
