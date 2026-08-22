@@ -527,12 +527,15 @@ fn init_activity_db(app: &tauri::AppHandle) -> Result<(), String> {
             template_key TEXT NOT NULL,
             data_json TEXT NOT NULL,
             docx_path TEXT,
+            pdf_path TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_resumes_updated_at ON resumes(updated_at);",
     )
     .map_err(|e| format!("Failed to create activity_log table: {}", e))?;
+
+    let _ = conn.execute("ALTER TABLE resumes ADD COLUMN pdf_path TEXT", []);
 
     // Migration: add template_key to sales if missing (existing databases)
     let _ = conn.execute("ALTER TABLE sales ADD COLUMN template_key TEXT", []);
@@ -1615,6 +1618,7 @@ struct Resume {
     template_key: String,
     data_json: String,
     docx_path: Option<String>,
+    pdf_path: Option<String>,
     created_at: String,
     updated_at: String,
 }
@@ -1627,13 +1631,44 @@ struct ResumeSummary {
     updated_at: String,
 }
 
+// Helper to build docx Document from Resume data — shared between generate_resume_docx and generate_resume
+fn build_resume_docx(data: &ResumeGenerateRequest, template_key: &str) -> docx_rs::Docx {
+    use docx_rs::*;
+    let full_name = if data.full_name.trim().is_empty() { "Resume".to_string() } else { data.full_name.clone() };
+    let mut doc = Docx::new();
+    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(38).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
+    if let Some(contact) = &data.contact {
+        let mut contact_line = String::new();
+        if let Some(p) = &contact.phone { if !p.is_empty() { contact_line.push_str(p); contact_line.push_str("  |  "); } }
+        if let Some(e) = &contact.email { if !e.is_empty() { contact_line.push_str(e); contact_line.push_str("  |  "); } }
+        if let Some(a) = &contact.address { if !a.is_empty() { contact_line.push_str(a); contact_line.push_str("  |  "); } }
+        if let Some(l) = &contact.linkedin { if !l.is_empty() { contact_line.push_str(l); } }
+        let contact_line = contact_line.trim().trim_end_matches('|').trim().to_string();
+        if !contact_line.is_empty() {
+            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(contact_line).size(20).fonts(RunFonts::new().ascii("Calibri")).color("555555")));
+        }
+    }
+    if template_key.ends_with("_photo") {
+        if let Some(p) = &data.photo_path {
+            if !p.is_empty() && std::path::Path::new(p).exists() {
+                if let Ok(buf) = std::fs::read(p) {
+                    let pic = Pic::new(&buf).size(133 * 9525, 170 * 9525);
+                    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_image(pic)));
+                }
+            }
+        }
+    }
+    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text("").size(2)));
+    doc
+}
+
 #[tauri::command]
 fn create_resume(app_handle: tauri::AppHandle, data_json: String, template_key: String, full_name: String) -> Result<i64, String> {
     let path = activity_db_path(&app_handle);
     let conn = Connection::open(&path).map_err(|e| e.to_string())?;
     let now = Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO resumes (full_name, template_key, data_json, docx_path, created_at, updated_at) VALUES (?1, ?2, ?3, NULL, ?4, ?4)",
+        "INSERT INTO resumes (full_name, template_key, data_json, docx_path, pdf_path, created_at, updated_at) VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4)",
         rusqlite::params![full_name, template_key, data_json, now],
     ).map_err(|e| e.to_string())?;
     Ok(conn.last_insert_rowid())
@@ -1656,7 +1691,7 @@ fn get_resume(app_handle: tauri::AppHandle, id: i64) -> Result<Resume, String> {
     let path = activity_db_path(&app_handle);
     let conn = Connection::open(&path).map_err(|e| e.to_string())?;
     conn.query_row(
-        "SELECT id, full_name, template_key, data_json, docx_path, created_at, updated_at FROM resumes WHERE id = ?1",
+        "SELECT id, full_name, template_key, data_json, docx_path, pdf_path, created_at, updated_at FROM resumes WHERE id = ?1",
         rusqlite::params![id],
         |row| Ok(Resume {
             id: row.get(0)?,
@@ -1664,8 +1699,9 @@ fn get_resume(app_handle: tauri::AppHandle, id: i64) -> Result<Resume, String> {
             template_key: row.get(2)?,
             data_json: row.get(3)?,
             docx_path: row.get(4)?,
-            created_at: row.get(5)?,
-            updated_at: row.get(6)?,
+            pdf_path: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
         }),
     ).map_err(|e| e.to_string())
 }
@@ -1923,7 +1959,7 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
         if let Some(id) = existing {
             let _ = conn.execute("UPDATE resumes SET data_json = ?1, docx_path = ?2, updated_at = ?3 WHERE id = ?4", rusqlite::params![data_json, docx_str, now, id]);
         } else {
-            let _ = conn.execute("INSERT INTO resumes (full_name, template_key, data_json, docx_path, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)", rusqlite::params![full_name, template_key, data_json, docx_str, now]);
+            let _ = conn.execute("INSERT INTO resumes (full_name, template_key, data_json, docx_path, pdf_path, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, NULL, ?5, ?5)", rusqlite::params![full_name, template_key, data_json, docx_str, now]);
         }
     }
 
