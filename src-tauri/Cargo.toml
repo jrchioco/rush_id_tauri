@@ -26,6 +26,7 @@ base64 = "0.22"
 image = { version = "0.25", features = ["png", "jpeg", "webp"] }
 docx-rs = "0.4"
 tauri-plugin-opener = "2"
+tauri-plugin-clipboard-manager = "2"
 svg2pdf = "0.13"
 lopdf = "0.41"
 rusqlite = { version = "0.31", features = ["bundled"] }

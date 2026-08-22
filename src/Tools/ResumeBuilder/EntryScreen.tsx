@@ -21,7 +21,7 @@ const CARDS = [
   {
     key: "generate",
     label: "Generate JSON",
-    desc: "Download the AI-fillable template",
+    desc: "Copy AI-fillable template to clipboard",
     icon: Download,
   },
   {
@@ -65,11 +65,10 @@ export default function ResumeBuilderEntry() {
               else if (key === "browse") setView("browse");
               else if (key === "generate") {
                 try {
-                  const { save } = await import("@tauri-apps/plugin-dialog");
-                  const p = await save({ filters: [{ name: "JSON", extensions: ["json"] }], defaultPath: "resume-template.json" });
-                  if (!p) return;
-                  const out = await invoke<string>("export_resume_template", { destPath: p });
-                  toast.success(`Template saved to ${out}`);
+                  const content = await invoke<string>("get_resume_template");
+                  const { writeText } = await import("@tauri-apps/plugin-clipboard-manager");
+                  await writeText(content);
+                  toast.success("Copied! Paste into your LLM chat");
                 } catch (e) { toast.error(String(e)); }
               }
               else if (key === "import") {

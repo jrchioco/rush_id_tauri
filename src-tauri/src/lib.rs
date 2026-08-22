@@ -1930,25 +1930,34 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     Ok(out_path.to_string_lossy().to_string())
 }
 
-#[tauri::command]
-fn export_resume_template(app_handle: tauri::AppHandle, dest_path: String) -> Result<String, String> {
-    let res = resource_dir(&app_handle);
+fn read_resume_template(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    let res = resource_dir(app_handle);
     let candidates = [
         res.join("resources").join("resume-template.json"),
         res.join("resume-template.json"),
         PathBuf::from("src-tauri/resources/resume-template.json"),
         PathBuf::from("resources/resume-template.json"),
     ];
-    let mut src: Option<PathBuf> = None;
     for c in &candidates {
-        if c.exists() { src = Some(c.clone()); break; }
+        if c.exists() {
+            return fs::read_to_string(c).map_err(|e| format!("Failed to read template: {}", e));
+        }
     }
-    let src = src.ok_or("Template not found in bundle".to_string())?;
-    let content = fs::read_to_string(&src).map_err(|e| format!("Failed to read template: {}", e))?;
+    Err("Template not found in bundle".to_string())
+}
+
+#[tauri::command]
+fn export_resume_template(app_handle: tauri::AppHandle, dest_path: String) -> Result<String, String> {
+    let content = read_resume_template(&app_handle)?;
     let dest = PathBuf::from(&dest_path);
     if let Some(parent) = dest.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
     fs::write(&dest, content).map_err(|e| e.to_string())?;
     Ok(dest.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn get_resume_template(app_handle: tauri::AppHandle) -> Result<String, String> {
+    read_resume_template(&app_handle)
 }
 
 #[tauri::command]
@@ -2899,6 +2908,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             check_config,
             save_config,
@@ -2951,6 +2961,7 @@ pub fn run() {
                 delete_resume,
                 generate_resume_docx,
                 export_resume_template,
+                get_resume_template,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
