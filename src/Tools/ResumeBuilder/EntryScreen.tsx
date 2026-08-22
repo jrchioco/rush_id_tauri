@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { FileText, Upload, Download, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
+import ResumeForm from "./Form";
 
 const CARDS = [
   {
@@ -29,6 +31,8 @@ const CARDS = [
 ] as const;
 
 export default function ResumeBuilderEntry() {
+  const [view, setView] = useState<"entry" | "form">("entry");
+  if (view === "form") return <ResumeForm onBack={() => setView("entry")} />;
   return (
     <div className="flex flex-col h-full min-h-[520px]">
       <div className="mb-6">
@@ -42,7 +46,10 @@ export default function ResumeBuilderEntry() {
         {CARDS.map(({ key, label, desc, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => toast.info(`${label} — coming soon (Phase ${key === "fill" ? "3" : key === "import" ? "6b" : key === "generate" ? "6a" : "5"})`)}
+            onClick={() => {
+              if (key === "fill") setView("form");
+              else toast.info(`${label} — coming soon (Phase ${key === "import" ? "6b" : key === "generate" ? "6a" : "5"})`);
+            }}
             className="text-left p-5 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group"
           >
             <div className="w-10 h-10 rounded-lg bg-[#1a1a18] border border-[#2a2a28] group-hover:border-[#c8881a]/30 flex items-center justify-center mb-3">
