@@ -72,7 +72,42 @@ export default function ResumeBuilderEntry() {
                   toast.success(`Template saved to ${out}`);
                 } catch (e) { toast.error(String(e)); }
               }
-              else toast.info(`${label} — coming soon (Phase 6b)`);
+              else if (key === "import") {
+                try {
+                  const { open } = await import("@tauri-apps/plugin-dialog");
+                  const p = await open({ multiple: false, filters: [{ name: "JSON", extensions: ["json"] }] });
+                  if (!p || Array.isArray(p)) return;
+                  const content = await invoke<string>("read_file", { path: p as string });
+                  let data: any;
+                  try { data = JSON.parse(content); } catch { toast.error("Invalid JSON — not parseable"); return; }
+                  // Strip _instructions/_note keys (top level and nested)
+                  function strip(obj: any): any {
+                    if (Array.isArray(obj)) return obj.map(strip);
+                    if (obj && typeof obj === "object") {
+                      const out: any = {};
+                      for (const [k, v] of Object.entries(obj)) {
+                        if (k.startsWith("_")) continue;
+                        out[k] = strip(v);
+                      }
+                      return out;
+                    }
+                    return obj;
+                  }
+                  const clean = strip(data);
+                  const validKeys = ["col1_nophoto","col1_photo","col2_nophoto","col2_photo"];
+                  const errors: string[] = [];
+                  if (!clean.full_name || typeof clean.full_name !== "string" || !clean.full_name.trim()) errors.push("full_name missing");
+                  if (!clean.template_key || !validKeys.includes(clean.template_key)) errors.push(`template_key must be one of ${validKeys.join(", ")}`);
+                  if (clean.education && !Array.isArray(clean.education)) errors.push("education must be array");
+                  if (clean.experience && !Array.isArray(clean.experience)) errors.push("experience must be array");
+                  if (clean.skills && !Array.isArray(clean.skills)) errors.push("skills must be array");
+                  if (clean.certifications && !Array.isArray(clean.certifications)) errors.push("certifications must be array");
+                  if (errors.length) { toast.error("Import failed: " + errors.join("; ")); return; }
+                  setEditData(clean);
+                  setView("form");
+                  toast.success(`Loaded ${clean.full_name || "resume"} — review then Generate`);
+                } catch (e) { toast.error(String(e)); }
+              }
             }}
             className="text-left p-5 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group"
           >
