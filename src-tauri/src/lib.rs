@@ -1739,6 +1739,7 @@ struct CertificationEntry {
 fn resume_heading(text: &str) -> docx_rs::Paragraph {
     use docx_rs::{Paragraph, Run, RunFonts, LineSpacing};
     Paragraph::new()
+        .add_run(Run::new().add_text("■ ").size(16).fonts(RunFonts::new().ascii("Calibri")).color("1F2937"))
         .add_run(Run::new().add_text(text.to_uppercase()).bold().size(23).fonts(RunFonts::new().ascii("Calibri")).color("1F2937"))
         .line_spacing(LineSpacing::new().before(220).after(100))
 }
