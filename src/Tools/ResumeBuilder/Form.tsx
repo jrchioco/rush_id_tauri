@@ -308,7 +308,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
           <Save className="w-4 h-4" /> Save as JSON
         </button>
         <button onClick={handleGenerateDocx} className="px-4 py-2 rounded-lg bg-[#c8881a] text-[#0c0c0b] font-bold text-sm tracking-wide hover:bg-[#e8a030] flex items-center gap-2">
-          <Save className="w-4 h-4" /> Generate Docx {template.startsWith("col2") ? "(1-col fallback)" : ""}
+          <Save className="w-4 h-4" /> Generate Docx
         </button>
       </div>
     </div>

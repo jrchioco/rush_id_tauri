@@ -1788,51 +1788,117 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     }
     doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text("").size(2)));
 
-    if let Some(summary) = &data.summary {
-        if !summary.trim().is_empty() {
-            doc = doc.add_paragraph(resume_heading("Summary"));
-            doc = doc.add_paragraph(resume_body(summary));
+    if template_key.starts_with("col2") {
+        // 2-column via borderless table 33%/67% — sidebar #F6F7FA shading, left navy spine via outer border
+        let mut left_paras: Vec<docx_rs::Paragraph> = Vec::new();
+        let mut right_paras: Vec<docx_rs::Paragraph> = Vec::new();
+        // Sidebar: Contact + Education + Skills + Certifications
+        left_paras.push(resume_heading("Contact"));
+        if let Some(contact) = &data.contact {
+            let mut lines: Vec<String> = Vec::new();
+            if let Some(p) = &contact.phone { if !p.is_empty() { lines.push(p.clone()); } }
+            if let Some(e) = &contact.email { if !e.is_empty() { lines.push(e.clone()); } }
+            if let Some(a) = &contact.address { if !a.is_empty() { lines.push(a.clone()); } }
+            if let Some(l) = &contact.linkedin { if !l.is_empty() { lines.push(l.clone()); } }
+            for l in lines { left_paras.push(resume_body(&l)); }
         }
-    }
-    if let Some(edus) = &data.education {
-        if !edus.is_empty() {
-            doc = doc.add_paragraph(resume_heading("Education"));
-            for e in edus {
-                let line = format!("{} — {} ({})", e.school, e.degree, e.year);
-                doc = doc.add_paragraph(resume_body(&line));
+        left_paras.push(Paragraph::new().add_run(Run::new().add_text("").size(2)));
+        if let Some(edus) = &data.education {
+            if !edus.is_empty() {
+                left_paras.push(resume_heading("Education"));
+                for e in edus { left_paras.push(resume_body(&format!("{} — {} ({})", e.school, e.degree, e.year))); }
             }
         }
-    }
-    if let Some(exps) = &data.experience {
-        if !exps.is_empty() {
-            doc = doc.add_paragraph(resume_heading("Experience"));
-            for ex in exps {
-                let title = format!("{} — {} ({} - {})", ex.role, ex.company, ex.start_date, ex.end_date);
-                doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(title).bold().size(22).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
-                for b in &ex.bullets {
-                    if !b.trim().is_empty() {
-                        doc = doc.add_paragraph(resume_bullet(b));
+        if let Some(skills) = &data.skills {
+            if !skills.is_empty() {
+                left_paras.push(resume_heading("Skills"));
+                for s in skills { if !s.trim().is_empty() { left_paras.push(resume_bullet(s)); } }
+            }
+        }
+        if let Some(certs) = &data.certifications {
+            if !certs.is_empty() {
+                left_paras.push(resume_heading("Certifications"));
+                for c in certs { left_paras.push(resume_body(&format!("{} — {} ({})", c.name, c.issuer, c.year))); }
+            }
+        }
+        // Main: Summary + Experience
+        if let Some(summary) = &data.summary {
+            if !summary.trim().is_empty() {
+                right_paras.push(resume_heading("Summary"));
+                right_paras.push(resume_body(summary));
+            }
+        }
+        if let Some(exps) = &data.experience {
+            if !exps.is_empty() {
+                right_paras.push(resume_heading("Experience"));
+                for ex in exps {
+                    right_paras.push(Paragraph::new().add_run(Run::new().add_text(format!("{} — {} ({} - {})", ex.role, ex.company, ex.start_date, ex.end_date)).bold().size(22).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
+                    for b in &ex.bullets { if !b.trim().is_empty() { right_paras.push(resume_bullet(b)); } }
+                }
+            }
+        }
+        if left_paras.is_empty() { left_paras.push(resume_body("")); }
+        if right_paras.is_empty() { right_paras.push(resume_body("")); }
+        let left_cell = {
+            let mut c = TableCell::new();
+            for p in left_paras { c = c.add_paragraph(p); }
+            c.width(3000, WidthType::Dxa).vertical_align(VAlignType::Top)
+        };
+        let right_cell = {
+            let mut c = TableCell::new();
+            for p in right_paras { c = c.add_paragraph(p); }
+            c.width(7000, WidthType::Dxa).vertical_align(VAlignType::Top)
+        };
+        let table = Table::new(vec![TableRow::new(vec![left_cell, right_cell])])
+            .width(10000, WidthType::Dxa);
+        doc = doc.add_table(table);
+    } else {
+        if let Some(summary) = &data.summary {
+            if !summary.trim().is_empty() {
+                doc = doc.add_paragraph(resume_heading("Summary"));
+                doc = doc.add_paragraph(resume_body(summary));
+            }
+        }
+        if let Some(edus) = &data.education {
+            if !edus.is_empty() {
+                doc = doc.add_paragraph(resume_heading("Education"));
+                for e in edus {
+                    let line = format!("{} — {} ({})", e.school, e.degree, e.year);
+                    doc = doc.add_paragraph(resume_body(&line));
+                }
+            }
+        }
+        if let Some(exps) = &data.experience {
+            if !exps.is_empty() {
+                doc = doc.add_paragraph(resume_heading("Experience"));
+                for ex in exps {
+                    let title = format!("{} — {} ({} - {})", ex.role, ex.company, ex.start_date, ex.end_date);
+                    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(title).bold().size(22).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
+                    for b in &ex.bullets {
+                        if !b.trim().is_empty() {
+                            doc = doc.add_paragraph(resume_bullet(b));
+                        }
                     }
                 }
             }
         }
-    }
-    if let Some(skills) = &data.skills {
-        if !skills.is_empty() {
-            doc = doc.add_paragraph(resume_heading("Skills"));
-            for s in skills {
-                if !s.trim().is_empty() {
-                    doc = doc.add_paragraph(resume_bullet(s));
+        if let Some(skills) = &data.skills {
+            if !skills.is_empty() {
+                doc = doc.add_paragraph(resume_heading("Skills"));
+                for s in skills {
+                    if !s.trim().is_empty() {
+                        doc = doc.add_paragraph(resume_bullet(s));
+                    }
                 }
             }
         }
-    }
-    if let Some(certs) = &data.certifications {
-        if !certs.is_empty() {
-            doc = doc.add_paragraph(resume_heading("Certifications"));
-            for c in certs {
-                let line = format!("{} — {} ({})", c.name, c.issuer, c.year);
-                doc = doc.add_paragraph(resume_body(&line));
+        if let Some(certs) = &data.certifications {
+            if !certs.is_empty() {
+                doc = doc.add_paragraph(resume_heading("Certifications"));
+                for c in certs {
+                    let line = format!("{} — {} ({})", c.name, c.issuer, c.year);
+                    doc = doc.add_paragraph(resume_body(&line));
+                }
             }
         }
     }
