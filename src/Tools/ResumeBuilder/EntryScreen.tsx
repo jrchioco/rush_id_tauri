@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { FileText, Upload, Download, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
-import ResumeForm from "./Form";
+import ResumeForm, { ResumeFormData } from "./Form";
+import BrowseResumes from "./Browse";
+import { invoke } from "@tauri-apps/api/core";
 
 const CARDS = [
   {
@@ -31,8 +33,20 @@ const CARDS = [
 ] as const;
 
 export default function ResumeBuilderEntry() {
-  const [view, setView] = useState<"entry" | "form">("entry");
-  if (view === "form") return <ResumeForm onBack={() => setView("entry")} />;
+  const [view, setView] = useState<"entry" | "form" | "browse">("entry");
+  const [editData, setEditData] = useState<ResumeFormData | null>(null);
+  const handleSelectResume = async (id: number) => {
+    try {
+      const r = await invoke<{ data_json: string }>("get_resume", { id });
+      const data = JSON.parse(r.data_json);
+      setEditData(data);
+      setView("form");
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+  if (view === "form") return <ResumeForm initialData={editData ?? undefined} onBack={() => { setEditData(null); setView("entry"); }} />;
+  if (view === "browse") return <BrowseResumes onBack={() => setView("entry")} onSelect={handleSelectResume} />;
   return (
     <div className="flex flex-col h-full min-h-[520px]">
       <div className="mb-6">
@@ -47,7 +61,8 @@ export default function ResumeBuilderEntry() {
           <button
             key={key}
             onClick={() => {
-              if (key === "fill") setView("form");
+              if (key === "fill") { setEditData(null); setView("form"); }
+              else if (key === "browse") setView("browse");
               else toast.info(`${label} — coming soon (Phase ${key === "import" ? "6b" : key === "generate" ? "6a" : "5"})`);
             }}
             className="text-left p-5 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group"
