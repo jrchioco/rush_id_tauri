@@ -132,7 +132,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
     }
   };
 
-  const handleGenerateDocx = async () => {
+  const handleGenerateResume = async () => {
     if (!fullName.trim()) {
       toast.error("Full name is required");
       return;
@@ -142,11 +142,12 @@ export default function ResumeForm({ onBack, initialData }: Props) {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const path = await save({ filters: [{ name: "Word", extensions: ["docx"] }], defaultPath: `${fullName.replace(/[^\w]+/g, "_")}_Resume.docx` });
       if (!path) return;
-      const out = await invoke<string>("generate_resume_docx", { dataJson: JSON.stringify(data), templateKey: template, savePath: path });
-      toast.success(`Generated ${out}`);
+      const res = await invoke<{ docx_path: string; pdf_path: string | null }>("generate_resume", { dataJson: JSON.stringify(data), templateKey: template, saveStemPath: path });
+      if (res.pdf_path) toast.success(`Resume saved — ${res.docx_path} + ${res.pdf_path}`);
+      else toast.success(`Resume saved — ${res.docx_path} (PDF skipped — install LibreOffice for PDF)`);
       try {
         const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
-        await revealItemInDir(out);
+        await revealItemInDir(res.pdf_path ?? res.docx_path);
       } catch {}
     } catch (e) {
       toast.error(String(e));
@@ -307,8 +308,8 @@ export default function ResumeForm({ onBack, initialData }: Props) {
         <button onClick={handleSaveJson} className="px-4 py-2 rounded-lg border border-[#c8881a] text-[#c8881a] font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 flex items-center gap-2">
           <Save className="w-4 h-4" /> Save as JSON
         </button>
-        <button onClick={handleGenerateDocx} className="px-4 py-2 rounded-lg bg-[#c8881a] text-[#0c0c0b] font-bold text-sm tracking-wide hover:bg-[#e8a030] flex items-center gap-2">
-          <Save className="w-4 h-4" /> Generate Docx
+        <button onClick={handleGenerateResume} className="px-4 py-2 rounded-lg bg-[#c8881a] text-[#0c0c0b] font-bold text-sm tracking-wide hover:bg-[#e8a030] flex items-center gap-2">
+          <Save className="w-4 h-4" /> Generate Resume
         </button>
       </div>
     </div>

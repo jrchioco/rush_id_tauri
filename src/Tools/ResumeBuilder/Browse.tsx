@@ -8,6 +8,8 @@ interface ResumeSummary {
   full_name: string;
   template_key: string;
   updated_at: string;
+  docx_path?: string | null;
+  pdf_path?: string | null;
 }
 
 function templateLabel(key: string): string {
@@ -79,6 +81,10 @@ export default function BrowseResumes({ onBack, onSelect }: Props) {
               <p className="text-sm font-bold text-[#e8e4da] tracking-wide truncate">{r.full_name}</p>
               <p className="text-xs font-mono text-[#555]">{templateLabel(r.template_key)}</p>
               <p className="text-[10px] font-mono text-[#444] mt-1">{new Date(r.updated_at).toLocaleString()}</p>
+              <div className="flex gap-1 mt-1">
+                {r.docx_path && <span className="text-[9px] font-mono bg-[#1a1a18] border border-[#2a2a28] text-[#888] px-1.5 py-0.5 rounded">DOCX</span>}
+                {r.pdf_path && <span className="text-[9px] font-mono bg-[#c8881a]/10 border border-[#c8881a]/30 text-[#c8881a] px-1.5 py-0.5 rounded">PDF</span>}
+              </div>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => onSelect?.(r.id)} className="flex-1 px-2 py-1 rounded bg-[#c8881a] text-[#0c0c0b] text-xs font-mono font-bold hover:bg-[#e8a030]">Edit</button>
                 <button onClick={() => handleDelete(r.id)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>

@@ -1629,6 +1629,8 @@ struct ResumeSummary {
     full_name: String,
     template_key: String,
     updated_at: String,
+    docx_path: Option<String>,
+    pdf_path: Option<String>,
 }
 
 // Helper to build docx Document from Resume data — shared between generate_resume_docx and generate_resume
@@ -1710,12 +1712,14 @@ fn get_resume(app_handle: tauri::AppHandle, id: i64) -> Result<Resume, String> {
 fn list_resumes(app_handle: tauri::AppHandle) -> Result<Vec<ResumeSummary>, String> {
     let path = activity_db_path(&app_handle);
     let conn = Connection::open(&path).map_err(|e| e.to_string())?;
-    let mut stmt = conn.prepare("SELECT id, full_name, template_key, updated_at FROM resumes ORDER BY updated_at DESC").map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, full_name, template_key, updated_at, docx_path, pdf_path FROM resumes ORDER BY updated_at DESC").map_err(|e| e.to_string())?;
     let rows = stmt.query_map([], |row| Ok(ResumeSummary {
         id: row.get(0)?,
         full_name: row.get(1)?,
         template_key: row.get(2)?,
         updated_at: row.get(3)?,
+        docx_path: row.get(4)?,
+        pdf_path: row.get(5)?,
     })).map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
     Ok(rows)
 }
