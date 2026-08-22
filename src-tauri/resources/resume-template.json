@@ -1,45 +1,85 @@
 {
-  "_instructions": "Fill this JSON via any LLM or manually. Keys prefixed with _ are instructions — they will be stripped on import. Leave empty strings/arrays where not applicable. Template key must be one of: col1_nophoto, col1_photo, col2_nophoto, col2_photo.",
-  "_note_template_key": "Choose layout: col1_nophoto (1-col no photo), col1_photo (1-col 35x45mm photo), col2_nophoto (2-col no photo), col2_photo (2-col with photo)",
-  "template_key": "col1_nophoto",
+  "_instructions": {
+    "purpose": "This is a resume data template for J3FF Printing Services' Resume Builder tool, a desktop app. This JSON was pasted directly into this chat (or uploaded as a file) together with one or more biodata/resume source documents (image, PDF, DOCX, or similar) also provided by the user. The user is NOT asking a question and does not want a conversational answer, an analysis, or a preview of the resume. The completed JSON is a data file that gets imported into that app to auto-generate a formatted resume document. Your job is to produce that file using the source document(s) as the only source of information — this JSON template itself contains no resume data, only structure and instructions.",
+    "delivery_instructions": [
+      "If you have the ability to create/attach an actual downloadable file (code execution, canvas, artifacts, file creation tools, etc.), you MUST use it. Create a real .json file named 'resume-filled.json' containing ONLY the completed JSON object. Do not just paste the JSON as chat text if a file-creation tool is available to you — the user needs a file they can save to disk, not text they have to manually copy.",
+      "If you do NOT have any file-creation capability at all, output the completed JSON as a single fenced code block (```json ... ```) and nothing else — no summary, no bullet-point recap of what you filled in, no 'here is the resume' preamble, no explanation after. The entire message body should be just that one code block, so the user can copy it and save it as resume-filled.json themselves.",
+      "Never respond with a human-readable resume preview, a Markdown-formatted resume, or a text summary of the person's background as your output — the destination is a JSON file for an app to parse, not a document for a person to read directly in chat."
+    ],
+    "output_rules": [
+      "Follow delivery_instructions above for HOW to deliver the output. Beyond that: the JSON content itself must be valid, complete, and contain no explanation text mixed into it.",
+      "Do NOT remove or rename any keys, even if a field ends up empty.",
+      "Do NOT invent, guess, or embellish information that is not present in the source document(s). Empty/unknown fields must stay as empty strings \"\" or empty arrays [], never fabricated.",
+      "Do NOT add extra keys beyond what is defined in this template.",
+      "Keep ALL '_instructions' and '_note' keys exactly as they are, untouched, in your output. The app strips them automatically on import — do not delete them yourself.",
+      "Dates should be formatted as 'Mon YYYY' (e.g. 'Jun 2021') or 'Present' if ongoing. If the source only has a year, use just the year.",
+      "Bullet points in 'experience[].bullets' should be concise, start with a strong action verb, and be rewritten as complete resume-style phrases even if the source document uses informal notes or fragments — but the underlying facts/claims must come only from the source, never invented.",
+      "If the source document is a messy scan/photo, do your best to read it accurately. If a field is genuinely illegible or missing, leave it empty rather than guessing.",
+      "'template_key' must be exactly one of: 'col1_nophoto', 'col1_photo', 'col2_nophoto', 'col2_photo'. This refers to the resume's layout (1-column or 2-column) and whether it includes a photo. Only pick a '*_photo' value if the source material clearly indicates a photo should be included (e.g. an old resume that already had one, or explicit user instruction) — otherwise default to 'col1_nophoto'.",
+      "'skills' should be an array of short strings, not one long paragraph — split a comma/paragraph list of skills into separate array items.",
+      "If the source document lists multiple jobs/schools, create one object per entry inside the respective array — do not merge multiple jobs into one entry.",
+      "ALWAYS leave 'photo_path' as an empty string \"\", even for '*_photo' template_key values. This is a local file path on the user's own computer that only the desktop app can set — you have no way to know it and must never fabricate one (e.g. never write a placeholder like '/path/to/photo.jpg' or a filename you invented). The user will attach the actual photo separately inside the app."
+    ],
+    "dos": [
+      "DO cross-check spelling of names, companies, and schools carefully against the source.",
+      "DO preserve the original chronological order of experience/education entries (most recent first) if the source has one.",
+      "DO leave a field as \"\" (empty string) if information genuinely isn't available anywhere in the source.",
+      "DO ask yourself 'is this literally stated or shown in the source?' before writing any value."
+    ],
+    "donts": [
+      "DON'T fabricate job titles, dates, degrees, or achievements not present in the source.",
+      "DON'T summarize/shorten the person's name or contact details.",
+      "DON'T output anything except the JSON object itself.",
+      "DON'T change the JSON structure (key names, nesting, array vs string types)."
+    ]
+  },
+
+  "template_key": "",
+
+  "photo_path": "",
+
   "full_name": "",
+
   "contact": {
-    "_note": "All contact fields optional but at least one recommended",
+    "_note": "Only fill fields that exist in the source. Leave others as empty strings.",
     "phone": "",
     "email": "",
     "address": "",
     "linkedin": ""
   },
+
   "summary": "",
-  "_note_summary": "2-3 sentence professional summary",
+
   "education": [
     {
+      "_note": "Duplicate this object for each education entry found in the source. Delete this _note key from each duplicated entry, but keep it in this first template object.",
       "school": "",
       "degree": "",
       "year": ""
     }
   ],
-  "_note_education": "Add as many entries as needed, remove example if empty",
+
   "experience": [
     {
+      "_note": "Duplicate this object for each job/experience entry found in the source. Delete this _note key from each duplicated entry, but keep it in this first template object.",
       "company": "",
       "role": "",
       "start_date": "",
       "end_date": "",
-      "bullets": ["", ""]
+      "bullets": [
+        ""
+      ]
     }
   ],
-  "_note_experience": "Bullets: 4-6 per role, substantive",
+
   "skills": [],
-  "_note_skills": "Array of strings, e.g. [\"Customer Service\", \"Cashiering\"]",
+
   "certifications": [
     {
+      "_note": "Duplicate this object for each certification found in the source. Delete this _note key from each duplicated entry, but keep it in this first template object.",
       "name": "",
       "issuer": "",
       "year": ""
     }
-  ],
-  "_note_certifications": "Certificates & Training",
-  "_note_photo": "For *_photo templates, set photoPath to local image file path before generating docx (optional)",
-  "photoPath": ""
+  ]
 }
