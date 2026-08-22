@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ActivitySquare, Package, TrendingUp, DollarSign, Images } from "lucide-react";
+import { ActivitySquare, Package, TrendingUp, DollarSign, Images, FileText } from "lucide-react";
 import Dashboard from "./sections/Dashboard";
 import InventoryPage from "./sections/InventoryPage";
 import SalesHistory from "./sections/SalesHistory";
 import ServicePricing from "./sections/ServicePricing";
 import BatchConverter from "./sections/BatchConverter";
+import ResumeBuilderEntry from "../Tools/ResumeBuilder/EntryScreen";
 
 const SECTIONS = [
   { key: "dashboard", label: "Dashboard", icon: ActivitySquare },
@@ -15,6 +16,7 @@ const SECTIONS = [
 
 const TOOL_SECTIONS = [
   { key: "batch-converter", label: "Batch Image Converter", icon: Images },
+  { key: "resume-builder", label: "Resume Builder", icon: FileText },
 ] as const;
 
 type SectionKey = (typeof SECTIONS)[number]["key"] | (typeof TOOL_SECTIONS)[number]["key"];
@@ -81,6 +83,7 @@ export default function Overview() {
         {activeSection === "sales-history" && <SalesHistory />}
         {activeSection === "service-pricing" && <ServicePricing />}
         {activeSection === "batch-converter" && <BatchConverter />}
+        {activeSection === "resume-builder" && <ResumeBuilderEntry />}
       </div>
     </div>
   );

@@ -1,0 +1,62 @@
+import { FileText, Upload, Download, LayoutGrid } from "lucide-react";
+import { toast } from "sonner";
+
+const CARDS = [
+  {
+    key: "fill",
+    label: "Fill Out Form",
+    desc: "Start blank and fill the resume fields",
+    icon: FileText,
+  },
+  {
+    key: "import",
+    label: "Import JSON",
+    desc: "Load a filled JSON file",
+    icon: Upload,
+  },
+  {
+    key: "generate",
+    label: "Generate JSON",
+    desc: "Download the AI-fillable template",
+    icon: Download,
+  },
+  {
+    key: "browse",
+    label: "Browse Resumes",
+    desc: "Grid of saved resumes",
+    icon: LayoutGrid,
+  },
+] as const;
+
+export default function ResumeBuilderEntry() {
+  return (
+    <div className="flex flex-col h-full min-h-[520px]">
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide flex items-center gap-2">
+          <FileText className="w-4 h-4 text-[#c8881a]" /> Resume Builder
+        </h3>
+        <p className="text-xs font-mono text-[#555] mt-0.5">J3FF house style — A4, Calibri, navy accent. 4 layout variants.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {CARDS.map(({ key, label, desc, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => toast.info(`${label} — coming soon (Phase ${key === "fill" ? "3" : key === "import" ? "6b" : key === "generate" ? "6a" : "5"})`)}
+            className="text-left p-5 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group"
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#1a1a18] border border-[#2a2a28] group-hover:border-[#c8881a]/30 flex items-center justify-center mb-3">
+              <Icon className="w-5 h-5 text-[#555] group-hover:text-[#c8881a] transition-colors" />
+            </div>
+            <p className="text-sm font-bold text-[#e8e4da] tracking-wide">{label}</p>
+            <p className="text-xs font-mono text-[#555] mt-1">{desc}</p>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 p-3 rounded-lg bg-[#0c0c0b] border border-[#2a2a28]">
+        <p className="text-xs font-mono text-[#444]">Engine: <span className="text-[#888]">docx-rs</span> (native Rust) · Storage: <span className="text-[#888]">resumes</span> in <span className="text-[#888]">activity.db</span> · No LLM calls in-app (portable JSON contract).</p>
+      </div>
+    </div>
+  );
+}
