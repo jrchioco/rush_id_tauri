@@ -519,7 +519,18 @@ fn init_activity_db(app: &tauri::AppHandle) -> Result<(), String> {
             FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS idx_pricing_tiers_service_id ON pricing_tiers(service_id);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_pricing_tiers_service_layout ON pricing_tiers(service_id, layout);",
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_pricing_tiers_service_layout ON pricing_tiers(service_id, layout);
+
+        CREATE TABLE IF NOT EXISTS resumes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            template_key TEXT NOT NULL,
+            data_json TEXT NOT NULL,
+            docx_path TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_resumes_updated_at ON resumes(updated_at);",
     )
     .map_err(|e| format!("Failed to create activity_log table: {}", e))?;
 
