@@ -101,30 +101,53 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   };
   const removeCert = (i: number) => setCertifications(certifications.filter((_, idx) => idx !== i));
 
+  const buildData = (): ResumeFormData => ({
+    template_key: template,
+    full_name: fullName.trim(),
+    contact: { phone: contact.phone.trim(), email: contact.email.trim(), address: contact.address.trim(), linkedin: contact.linkedin.trim() },
+    summary: summary.trim(),
+    education: education.filter((e) => e.school || e.degree || e.year),
+    experience: experience
+      .filter((e) => e.company || e.role)
+      .map((e) => ({ ...e, bullets: e.bullets.filter((b) => b.trim()) })),
+    skills: skills.filter((s) => s.trim()),
+    certifications: certifications.filter((c) => c.name || c.issuer || c.year),
+    photoPath: isPhoto ? photoPath : undefined,
+  });
+
   const handleSaveJson = async () => {
     if (!fullName.trim()) {
       toast.error("Full name is required");
       return;
     }
-    const data: ResumeFormData = {
-      template_key: template,
-      full_name: fullName.trim(),
-      contact: { phone: contact.phone.trim(), email: contact.email.trim(), address: contact.address.trim(), linkedin: contact.linkedin.trim() },
-      summary: summary.trim(),
-      education: education.filter((e) => e.school || e.degree || e.year),
-      experience: experience
-        .filter((e) => e.company || e.role)
-        .map((e) => ({ ...e, bullets: e.bullets.filter((b) => b.trim()) })),
-      skills: skills.filter((s) => s.trim()),
-      certifications: certifications.filter((c) => c.name || c.issuer || c.year),
-      photoPath: isPhoto ? photoPath : undefined,
-    };
+    const data = buildData();
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const path = await save({ filters: [{ name: "JSON", extensions: ["json"] }], defaultPath: `${fullName.replace(/[^\w]+/g, "_")}_resume.json` });
       if (!path) return;
       await invoke("write_file", { path, content: JSON.stringify(data, null, 2) });
       toast.success(`Saved ${path}`);
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+
+  const handleGenerateDocx = async () => {
+    if (!fullName.trim()) {
+      toast.error("Full name is required");
+      return;
+    }
+    const data = buildData();
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const path = await save({ filters: [{ name: "Word", extensions: ["docx"] }], defaultPath: `${fullName.replace(/[^\w]+/g, "_")}_Resume.docx` });
+      if (!path) return;
+      const out = await invoke<string>("generate_resume_docx", { dataJson: JSON.stringify(data), templateKey: template, savePath: path });
+      toast.success(`Generated ${out}`);
+      try {
+        const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+        await revealItemInDir(out);
+      } catch {}
     } catch (e) {
       toast.error(String(e));
     }
@@ -280,9 +303,14 @@ export default function ResumeForm({ onBack, initialData }: Props) {
         ))}
       </div>
 
-      <button onClick={handleSaveJson} className="self-end px-4 py-2 rounded-lg bg-[#c8881a] text-[#0c0c0b] font-bold text-sm tracking-wide hover:bg-[#e8a030] flex items-center gap-2">
-        <Save className="w-4 h-4" /> Save as JSON
-      </button>
+      <div className="flex gap-3 self-end">
+        <button onClick={handleSaveJson} className="px-4 py-2 rounded-lg border border-[#c8881a] text-[#c8881a] font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 flex items-center gap-2">
+          <Save className="w-4 h-4" /> Save as JSON
+        </button>
+        <button onClick={handleGenerateDocx} className="px-4 py-2 rounded-lg bg-[#c8881a] text-[#0c0c0b] font-bold text-sm tracking-wide hover:bg-[#e8a030] flex items-center gap-2">
+          <Save className="w-4 h-4" /> Generate Docx {template.startsWith("col2") ? "(1-col fallback)" : ""}
+        </button>
+      </div>
     </div>
   );
 }

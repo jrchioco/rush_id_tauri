@@ -1692,6 +1692,177 @@ fn delete_resume(app_handle: tauri::AppHandle, id: i64) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Debug, Deserialize)]
+struct ResumeGenerateRequest {
+    full_name: String,
+    template_key: String,
+    contact: Option<ContactInfo>,
+    summary: Option<String>,
+    education: Option<Vec<EducationEntry>>,
+    experience: Option<Vec<ExperienceEntry>>,
+    skills: Option<Vec<String>>,
+    certifications: Option<Vec<CertificationEntry>>,
+    photo_path: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ContactInfo {
+    phone: Option<String>,
+    email: Option<String>,
+    address: Option<String>,
+    linkedin: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct EducationEntry {
+    school: String,
+    degree: String,
+    year: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ExperienceEntry {
+    company: String,
+    role: String,
+    start_date: String,
+    end_date: String,
+    bullets: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CertificationEntry {
+    name: String,
+    issuer: String,
+    year: String,
+}
+
+fn resume_heading(text: &str) -> docx_rs::Paragraph {
+    use docx_rs::{Paragraph, Run, RunFonts, LineSpacing};
+    Paragraph::new()
+        .add_run(Run::new().add_text(text.to_uppercase()).bold().size(23).fonts(RunFonts::new().ascii("Calibri")).color("1F2937"))
+        .line_spacing(LineSpacing::new().before(220).after(100))
+}
+
+fn resume_body(text: &str) -> docx_rs::Paragraph {
+    use docx_rs::{Paragraph, Run, RunFonts};
+    Paragraph::new().add_run(Run::new().add_text(text).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"))
+}
+
+fn resume_bullet(text: &str) -> docx_rs::Paragraph {
+    use docx_rs::{Paragraph, Run, RunFonts};
+    // Simple dash bullet for Phase 4a 1-col (numbering later for 2-col refinements)
+    Paragraph::new().add_run(Run::new().add_text(format!("• {}", text)).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"))
+}
+
+#[tauri::command]
+fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, template_key: String, save_path: String) -> Result<String, String> {
+    let data: ResumeGenerateRequest = serde_json::from_str(&data_json).map_err(|e| format!("Invalid data_json: {}", e))?;
+    let full_name = if data.full_name.trim().is_empty() { "Resume".to_string() } else { data.full_name.clone() };
+    // 1-col generation (Phase 4a) — formalized from Mayari generate.js style
+    use docx_rs::*;
+    let mut doc = Docx::new();
+
+    // Header: name + contact
+    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(38).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
+    if let Some(contact) = &data.contact {
+        let mut contact_line = String::new();
+        if let Some(p) = &contact.phone { if !p.is_empty() { contact_line.push_str(p); contact_line.push_str("  |  "); } }
+        if let Some(e) = &contact.email { if !e.is_empty() { contact_line.push_str(e); contact_line.push_str("  |  "); } }
+        if let Some(a) = &contact.address { if !a.is_empty() { contact_line.push_str(a); contact_line.push_str("  |  "); } }
+        if let Some(l) = &contact.linkedin { if !l.is_empty() { contact_line.push_str(l); } }
+        let contact_line = contact_line.trim().trim_end_matches('|').trim().to_string();
+        if !contact_line.is_empty() {
+            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(contact_line).size(20).fonts(RunFonts::new().ascii("Calibri")).color("555555")));
+        }
+    }
+    // Photo for *_photo variants (35x45mm ~ 133x170 at 96dpi, emu 9525 per inch)
+    if template_key.ends_with("_photo") {
+        if let Some(p) = &data.photo_path {
+            if !p.is_empty() && Path::new(p).exists() {
+                if let Ok(buf) = fs::read(p) {
+                    let pic = Pic::new(&buf).size(133 * 9525, 170 * 9525);
+                    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_image(pic)));
+                }
+            }
+        }
+    }
+    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text("").size(2)));
+
+    if let Some(summary) = &data.summary {
+        if !summary.trim().is_empty() {
+            doc = doc.add_paragraph(resume_heading("Summary"));
+            doc = doc.add_paragraph(resume_body(summary));
+        }
+    }
+    if let Some(edus) = &data.education {
+        if !edus.is_empty() {
+            doc = doc.add_paragraph(resume_heading("Education"));
+            for e in edus {
+                let line = format!("{} — {} ({})", e.school, e.degree, e.year);
+                doc = doc.add_paragraph(resume_body(&line));
+            }
+        }
+    }
+    if let Some(exps) = &data.experience {
+        if !exps.is_empty() {
+            doc = doc.add_paragraph(resume_heading("Experience"));
+            for ex in exps {
+                let title = format!("{} — {} ({} - {})", ex.role, ex.company, ex.start_date, ex.end_date);
+                doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(title).bold().size(22).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
+                for b in &ex.bullets {
+                    if !b.trim().is_empty() {
+                        doc = doc.add_paragraph(resume_bullet(b));
+                    }
+                }
+            }
+        }
+    }
+    if let Some(skills) = &data.skills {
+        if !skills.is_empty() {
+            doc = doc.add_paragraph(resume_heading("Skills"));
+            for s in skills {
+                if !s.trim().is_empty() {
+                    doc = doc.add_paragraph(resume_bullet(s));
+                }
+            }
+        }
+    }
+    if let Some(certs) = &data.certifications {
+        if !certs.is_empty() {
+            doc = doc.add_paragraph(resume_heading("Certifications"));
+            for c in certs {
+                let line = format!("{} — {} ({})", c.name, c.issuer, c.year);
+                doc = doc.add_paragraph(resume_body(&line));
+            }
+        }
+    }
+
+    let mut out_path = PathBuf::from(&save_path);
+    if out_path.extension().is_none_or(|e| e != "docx") {
+        out_path.set_extension("docx");
+    }
+    if let Some(parent) = out_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("Failed to create output dir: {}", e))?;
+    }
+    let file = std::fs::File::create(&out_path).map_err(|e| format!("Failed to create file: {}", e))?;
+    doc.build().pack(file).map_err(|e| format!("Docx build error: {}", e))?;
+
+    // Auto-save to DB (insert or update by full_name + template_key)
+    let db_path = activity_db_path(&app_handle);
+    if let Ok(conn) = Connection::open(&db_path) {
+        let now = Utc::now().to_rfc3339();
+        let docx_str = out_path.to_string_lossy().to_string();
+        let existing: Option<i64> = conn.query_row("SELECT id FROM resumes WHERE full_name = ?1 AND template_key = ?2", rusqlite::params![full_name, template_key], |r| r.get(0)).ok();
+        if let Some(id) = existing {
+            let _ = conn.execute("UPDATE resumes SET data_json = ?1, docx_path = ?2, updated_at = ?3 WHERE id = ?4", rusqlite::params![data_json, docx_str, now, id]);
+        } else {
+            let _ = conn.execute("INSERT INTO resumes (full_name, template_key, data_json, docx_path, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)", rusqlite::params![full_name, template_key, data_json, docx_str, now]);
+        }
+    }
+
+    Ok(out_path.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
     let config = load_config(&app_handle)?;
@@ -2690,6 +2861,7 @@ pub fn run() {
                 get_resume,
                 list_resumes,
                 delete_resume,
+                generate_resume_docx,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
