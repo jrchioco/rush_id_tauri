@@ -1966,6 +1966,48 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     Ok(out_path.to_string_lossy().to_string())
 }
 
+#[derive(Debug, Serialize)]
+struct GenerateResumeResult {
+    docx_path: String,
+    pdf_path: Option<String>,
+}
+
+#[tauri::command]
+fn generate_resume(app_handle: tauri::AppHandle, data_json: String, template_key: String, save_stem_path: String) -> Result<GenerateResumeResult, String> {
+    // Generate docx via existing logic, then try soffice for pdf
+    let docx_path_str = generate_resume_docx(app_handle.clone(), data_json.clone(), template_key.clone(), save_stem_path.clone())?;
+    let docx_path = PathBuf::from(&docx_path_str);
+    let pdf_path = docx_path.with_extension("pdf");
+    // Try soffice variants
+    let soffice_bins = ["soffice", "libreoffice", "soffice.bin"];
+    let mut pdf_ok = false;
+    if let Some(parent) = docx_path.parent() {
+        for bin in &soffice_bins {
+            let out = Command::new(bin)
+                .args(["--headless", "--convert-to", "pdf", "--outdir", &parent.to_string_lossy().to_string(), &docx_path.to_string_lossy().to_string()])
+                .output();
+            if let Ok(o) = out {
+                if o.status.success() && pdf_path.exists() {
+                    pdf_ok = true;
+                    break;
+                }
+            }
+        }
+    }
+    let pdf_opt = if pdf_ok { Some(pdf_path.to_string_lossy().to_string()) } else { None };
+    // Update DB with pdf_path if generated
+    if let Some(ref pdf) = pdf_opt {
+        let db_path = activity_db_path(&app_handle);
+        if let Ok(conn) = Connection::open(&db_path) {
+            let now = Utc::now().to_rfc3339();
+            let data: ResumeGenerateRequest = serde_json::from_str(&data_json).unwrap_or(ResumeGenerateRequest { full_name: "Resume".to_string(), template_key: template_key.clone(), contact: None, summary: None, education: None, experience: None, skills: None, certifications: None, photo_path: None });
+            let full_name = if data.full_name.trim().is_empty() { "Resume".to_string() } else { data.full_name.clone() };
+            let _ = conn.execute("UPDATE resumes SET pdf_path = ?1, updated_at = ?2 WHERE full_name = ?3 AND template_key = ?4", rusqlite::params![pdf, now, full_name, template_key]);
+        }
+    }
+    Ok(GenerateResumeResult { docx_path: docx_path_str, pdf_path: pdf_opt })
+}
+
 fn read_resume_template(app_handle: &tauri::AppHandle) -> Result<String, String> {
     let res = resource_dir(app_handle);
     let candidates = [
@@ -2996,6 +3038,7 @@ pub fn run() {
                 list_resumes,
                 delete_resume,
                 generate_resume_docx,
+                generate_resume,
                 export_resume_template,
                 get_resume_template,
          ])
