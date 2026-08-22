@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Upload, User, Mail, Phone, MapPin, Link2 } from "lucide-react";
+import { Upload, User, Mail, Phone, MapPin, Link2, Plus, Trash2, Save } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 
 export type ResumeTemplateKey = "col1_nophoto" | "col1_photo" | "col2_nophoto" | "col2_photo";
 
@@ -25,14 +26,20 @@ const TEMPLATES: { key: ResumeTemplateKey; label: string; desc: string }[] = [
 
 interface Props {
   onBack?: () => void;
+  initialData?: ResumeFormData;
 }
 
-export default function ResumeForm({ onBack }: Props) {
-  const [template, setTemplate] = useState<ResumeTemplateKey>("col1_nophoto");
-  const [fullName, setFullName] = useState("");
-  const [contact, setContact] = useState({ phone: "", email: "", address: "", linkedin: "" });
-  const [summary, setSummary] = useState("");
-  const [photoPath, setPhotoPath] = useState<string>("");
+export default function ResumeForm({ onBack, initialData }: Props) {
+  const [template, setTemplate] = useState<ResumeTemplateKey>(initialData?.template_key ?? "col1_nophoto");
+  const [fullName, setFullName] = useState(initialData?.full_name ?? "");
+  const [contact, setContact] = useState(initialData?.contact ?? { phone: "", email: "", address: "", linkedin: "" });
+  const [summary, setSummary] = useState(initialData?.summary ?? "");
+  const [photoPath, setPhotoPath] = useState<string>(initialData?.photoPath ?? "");
+  const [education, setEducation] = useState<{ school: string; degree: string; year: string }[]>(initialData?.education ?? []);
+  const [experience, setExperience] = useState<{ company: string; role: string; start_date: string; end_date: string; bullets: string[] }[]>(initialData?.experience ?? []);
+  const [skills, setSkills] = useState<string[]>(initialData?.skills ?? []);
+  const [skillsDraft, setSkillsDraft] = useState("");
+  const [certifications, setCertifications] = useState<{ name: string; issuer: string; year: string }[]>(initialData?.certifications ?? []);
 
   const isPhoto = template.endsWith("_photo");
 
@@ -46,6 +53,83 @@ export default function ResumeForm({ onBack }: Props) {
     }
   };
 
+  const addEducation = () => setEducation([...education, { school: "", degree: "", year: "" }]);
+  const updateEducation = (i: number, patch: Partial<{ school: string; degree: string; year: string }>) => {
+    const next = [...education];
+    next[i] = { ...next[i], ...patch };
+    setEducation(next);
+  };
+  const removeEducation = (i: number) => setEducation(education.filter((_, idx) => idx !== i));
+
+  const addExperience = () => setExperience([...experience, { company: "", role: "", start_date: "", end_date: "", bullets: [""] }]);
+  const updateExperience = (i: number, patch: Partial<{ company: string; role: string; start_date: string; end_date: string }>) => {
+    const next = [...experience];
+    next[i] = { ...next[i], ...patch };
+    setExperience(next);
+  };
+  const removeExperience = (i: number) => setExperience(experience.filter((_, idx) => idx !== i));
+  const addBullet = (ei: number) => {
+    const next = [...experience];
+    next[ei].bullets = [...next[ei].bullets, ""];
+    setExperience(next);
+  };
+  const updateBullet = (ei: number, bi: number, val: string) => {
+    const next = [...experience];
+    next[ei].bullets[bi] = val;
+    setExperience(next);
+  };
+  const removeBullet = (ei: number, bi: number) => {
+    const next = [...experience];
+    next[ei].bullets = next[ei].bullets.filter((_, idx) => idx !== bi);
+    if (next[ei].bullets.length === 0) next[ei].bullets = [""];
+    setExperience(next);
+  };
+
+  const addSkillFromDraft = () => {
+    const parts = skillsDraft.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+    setSkills([...skills, ...parts]);
+    setSkillsDraft("");
+  };
+  const removeSkill = (i: number) => setSkills(skills.filter((_, idx) => idx !== i));
+
+  const addCert = () => setCertifications([...certifications, { name: "", issuer: "", year: "" }]);
+  const updateCert = (i: number, patch: Partial<{ name: string; issuer: string; year: string }>) => {
+    const next = [...certifications];
+    next[i] = { ...next[i], ...patch };
+    setCertifications(next);
+  };
+  const removeCert = (i: number) => setCertifications(certifications.filter((_, idx) => idx !== i));
+
+  const handleSaveJson = async () => {
+    if (!fullName.trim()) {
+      toast.error("Full name is required");
+      return;
+    }
+    const data: ResumeFormData = {
+      template_key: template,
+      full_name: fullName.trim(),
+      contact: { phone: contact.phone.trim(), email: contact.email.trim(), address: contact.address.trim(), linkedin: contact.linkedin.trim() },
+      summary: summary.trim(),
+      education: education.filter((e) => e.school || e.degree || e.year),
+      experience: experience
+        .filter((e) => e.company || e.role)
+        .map((e) => ({ ...e, bullets: e.bullets.filter((b) => b.trim()) })),
+      skills: skills.filter((s) => s.trim()),
+      certifications: certifications.filter((c) => c.name || c.issuer || c.year),
+      photoPath: isPhoto ? photoPath : undefined,
+    };
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const path = await save({ filters: [{ name: "JSON", extensions: ["json"] }], defaultPath: `${fullName.replace(/[^\w]+/g, "_")}_resume.json` });
+      if (!path) return;
+      await invoke("write_file", { path, content: JSON.stringify(data, null, 2) });
+      toast.success(`Saved ${path}`);
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+
   return (
     <div className="flex flex-col gap-5">
       {onBack && (
@@ -54,7 +138,7 @@ export default function ResumeForm({ onBack }: Props) {
 
       <div>
         <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide">Resume Details</h3>
-        <p className="text-xs font-mono text-[#555] mt-0.5">Fill the fields — repeatable sections (education, experience, skills) land in Phase 3b. Photo appears for *_photo templates.</p>
+        <p className="text-xs font-mono text-[#555] mt-0.5">All fields save to the same shape as resume-template.json (minus _instructions). Use Save as JSON to export.</p>
       </div>
 
       <div>
@@ -113,9 +197,92 @@ export default function ResumeForm({ onBack }: Props) {
         )}
       </div>
 
-      <div className="p-3 rounded-lg bg-[#1a1508] border border-[#c8881a]/30">
-        <p className="text-xs font-mono text-[#c8881a]">Phase 3a — skeleton + template picker only. Repeatable education / experience / skills / certifications + Save as JSON land in Phase 3b.</p>
+      <div className="p-4 rounded-xl bg-[#0c0c0b] border border-[#2a2a28]">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-mono text-[#888] tracking-widest uppercase">Education</span>
+          <button onClick={addEducation} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+        </div>
+        {education.length === 0 ? <p className="text-xs font-mono text-[#444]">No education entries — click Add.</p> : education.map((ed, i) => (
+          <div key={i} className="grid grid-cols-3 gap-2 mb-2 p-2 rounded-lg bg-[#111110] border border-[#2a2a28]">
+            <input value={ed.school} onChange={(e) => updateEducation(i, { school: e.target.value })} placeholder="School" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+            <input value={ed.degree} onChange={(e) => updateEducation(i, { degree: e.target.value })} placeholder="Degree" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+            <div className="flex gap-1">
+              <input value={ed.year} onChange={(e) => updateEducation(i, { year: e.target.value })} placeholder="Year" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+              <button onClick={() => removeEducation(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+            </div>
+          </div>
+        ))}
       </div>
+
+      <div className="p-4 rounded-xl bg-[#0c0c0b] border border-[#2a2a28]">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-mono text-[#888] tracking-widest uppercase">Experience</span>
+          <button onClick={addExperience} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add Role</button>
+        </div>
+        {experience.length === 0 ? <p className="text-xs font-mono text-[#444]">No experience entries — click Add Role.</p> : experience.map((ex, ei) => (
+          <div key={ei} className="mb-3 p-3 rounded-lg bg-[#111110] border border-[#2a2a28]">
+            <div className="grid grid-cols-2 gap-2">
+              <input value={ex.company} onChange={(e) => updateExperience(ei, { company: e.target.value })} placeholder="Company" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+              <input value={ex.role} onChange={(e) => updateExperience(ei, { role: e.target.value })} placeholder="Role" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+              <input value={ex.start_date} onChange={(e) => updateExperience(ei, { start_date: e.target.value })} placeholder="Start date" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+              <div className="flex gap-1">
+                <input value={ex.end_date} onChange={(e) => updateExperience(ei, { end_date: e.target.value })} placeholder="End date" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+                <button onClick={() => removeExperience(ei)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[10px] font-mono text-[#555] tracking-widest uppercase">Bullets</span>
+              <button onClick={() => addBullet(ei)} className="px-2 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30">+ Bullet</button>
+            </div>
+            {ex.bullets.map((b, bi) => (
+              <div key={bi} className="flex gap-1 mt-1">
+                <input value={b} onChange={(e) => updateBullet(ei, bi, e.target.value)} placeholder="Bullet point" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+                <button onClick={() => removeBullet(ei, bi)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 rounded-xl bg-[#0c0c0b] border border-[#2a2a28]">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-mono text-[#888] tracking-widest uppercase">Skills</span>
+        </div>
+        <div className="flex gap-2">
+          <input value={skillsDraft} onChange={(e) => setSkillsDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkillFromDraft(); } }} placeholder="Add skill, comma separated — press Enter" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-1.5 text-sm text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+          <button onClick={addSkillFromDraft} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:border-[#c8881a]/30 text-xs font-mono">Add</button>
+        </div>
+        {skills.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {skills.map((s, i) => (
+              <span key={i} className="px-2 py-1 rounded-full bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] flex items-center gap-1">
+                {s} <button onClick={() => removeSkill(i)} className="text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 rounded-xl bg-[#0c0c0b] border border-[#2a2a28]">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-mono text-[#888] tracking-widest uppercase">Certifications</span>
+          <button onClick={addCert} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+        </div>
+        {certifications.length === 0 ? <p className="text-xs font-mono text-[#444]">No certifications — click Add.</p> : certifications.map((c, i) => (
+          <div key={i} className="grid grid-cols-3 gap-2 mb-2 p-2 rounded-lg bg-[#111110] border border-[#2a2a28]">
+            <input value={c.name} onChange={(e) => updateCert(i, { name: e.target.value })} placeholder="Name" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+            <input value={c.issuer} onChange={(e) => updateCert(i, { issuer: e.target.value })} placeholder="Issuer" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+            <div className="flex gap-1">
+              <input value={c.year} onChange={(e) => updateCert(i, { year: e.target.value })} placeholder="Year" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+              <button onClick={() => removeCert(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button onClick={handleSaveJson} className="self-end px-4 py-2 rounded-lg bg-[#c8881a] text-[#0c0c0b] font-bold text-sm tracking-wide hover:bg-[#e8a030] flex items-center gap-2">
+        <Save className="w-4 h-4" /> Save as JSON
+      </button>
     </div>
   );
 }
