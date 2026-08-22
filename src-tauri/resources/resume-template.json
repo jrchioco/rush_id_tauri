@@ -1,0 +1,45 @@
+{
+  "_instructions": "Fill this JSON via any LLM or manually. Keys prefixed with _ are instructions — they will be stripped on import. Leave empty strings/arrays where not applicable. Template key must be one of: col1_nophoto, col1_photo, col2_nophoto, col2_photo.",
+  "_note_template_key": "Choose layout: col1_nophoto (1-col no photo), col1_photo (1-col 35x45mm photo), col2_nophoto (2-col no photo), col2_photo (2-col with photo)",
+  "template_key": "col1_nophoto",
+  "full_name": "",
+  "contact": {
+    "_note": "All contact fields optional but at least one recommended",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "linkedin": ""
+  },
+  "summary": "",
+  "_note_summary": "2-3 sentence professional summary",
+  "education": [
+    {
+      "school": "",
+      "degree": "",
+      "year": ""
+    }
+  ],
+  "_note_education": "Add as many entries as needed, remove example if empty",
+  "experience": [
+    {
+      "company": "",
+      "role": "",
+      "start_date": "",
+      "end_date": "",
+      "bullets": ["", ""]
+    }
+  ],
+  "_note_experience": "Bullets: 4-6 per role, substantive",
+  "skills": [],
+  "_note_skills": "Array of strings, e.g. [\"Customer Service\", \"Cashiering\"]",
+  "certifications": [
+    {
+      "name": "",
+      "issuer": "",
+      "year": ""
+    }
+  ],
+  "_note_certifications": "Certificates & Training",
+  "_note_photo": "For *_photo templates, set photoPath to local image file path before generating docx (optional)",
+  "photoPath": ""
+}

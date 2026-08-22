@@ -60,10 +60,19 @@ export default function ResumeBuilderEntry() {
         {CARDS.map(({ key, label, desc, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => {
+            onClick={async () => {
               if (key === "fill") { setEditData(null); setView("form"); }
               else if (key === "browse") setView("browse");
-              else toast.info(`${label} — coming soon (Phase ${key === "import" ? "6b" : key === "generate" ? "6a" : "5"})`);
+              else if (key === "generate") {
+                try {
+                  const { save } = await import("@tauri-apps/plugin-dialog");
+                  const p = await save({ filters: [{ name: "JSON", extensions: ["json"] }], defaultPath: "resume-template.json" });
+                  if (!p) return;
+                  const out = await invoke<string>("export_resume_template", { destPath: p });
+                  toast.success(`Template saved to ${out}`);
+                } catch (e) { toast.error(String(e)); }
+              }
+              else toast.info(`${label} — coming soon (Phase 6b)`);
             }}
             className="text-left p-5 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group"
           >

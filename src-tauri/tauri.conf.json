@@ -29,7 +29,8 @@
     "targets": "all",
     "resources": {
       "SVGs/*": "SVGs/",
-      "default-pricing.json": "."
+      "default-pricing.json": ".",
+      "resources/resume-template.json": "resources/resume-template.json"
     },
     "icon": [
       "icons/32x32.png",

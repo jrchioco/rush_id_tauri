@@ -1931,6 +1931,27 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
 }
 
 #[tauri::command]
+fn export_resume_template(app_handle: tauri::AppHandle, dest_path: String) -> Result<String, String> {
+    let res = resource_dir(&app_handle);
+    let candidates = [
+        res.join("resources").join("resume-template.json"),
+        res.join("resume-template.json"),
+        PathBuf::from("src-tauri/resources/resume-template.json"),
+        PathBuf::from("resources/resume-template.json"),
+    ];
+    let mut src: Option<PathBuf> = None;
+    for c in &candidates {
+        if c.exists() { src = Some(c.clone()); break; }
+    }
+    let src = src.ok_or("Template not found in bundle".to_string())?;
+    let content = fs::read_to_string(&src).map_err(|e| format!("Failed to read template: {}", e))?;
+    let dest = PathBuf::from(&dest_path);
+    if let Some(parent) = dest.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+    fs::write(&dest, content).map_err(|e| e.to_string())?;
+    Ok(dest.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 fn get_key_count(app_handle: tauri::AppHandle) -> Result<usize, String> {
     let config = load_config(&app_handle)?;
     Ok(config.api_keys.poof.len() + config.api_keys.removebg.len())
@@ -2929,6 +2950,7 @@ pub fn run() {
                 list_resumes,
                 delete_resume,
                 generate_resume_docx,
+                export_resume_template,
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
