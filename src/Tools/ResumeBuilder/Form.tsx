@@ -38,6 +38,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   const [contact, setContact] = useState(initialData?.contact ?? { phone: "", email: "", address: "", linkedin: "" });
   const [summary, setSummary] = useState(initialData?.summary ?? "");
   const [photoPath, setPhotoPath] = useState<string>(initialData?.photo_path ?? initialData?.photoPath ?? "");
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [education, setEducation] = useState<{ school: string; degree: string; year: string }[]>(initialData?.education ?? []);
   const [experience, setExperience] = useState<{ company: string; role: string; start_date: string; end_date: string; bullets: string[] }[]>(initialData?.experience ?? []);
@@ -51,10 +52,16 @@ export default function ResumeForm({ onBack, initialData }: Props) {
     try {
       const p = await invoke<string>("write_temp_photo", { base64, fileName });
       setPhotoPath(p);
+      setPhotoPreview(`data:image/png;base64,${base64}`);
       toast.success(`Photo ready — ${p.split(/[\\/]/).pop()}`);
     } catch (e) {
       toast.error(String(e));
     }
+  };
+
+  const handlePhotoClear = () => {
+    setPhotoPath("");
+    setPhotoPreview(null);
   };
 
   const addEducation = () => setEducation([...education, { school: "", degree: "", year: "" }]);
@@ -217,10 +224,12 @@ export default function ResumeForm({ onBack, initialData }: Props) {
 
         {isPhoto && (
           <div className="flex items-center gap-3">
+            {photoPreview && <img src={photoPreview} alt="Photo preview" className="w-10 h-14 object-cover rounded border border-[#2a2a28]" />}
             <button onClick={() => setPhotoModalOpen(true)} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5">
               <Upload className="w-3.5 h-3.5" /> {photoPath ? "Change Photo" : "Upload Photo (35×45mm)"}
             </button>
             {photoPath && <span className="text-xs font-mono text-[#555] truncate max-w-[260px]">{photoPath}</span>}
+            {photoPath && <button onClick={handlePhotoClear} className="p-1 rounded text-[#555] hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>}
           </div>
         )}
       </div>
