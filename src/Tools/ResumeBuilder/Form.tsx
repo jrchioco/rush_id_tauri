@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Upload, User, Mail, Phone, MapPin, Link2, Plus, Trash2, Save } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { PhotoCropModal } from "./PhotoCropModal";
 
 export type ResumeTemplateKey = "col1_nophoto" | "col1_photo" | "col2_nophoto" | "col2_photo";
 
@@ -37,6 +38,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   const [contact, setContact] = useState(initialData?.contact ?? { phone: "", email: "", address: "", linkedin: "" });
   const [summary, setSummary] = useState(initialData?.summary ?? "");
   const [photoPath, setPhotoPath] = useState<string>(initialData?.photo_path ?? initialData?.photoPath ?? "");
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [education, setEducation] = useState<{ school: string; degree: string; year: string }[]>(initialData?.education ?? []);
   const [experience, setExperience] = useState<{ company: string; role: string; start_date: string; end_date: string; bullets: string[] }[]>(initialData?.experience ?? []);
   const [skills, setSkills] = useState<string[]>(initialData?.skills ?? []);
@@ -45,11 +47,11 @@ export default function ResumeForm({ onBack, initialData }: Props) {
 
   const isPhoto = template.endsWith("_photo");
 
-  const handlePhotoPick = async () => {
+  const handlePhotoConfirm = async (base64: string, fileName: string) => {
     try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const p = await open({ multiple: false, filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }] });
-      if (p && typeof p === "string") setPhotoPath(p);
+      const p = await invoke<string>("write_temp_photo", { base64, fileName });
+      setPhotoPath(p);
+      toast.success(`Photo ready — ${p.split(/[\\/]/).pop()}`);
     } catch (e) {
       toast.error(String(e));
     }
@@ -215,7 +217,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
 
         {isPhoto && (
           <div className="flex items-center gap-3">
-            <button onClick={handlePhotoPick} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5">
+            <button onClick={() => setPhotoModalOpen(true)} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5">
               <Upload className="w-3.5 h-3.5" /> {photoPath ? "Change Photo" : "Upload Photo (35×45mm)"}
             </button>
             {photoPath && <span className="text-xs font-mono text-[#555] truncate max-w-[260px]">{photoPath}</span>}
@@ -314,6 +316,8 @@ export default function ResumeForm({ onBack, initialData }: Props) {
           <Save className="w-4 h-4" /> Generate Resume
         </button>
       </div>
+
+      <PhotoCropModal open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} onConfirm={handlePhotoConfirm} />
     </div>
   );
 }

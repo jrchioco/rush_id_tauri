@@ -1481,6 +1481,21 @@ fn write_file(path: String, content: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn write_temp_photo(app_handle: tauri::AppHandle, base64: String, file_name: String) -> Result<String, String> {
+    let dir = app_handle.path().app_local_data_dir().map_err(|e| e.to_string())?.join("tmp");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let stem = file_name.split('.').next().unwrap_or("photo");
+    let safe: String = stem.chars().map(|c| if c.is_alphanumeric() { c } else { '_' }).collect();
+    let ts = chrono::Utc::now().format("%Y%m%d%H%M%S").to_string();
+    let path = dir.join(format!("resume_photo_{}_{}.png", safe, ts));
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(base64.trim())
+        .map_err(|e| e.to_string())?;
+    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
@@ -3029,6 +3044,7 @@ pub fn run() {
                  update_service_price,
                  export_pricing,
                  write_file,
+                 write_temp_photo,
                  read_file,
                  import_pricing,
                  get_services_summary,
