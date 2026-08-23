@@ -1840,31 +1840,84 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     let margins = PageMargin::new().top(720).bottom(720).left(720).right(720);
     let mut doc = Docx::new().page_size(11906, 16838).page_margin(margins);
 
-    // Header: name + contact
-    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(38).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
-    if let Some(contact) = &data.contact {
-        let mut contact_line = String::new();
-        if let Some(p) = &contact.phone { if !p.is_empty() { contact_line.push_str(p); contact_line.push_str("  |  "); } }
-        if let Some(e) = &contact.email { if !e.is_empty() { contact_line.push_str(e); contact_line.push_str("  |  "); } }
-        if let Some(a) = &contact.address { if !a.is_empty() { contact_line.push_str(a); contact_line.push_str("  |  "); } }
-        if let Some(l) = &contact.linkedin { if !l.is_empty() { contact_line.push_str(l); } }
-        let contact_line = contact_line.trim().trim_end_matches('|').trim().to_string();
-        if !contact_line.is_empty() {
-            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(contact_line).size(20).fonts(RunFonts::new().ascii("Calibri")).color("555555")));
+    let has_photo = template_key.ends_with("_photo") && data.photo_path.as_ref().map(|p| !p.is_empty() && Path::new(p).exists()).unwrap_or(false);
+    let photo_buf: Option<Vec<u8>> = if has_photo { data.photo_path.as_ref().and_then(|p| fs::read(p).ok()) } else { None };
+
+    if template_key == "col1_photo" && photo_buf.is_some() {
+        let buf = photo_buf.clone().unwrap();
+        let pic = Pic::new(&buf).size(mm_to_emu(35.0), mm_to_emu(45.0));
+        let header_border = ParagraphBorder::new(ParagraphBorderPosition::Bottom).val(BorderType::Single).size(18).color(INK);
+        let name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+        let mut text_cell = TableCell::new().clear_all_border().add_paragraph(name_para);
+        let email_opt = data.contact.as_ref().and_then(|c| c.email.clone()).filter(|e| !e.trim().is_empty()).map(|e| e.trim().to_string());
+        let mut contact_lines: Vec<String> = Vec::new();
+        if let Some(contact) = &data.contact {
+            if let Some(a) = &contact.address { if !a.trim().is_empty() { contact_lines.push(a.trim().to_string()); } }
+            if let Some(p) = &contact.phone { if !p.trim().is_empty() { contact_lines.push(p.trim().to_string()); } }
+            if let Some(e) = &contact.email { if !e.trim().is_empty() { contact_lines.push(e.trim().to_string()); } }
         }
-    }
-    // Photo for *_photo variants (35x45mm ~ 133x170 at 96dpi, emu 9525 per inch)
-    if template_key.ends_with("_photo") {
-        if let Some(p) = &data.photo_path {
-            if !p.is_empty() && Path::new(p).exists() {
-                if let Ok(buf) = fs::read(p) {
-                    let pic = Pic::new(&buf).size(133 * 9525, 170 * 9525);
-                    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_image(pic)));
-                }
+        for line in contact_lines.iter() {
+            let is_email = email_opt.as_ref().map(|e| e == line).unwrap_or(false);
+            let para = if is_email {
+                let hyperlink = Hyperlink::new(format!("mailto:{}", line), HyperlinkType::External).add_run(Run::new().add_text(line.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"));
+                Paragraph::new().add_hyperlink(hyperlink)
+            } else {
+                Paragraph::new().add_run(Run::new().add_text(line.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE))
+            };
+            text_cell = text_cell.add_paragraph(para);
+        }
+        text_cell = text_cell.width(7000, WidthType::Dxa).vertical_align(VAlignType::Top);
+        let mut photo_cell = TableCell::new().clear_all_border().add_paragraph(Paragraph::new().align(AlignmentType::Right).add_run(Run::new().add_image(pic)));
+        photo_cell = photo_cell.width(3286, WidthType::Dxa).vertical_align(VAlignType::Top);
+        let header_table = Table::new(vec![TableRow::new(vec![text_cell, photo_cell])]).set_grid(vec![7000, 3286]).clear_all_border().align(TableAlignmentType::Left).indent(0);
+        doc = doc.add_table(header_table);
+        let mut underline_para = Paragraph::new().add_run(Run::new().add_text("").size(2));
+        underline_para.property = underline_para.property.clear_all_borders();
+        underline_para.property = underline_para.property.set_border(header_border);
+        doc = doc.add_paragraph(underline_para);
+        doc = doc.add_paragraph(Paragraph::new());
+    } else {
+        let header_border = ParagraphBorder::new(ParagraphBorderPosition::Bottom).val(BorderType::Single).size(18).color(INK);
+        if template_key.starts_with("col1") {
+            let mut contact_lines: Vec<String> = Vec::new();
+            if let Some(contact) = &data.contact {
+                if let Some(a) = &contact.address { if !a.trim().is_empty() { contact_lines.push(a.trim().to_string()); } }
+                if let Some(p) = &contact.phone { if !p.trim().is_empty() { contact_lines.push(p.trim().to_string()); } }
+                if let Some(e) = &contact.email { if !e.trim().is_empty() { contact_lines.push(e.trim().to_string()); } }
             }
+            if !contact_lines.is_empty() {
+                let email_opt = data.contact.as_ref().and_then(|c| c.email.clone()).filter(|e| !e.trim().is_empty()).map(|e| e.trim().to_string());
+                let name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+                doc = doc.add_paragraph(name_para);
+                for (idx, line) in contact_lines.iter().enumerate() {
+                    let is_last = idx == contact_lines.len() - 1;
+                    let is_email = email_opt.as_ref().map(|e| e == line).unwrap_or(false);
+                    let mut para = if is_email {
+                        let hyperlink = Hyperlink::new(format!("mailto:{}", line), HyperlinkType::External).add_run(Run::new().add_text(line.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"));
+                        Paragraph::new().add_hyperlink(hyperlink)
+                    } else {
+                        Paragraph::new().add_run(Run::new().add_text(line.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE))
+                    };
+                    if is_last {
+                        para.property = para.property.clear_all_borders();
+                        para.property = para.property.set_border(header_border.clone());
+                    }
+                    doc = doc.add_paragraph(para);
+                }
+            } else {
+                let mut name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+                name_para.property = name_para.property.clear_all_borders();
+                name_para.property = name_para.property.set_border(header_border);
+                doc = doc.add_paragraph(name_para);
+            }
+        } else {
+            let mut name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+            name_para.property = name_para.property.clear_all_borders();
+            name_para.property = name_para.property.set_border(header_border);
+            doc = doc.add_paragraph(name_para);
         }
+        doc = doc.add_paragraph(Paragraph::new());
     }
-    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text("").size(2)));
 
     if template_key.starts_with("col2") {
         // 2-column via borderless table 33%/67% — sidebar #F6F7FA shading, left navy spine via outer border
