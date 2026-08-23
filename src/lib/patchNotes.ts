@@ -15,6 +15,11 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
       "Converting creates a timestamped batch-convert-YYYYMMDD-HHMMSS folder in the folder you pick — original names are kept, copies get -1, -2, and one bad file won’t stop the rest.",
       "While it runs, you’ll see Converting 3/20 and Effie gets busy; on finish Effie cheers on clean batches and looks worried when something fails so you know to retry. Good files auto-uncheck, failed ones stay checked — just hit Convert again.",
       "Your batch folder pops open automatically, and Open Folder stays there if you close it. Every control now has a hover tip explaining what it does.",
+      "Resume Builder is here too — also under TOOLS. Pick from 4 layouts (1-col and 2-col, each with or without a 35×45mm passport photo), fill in your details, and generate a polished A4 docx in the native house style (Calibri, navy accent).",
+      "Resume Builder saves everything to your local database so you can browse past resumes, search, and jump back to edit. Generate Resume exports both docx and pdf in one click (pdf needs LibreOffice — if it’s not installed, you still get the docx).",
+      "Adding a photo is now easy — clicking Upload Photo opens a cropper where you can drag & drop, click to browse, or paste (Ctrl+V). Crop to the exact 35×45mm passport box, tweak zoom and rotation with Alt+wheel, and see a little thumbnail before you generate.",
+      "Importing a resume is just as flexible — the Import JSON card now opens a popup where you can drop a JSON file, click to browse, or paste the JSON text straight from your chat (Ctrl+V or Paste from clipboard). Bad files are checked before you continue.",
+      "Need AI help? Generate JSON now copies a fill-in-the-blanks template to your clipboard — paste it into your LLM, get the filled JSON back, and load it with Import JSON. No API keys or cloud calls needed.",
     ],
   },
   "1.20.2": {
