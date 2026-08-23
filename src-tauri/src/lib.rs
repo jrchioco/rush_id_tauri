@@ -1837,7 +1837,8 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     let full_name = if data.full_name.trim().is_empty() { "Resume".to_string() } else { data.full_name.clone() };
     // 1-col generation (Phase 4a) — formalized from Mayari generate.js style
     use docx_rs::*;
-    let mut doc = Docx::new();
+    let margins = PageMargin::new().top(720).bottom(720).left(720).right(720);
+    let mut doc = Docx::new().page_size(11906, 16838).page_margin(margins);
 
     // Header: name + contact
     doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(38).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
