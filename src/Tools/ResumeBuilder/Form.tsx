@@ -14,6 +14,8 @@ export interface ResumeFormData {
   experience: { company: string; role: string; start_date: string; end_date: string; bullets: string[] }[];
   skills: string[];
   certifications: { name: string; issuer: string; year: string }[];
+  photo_path?: string;
+  /** legacy alias for backward compat with old saved JSON */
   photoPath?: string;
 }
 
@@ -34,7 +36,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   const [fullName, setFullName] = useState(initialData?.full_name ?? "");
   const [contact, setContact] = useState(initialData?.contact ?? { phone: "", email: "", address: "", linkedin: "" });
   const [summary, setSummary] = useState(initialData?.summary ?? "");
-  const [photoPath, setPhotoPath] = useState<string>(initialData?.photoPath ?? "");
+  const [photoPath, setPhotoPath] = useState<string>(initialData?.photo_path ?? initialData?.photoPath ?? "");
   const [education, setEducation] = useState<{ school: string; degree: string; year: string }[]>(initialData?.education ?? []);
   const [experience, setExperience] = useState<{ company: string; role: string; start_date: string; end_date: string; bullets: string[] }[]>(initialData?.experience ?? []);
   const [skills, setSkills] = useState<string[]>(initialData?.skills ?? []);
@@ -112,7 +114,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
       .map((e) => ({ ...e, bullets: e.bullets.filter((b) => b.trim()) })),
     skills: skills.filter((s) => s.trim()),
     certifications: certifications.filter((c) => c.name || c.issuer || c.year),
-    photoPath: isPhoto ? photoPath : undefined,
+    photo_path: isPhoto ? photoPath : undefined,
   });
 
   const handleSaveJson = async () => {

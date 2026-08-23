@@ -1742,6 +1742,7 @@ struct ResumeGenerateRequest {
     experience: Option<Vec<ExperienceEntry>>,
     skills: Option<Vec<String>>,
     certifications: Option<Vec<CertificationEntry>>,
+    #[serde(alias = "photoPath")]
     photo_path: Option<String>,
 }
 
