@@ -1792,12 +1792,25 @@ struct CertificationEntry {
     year: String,
 }
 
+const INK: &str = "1F2937";
+const ACCENT: &str = "2563EB";
+const MUTED_META: &str = "444444";
+const MUTED_SUBTITLE: &str = "666666";
+fn mm_to_emu(mm: f32) -> u32 {
+    (mm * 36000.0) as u32
+}
+
+fn section_heading(text: &str) -> docx_rs::Paragraph {
+    use docx_rs::{Paragraph, Run, RunFonts, LineSpacing, ParagraphBorder, ParagraphBorderPosition, BorderType};
+    let mut p = Paragraph::new().add_run(Run::new().add_text(text.to_uppercase()).bold().size(24).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+    let border = ParagraphBorder::new(ParagraphBorderPosition::Bottom).val(BorderType::Single).size(6).color(ACCENT);
+    p.property = p.property.clear_all_borders();
+    p.property = p.property.set_border(border);
+    p.line_spacing(LineSpacing::new().before(220).after(100))
+}
+
 fn resume_heading(text: &str) -> docx_rs::Paragraph {
-    use docx_rs::{Paragraph, Run, RunFonts, LineSpacing};
-    Paragraph::new()
-        .add_run(Run::new().add_text("■ ").size(16).fonts(RunFonts::new().ascii("Calibri")).color("1F2937"))
-        .add_run(Run::new().add_text(text.to_uppercase()).bold().size(23).fonts(RunFonts::new().ascii("Calibri")).color("1F2937"))
-        .line_spacing(LineSpacing::new().before(220).after(100))
+    section_heading(text)
 }
 
 fn resume_body(text: &str) -> docx_rs::Paragraph {
@@ -1806,9 +1819,16 @@ fn resume_body(text: &str) -> docx_rs::Paragraph {
 }
 
 fn resume_bullet(text: &str) -> docx_rs::Paragraph {
-    use docx_rs::{Paragraph, Run, RunFonts};
-    // Simple dash bullet for Phase 4a 1-col (numbering later for 2-col refinements)
-    Paragraph::new().add_run(Run::new().add_text(format!("• {}", text)).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"))
+    use docx_rs::{Paragraph, Run, RunFonts, SpecialIndentType};
+    Paragraph::new()
+        .add_run(Run::new().add_text(format!("•\t{}", text)).size(21).fonts(RunFonts::new().ascii("Calibri")).color("222222"))
+        .indent(Some(360), Some(SpecialIndentType::Hanging(360)), None, None)
+}
+
+fn last_bullet(mut p: docx_rs::Paragraph) -> docx_rs::Paragraph {
+    use docx_rs::LineSpacing;
+    p.property = p.property.line_spacing(LineSpacing::new().after(240));
+    p
 }
 
 #[tauri::command]
