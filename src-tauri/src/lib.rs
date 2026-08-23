@@ -1979,8 +1979,14 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             if !exps.is_empty() {
                 right_paras.push(resume_heading("Experience"));
                 for ex in exps {
-                    right_paras.push(Paragraph::new().add_run(Run::new().add_text(format!("{} — {} ({} - {})", ex.role, ex.company, ex.start_date, ex.end_date)).bold().size(22).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
-                    for b in &ex.bullets { if !b.trim().is_empty() { right_paras.push(resume_bullet(b)); } }
+                    right_paras.push(Paragraph::new().add_run(Run::new().add_text(ex.role.clone()).bold().size(24).fonts(RunFonts::new().ascii("Calibri")).color(INK)));
+                    let meta = format!("{}   |   {} – {}", ex.company, ex.start_date, ex.end_date);
+                    right_paras.push(Paragraph::new().add_run(Run::new().add_text(meta).italic().color(MUTED_META).size(21).fonts(RunFonts::new().ascii("Calibri"))));
+                    let bullets: Vec<&String> = ex.bullets.iter().filter(|b| !b.trim().is_empty()).collect();
+                    for (idx, b) in bullets.iter().enumerate() {
+                        let p = resume_bullet(b);
+                        if idx == bullets.len() - 1 { right_paras.push(last_bullet(p)); } else { right_paras.push(p); }
+                    }
                 }
             }
         }
@@ -2022,12 +2028,13 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             if !exps.is_empty() {
                 doc = doc.add_paragraph(resume_heading("Experience"));
                 for ex in exps {
-                    let title = format!("{} — {} ({} - {})", ex.role, ex.company, ex.start_date, ex.end_date);
-                    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(title).bold().size(22).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
-                    for b in &ex.bullets {
-                        if !b.trim().is_empty() {
-                            doc = doc.add_paragraph(resume_bullet(b));
-                        }
+                    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(ex.role.clone()).bold().size(24).fonts(RunFonts::new().ascii("Calibri")).color(INK)));
+                    let meta = format!("{}   |   {} – {}", ex.company, ex.start_date, ex.end_date);
+                    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(meta).italic().color(MUTED_META).size(21).fonts(RunFonts::new().ascii("Calibri"))));
+                    let bullets: Vec<&String> = ex.bullets.iter().filter(|b| !b.trim().is_empty()).collect();
+                    for (idx, b) in bullets.iter().enumerate() {
+                        let p = resume_bullet(b);
+                        if idx == bullets.len() - 1 { doc = doc.add_paragraph(last_bullet(p)); } else { doc = doc.add_paragraph(p); }
                     }
                 }
             }
@@ -2052,6 +2059,13 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             }
         }
     }
+
+    // Certification + signature block (both templates, bottom of page)
+    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text("I hereby certify that the above information is true and correct to the best of my knowledge and belief.").size(20).italic().fonts(RunFonts::new().ascii("Calibri")).color("222222")));
+    doc = doc.add_paragraph(Paragraph::new());
+    doc = doc.add_paragraph(Paragraph::new());
+    doc = doc.add_paragraph(Paragraph::new().align(AlignmentType::Right).add_run(Run::new().add_text("_____________________________").size(21).fonts(RunFonts::new().ascii("Calibri"))));
+    doc = doc.add_paragraph(Paragraph::new().align(AlignmentType::Right).add_run(Run::new().add_text("Signature over Printed Name").size(18).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)));
 
     let mut out_path = PathBuf::from(&save_path);
     if out_path.extension().is_none_or(|e| e != "docx") {
