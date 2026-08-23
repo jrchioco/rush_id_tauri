@@ -3,6 +3,7 @@ import { FileText, Upload, Download, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import ResumeForm, { ResumeFormData } from "./Form";
 import BrowseResumes from "./Browse";
+import { ImportJsonModal } from "./ImportJsonModal";
 import { invoke } from "@tauri-apps/api/core";
 
 const CARDS = [
@@ -35,6 +36,7 @@ const CARDS = [
 export default function ResumeBuilderEntry() {
   const [view, setView] = useState<"entry" | "form" | "browse">("entry");
   const [editData, setEditData] = useState<ResumeFormData | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const handleSelectResume = async (id: number) => {
     try {
       const r = await invoke<{ data_json: string }>("get_resume", { id });
@@ -71,42 +73,7 @@ export default function ResumeBuilderEntry() {
                   toast.success("Copied! Paste into your LLM chat");
                 } catch (e) { toast.error(String(e)); }
               }
-              else if (key === "import") {
-                try {
-                  const { open } = await import("@tauri-apps/plugin-dialog");
-                  const p = await open({ multiple: false, filters: [{ name: "JSON", extensions: ["json"] }] });
-                  if (!p || Array.isArray(p)) return;
-                  const content = await invoke<string>("read_file", { path: p as string });
-                  let data: any;
-                  try { data = JSON.parse(content); } catch { toast.error("Invalid JSON — not parseable"); return; }
-                  // Strip _instructions/_note keys (top level and nested)
-                  function strip(obj: any): any {
-                    if (Array.isArray(obj)) return obj.map(strip);
-                    if (obj && typeof obj === "object") {
-                      const out: any = {};
-                      for (const [k, v] of Object.entries(obj)) {
-                        if (k.startsWith("_")) continue;
-                        out[k] = strip(v);
-                      }
-                      return out;
-                    }
-                    return obj;
-                  }
-                  const clean = strip(data);
-                  const validKeys = ["col1_nophoto","col1_photo","col2_nophoto","col2_photo"];
-                  const errors: string[] = [];
-                  if (!clean.full_name || typeof clean.full_name !== "string" || !clean.full_name.trim()) errors.push("full_name missing");
-                  if (!clean.template_key || !validKeys.includes(clean.template_key)) errors.push(`template_key must be one of ${validKeys.join(", ")}`);
-                  if (clean.education && !Array.isArray(clean.education)) errors.push("education must be array");
-                  if (clean.experience && !Array.isArray(clean.experience)) errors.push("experience must be array");
-                  if (clean.skills && !Array.isArray(clean.skills)) errors.push("skills must be array");
-                  if (clean.certifications && !Array.isArray(clean.certifications)) errors.push("certifications must be array");
-                  if (errors.length) { toast.error("Import failed: " + errors.join("; ")); return; }
-                  setEditData(clean);
-                  setView("form");
-                  toast.success(`Loaded ${clean.full_name || "resume"} — review then Generate`);
-                } catch (e) { toast.error(String(e)); }
-              }
+              else if (key === "import") setImportModalOpen(true);
             }}
             className="text-left p-5 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group"
           >
@@ -122,6 +89,8 @@ export default function ResumeBuilderEntry() {
       <div className="mt-6 p-3 rounded-lg bg-[#0c0c0b] border border-[#2a2a28]">
         <p className="text-xs font-mono text-[#444]">Engine: <span className="text-[#888]">docx-rs</span> (native Rust) · Storage: <span className="text-[#888]">resumes</span> in <span className="text-[#888]">activity.db</span> · No LLM calls in-app (portable JSON contract).</p>
       </div>
+
+      <ImportJsonModal open={importModalOpen} onClose={() => setImportModalOpen(false)} onImport={(data) => { setEditData(data); setView("form"); }} />
     </div>
   );
 }
