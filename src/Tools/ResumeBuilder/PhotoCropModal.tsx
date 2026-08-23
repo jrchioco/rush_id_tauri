@@ -1,10 +1,12 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { X, Check, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ThemedModal } from "../../components/ThemedModal";
 import { RotationSidebar } from "../../components/RotationSidebar";
 import { cropImage } from "../../lib/cropImage";
+import { loadCropperImage } from "../../lib/loadCropperImage";
+import { useTauriDragDrop } from "../../lib/hooks/useTauriDragDrop";
 
 const ASPECT = 35 / 45;
 
@@ -25,6 +27,8 @@ export function PhotoCropModal({ open, onClose, onConfirm, imageSrc: initialImag
   const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -35,8 +39,57 @@ export function PhotoCropModal({ open, onClose, onConfirm, imageSrc: initialImag
       setRotation(0);
       setCroppedAreaPixels(null);
       setBusy(false);
+      setLoading(false);
     }
   }, [open, initialImageSrc, initialFileName]);
+
+  const handleLoad = useCallback(async (source: File | string) => {
+    setLoading(true);
+    try {
+      const result = await loadCropperImage(source);
+      setImageSrc(result.dataUrl);
+      setFileName(result.fileName);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setRotation(0);
+      setCroppedAreaPixels(null);
+    } catch (e) {
+      toast.error(`Failed to load image: ${e}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const { isDragging } = useTauriDragDrop((paths) => {
+    if (!open) return;
+    const validExts = ["jpg", "jpeg", "png", "webp", "gif", "bmp"];
+    const p = paths.find((pp) => validExts.includes(pp.split(".").pop()?.toLowerCase() ?? ""));
+    if (!p) {
+      toast.error("No valid image file dropped");
+      return;
+    }
+    handleLoad(p);
+    if (paths.length > 1) toast.error(`${paths.length - 1} file(s) skipped — only one photo allowed`);
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile() ?? e.clipboardData?.files?.[0];
+          if (file) {
+            handleLoad(file);
+            break;
+          }
+        }
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [open, handleLoad]);
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
@@ -79,7 +132,17 @@ export function PhotoCropModal({ open, onClose, onConfirm, imageSrc: initialImag
         </button>
       </div>
 
-      <div className="flex-1 flex min-h-[380px] bg-[#0c0c0b] overflow-hidden">
+      <div className="flex-1 flex min-h-[380px] bg-[#0c0c0b] overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 z-10 bg-[#0c0c0b]/70 flex items-center justify-center">
+            <p className="text-xs font-mono text-[#888]">Loading…</p>
+          </div>
+        )}
+        {isDragging && (
+          <div className="absolute inset-0 z-10 bg-[#c8881a]/10 border-2 border-dashed border-[#c8881a] flex items-center justify-center pointer-events-none">
+            <p className="text-sm font-mono text-[#c8881a]">Drop image here</p>
+          </div>
+        )}
         {imageSrc ? (
           <>
             <RotationSidebar value={rotation} onChange={setRotation} size="sm" />
@@ -101,10 +164,11 @@ export function PhotoCropModal({ open, onClose, onConfirm, imageSrc: initialImag
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#111110]">
+          <div onClick={() => fileInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#111110] cursor-pointer hover:bg-[#1a1a18] transition-colors">
             <Upload className="w-6 h-6 text-[#444] mb-2" />
-            <p className="text-xs font-mono text-[#555]">No image loaded</p>
-            <p className="text-[10px] font-mono text-[#444] mt-1">Drag & drop, browse, or paste will be added in Phase B</p>
+            <p className="text-xs font-mono text-[#888]">Drop image, click to browse, or paste (Ctrl+V)</p>
+            <p className="text-[10px] font-mono text-[#555] mt-1">PNG, JPG, WEBP — 35×45mm crop</p>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleLoad(e.target.files[0])} />
           </div>
         )}
       </div>
@@ -114,6 +178,8 @@ export function PhotoCropModal({ open, onClose, onConfirm, imageSrc: initialImag
           <span className="text-xs font-mono text-[#555]">Zoom</span>
           <input type="range" min={1} max={3} step={0.05} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="flex-1 accent-[#c8881a]" />
           <span className="text-[10px] font-mono text-[#555]">{zoom.toFixed(2)}×</span>
+          <button onClick={() => fileInputRef.current?.click()} className="ml-2 px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30">Change</button>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleLoad(e.target.files[0])} />
         </div>
       )}
 
