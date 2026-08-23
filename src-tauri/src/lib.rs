@@ -1920,18 +1920,34 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     }
 
     if template_key.starts_with("col2") {
-        // 2-column via borderless table 33%/67% — sidebar #F6F7FA shading, left navy spine via outer border
         let mut left_paras: Vec<docx_rs::Paragraph> = Vec::new();
         let mut right_paras: Vec<docx_rs::Paragraph> = Vec::new();
+        // Photo at top of sidebar for col2_photo
+        if template_key == "col2_photo" {
+            if let Some(ref buf) = photo_buf {
+                let pic = Pic::new(buf).size(mm_to_emu(35.0), mm_to_emu(45.0));
+                left_paras.push(Paragraph::new().add_run(Run::new().add_image(pic)));
+                left_paras.push(Paragraph::new());
+            }
+        }
         // Sidebar: Contact + Education + Skills + Certifications
         left_paras.push(resume_heading("Contact"));
         if let Some(contact) = &data.contact {
+            let email_opt = contact.email.clone().filter(|e| !e.trim().is_empty()).map(|e| e.trim().to_string());
             let mut lines: Vec<String> = Vec::new();
             if let Some(p) = &contact.phone { if !p.is_empty() { lines.push(p.clone()); } }
             if let Some(e) = &contact.email { if !e.is_empty() { lines.push(e.clone()); } }
             if let Some(a) = &contact.address { if !a.is_empty() { lines.push(a.clone()); } }
             if let Some(l) = &contact.linkedin { if !l.is_empty() { lines.push(l.clone()); } }
-            for l in lines { left_paras.push(resume_body(&l)); }
+            for l in lines {
+                let is_email = email_opt.as_ref().map(|e| e == &l).unwrap_or(false);
+                if is_email {
+                    let hyperlink = Hyperlink::new(format!("mailto:{}", l), HyperlinkType::External).add_run(Run::new().add_text(l.clone()).size(22).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"));
+                    left_paras.push(Paragraph::new().add_hyperlink(hyperlink));
+                } else {
+                    left_paras.push(resume_body(&l));
+                }
+            }
         }
         left_paras.push(Paragraph::new().add_run(Run::new().add_text("").size(2)));
         if let Some(edus) = &data.education {
@@ -1971,17 +1987,20 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
         if left_paras.is_empty() { left_paras.push(resume_body("")); }
         if right_paras.is_empty() { right_paras.push(resume_body("")); }
         let left_cell = {
-            let mut c = TableCell::new();
+            let mut c = TableCell::new().clear_all_border();
             for p in left_paras { c = c.add_paragraph(p); }
-            c.width(3000, WidthType::Dxa).vertical_align(VAlignType::Top)
+            c.width(3200, WidthType::Dxa).vertical_align(VAlignType::Top)
         };
         let right_cell = {
-            let mut c = TableCell::new();
+            let mut c = TableCell::new().clear_all_border();
             for p in right_paras { c = c.add_paragraph(p); }
-            c.width(7000, WidthType::Dxa).vertical_align(VAlignType::Top)
+            c.width(6300, WidthType::Dxa).vertical_align(VAlignType::Top)
         };
         let table = Table::new(vec![TableRow::new(vec![left_cell, right_cell])])
-            .width(10000, WidthType::Dxa);
+            .set_grid(vec![3200, 6300])
+            .align(TableAlignmentType::Center)
+            .clear_all_border()
+            .indent(0);
         doc = doc.add_table(table);
     } else {
         if let Some(summary) = &data.summary {
