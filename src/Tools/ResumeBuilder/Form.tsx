@@ -228,10 +228,10 @@ export default function ResumeForm({ onBack, initialData }: Props) {
           {TEMPLATES.map((t) => (
             <Tooltip key={t.key} content={TOOLTIPS.resumeTemplateSelect} className="w-full"><button
               onClick={() => setTemplate(t.key)}
-              className={`w-full p-3 rounded-xl border flex flex-col items-center text-center transition-colors ${template === t.key ? "bg-[#c8881a]/10 border-[#c8881a] text-[#c8881a]" : "bg-[#0c0c0b] border-[#2a2a28] text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da]"}`}
+              className={`w-full p-4 rounded-xl border flex flex-col items-center text-center transition-colors min-h-[88px] justify-center ${template === t.key ? "bg-[#c8881a]/10 border-[#c8881a] text-[#c8881a]" : "bg-[#0c0c0b] border-[#2a2a28] text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da]"}`}
             >
-              <p className="text-xs font-bold tracking-wide">{t.label}</p>
-              <p className="text-[10px] font-mono mt-0.5">{t.desc}</p>
+              <p className="text-sm font-bold tracking-wide">{t.label}</p>
+              <p className="text-xs font-mono mt-1">{t.desc}</p>
             </button></Tooltip>
           ))}
         </div>
