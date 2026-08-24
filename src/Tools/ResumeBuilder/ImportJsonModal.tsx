@@ -171,7 +171,7 @@ export function ImportJsonModal({ open, onClose, onImport }: ImportJsonModalProp
         </button></Tooltip>
       </div>
 
-      <Tooltip content={TOOLTIPS.resumeImportDropzone} className="flex-1 flex flex-col w-full"><div className="relative flex flex-col items-center justify-center p-8 text-center bg-[#111110] flex-1 w-full min-h-[220px]">
+      <div className="relative flex flex-col items-center justify-center p-8 text-center bg-[#111110] flex-1 w-full min-h-[220px]">
         {isDragging && (
           <div className="absolute inset-0 z-10 bg-[#c8881a]/10 border-2 border-dashed border-[#c8881a] flex items-center justify-center pointer-events-none">
             <p className="text-sm font-mono text-[#c8881a]">Drop JSON here</p>
@@ -182,9 +182,11 @@ export function ImportJsonModal({ open, onClose, onImport }: ImportJsonModalProp
             <p className="text-xs font-mono text-[#888]">Loading…</p>
           </div>
         )}
-        <Upload className="w-6 h-6 text-[#444] mb-2" />
-        <p className="text-xs font-mono text-[#888]">Drop JSON, click to browse, or paste (Ctrl+V)</p>
-        <p className="text-[10px] font-mono text-[#555] mt-1">Full resume JSON — _instructions stripped automatically</p>
+        <Tooltip content={TOOLTIPS.resumeImportDropzone} className="flex flex-col items-center">
+          <Upload className="w-6 h-6 text-[#444] mb-2" />
+          <p className="text-xs font-mono text-[#888]">Drop JSON, click to browse, or paste (Ctrl+V)</p>
+          <p className="text-[10px] font-mono text-[#555] mt-1">Full resume JSON — _instructions stripped automatically</p>
+        </Tooltip>
         <div className="flex gap-2 mt-4">
           <Tooltip content={TOOLTIPS.resumeImportBrowse}><button onClick={handleBrowse} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5">
             <Upload className="w-3.5 h-3.5" /> Browse
@@ -196,7 +198,7 @@ export function ImportJsonModal({ open, onClose, onImport }: ImportJsonModalProp
         <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
         <Tooltip content={TOOLTIPS.resumeImportBrowse}><button onClick={() => fileInputRef.current?.click()} className="mt-3 text-[10px] font-mono text-[#555] hover:text-[#888]">or click here to browse</button></Tooltip>
         {error && <p className="mt-4 text-xs font-mono text-red-400 max-w-full break-words">{error}</p>}
-      </div></Tooltip>
+      </div>
 
       <div className="flex justify-end gap-2 px-4 py-3 border-t border-[#2a2a28] bg-[#0c0c0b]">
         <Tooltip content={TOOLTIPS.cancel}><button onClick={onClose} className="px-4 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono">Cancel</button></Tooltip>

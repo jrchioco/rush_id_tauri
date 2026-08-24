@@ -17,7 +17,8 @@ export function Tooltip({ content, className, fixed = true, children }: TooltipP
     <div
       ref={triggerRef}
       className={cn("group/tooltip relative inline-flex", className)}
-      onMouseEnter={onMouseEnter}
+      onMouseEnter={(e) => { e.stopPropagation(); onMouseEnter(); }}
+      onMouseLeave={(e) => { e.stopPropagation(); }}
     >
       {children}
       <div

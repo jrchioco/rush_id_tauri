@@ -367,20 +367,21 @@ export default function BatchConverter() {
         </div>
       </div>
 
-      <Tooltip content={TOOLTIPS.converterDropzone} className="flex-1 flex flex-col">
-        <div
+      <div
           className="flex-1 min-h-[300px] rounded-xl border-2 border-dashed bg-[#0c0c0b] p-4 flex flex-col overflow-hidden"
           style={{ borderColor: items.length === 0 ? "#2a2a28" : "#1a1a18" }}
         >
           {items.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+            <Tooltip content={TOOLTIPS.converterDropzone} className="flex-1 flex flex-col">
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
               <div className="w-12 h-12 rounded-xl bg-[#1a1a18] border border-[#2a2a28] flex items-center justify-center mb-3">
                 <Images className="w-6 h-6 text-[#444]" />
               </div>
               <p className="text-sm font-mono text-[#555]">Drop images here</p>
               <p className="text-xs font-mono text-[#444] mt-1">PNG, JPEG, WebP — mixed formats allowed</p>
               <p className="text-xs font-mono text-[#444] mt-3">or <button onClick={handleBrowse} className="text-[#c8881a] hover:underline">browse</button> via dialog</p>
-            </div>
+              </div>
+            </Tooltip>
           ) : (
           <div
             className="flex-1 overflow-y-auto pr-1"
@@ -394,7 +395,6 @@ export default function BatchConverter() {
           </div>
         )}
         </div>
-      </Tooltip>
 
       <div className="flex flex-col gap-2 mt-4">
         <div className="flex items-center gap-3">
