@@ -9,7 +9,7 @@ export type ResumeTemplateKey = "col1_nophoto" | "col1_photo" | "col2_nophoto" |
 export interface ResumeFormData {
   template_key: ResumeTemplateKey;
   full_name: string;
-  contact: { phone: string; email: string; address: string; linkedin: string };
+  contact: { address: string; linkedin: string; phone?: string; email?: string; phones?: string[]; emails?: string[] };
   summary: string;
   education: { school: string; degree: string; year: string }[];
   experience: { company: string; role: string; start_date: string; end_date: string; bullets: string[] }[];
@@ -32,10 +32,31 @@ interface Props {
   initialData?: ResumeFormData;
 }
 
+function normalizeContact(c: any): { address: string; linkedin: string; phones: string[]; emails: string[] } {
+  if (!c) return { address: "", linkedin: "", phones: [], emails: [] };
+  const phones: string[] = [];
+  if (Array.isArray(c.phones)) phones.push(...c.phones.filter((s: any) => typeof s === "string" && s.trim()));
+  else if (Array.isArray(c.phone)) phones.push(...c.phone.filter((s: any) => typeof s === "string" && s.trim()));
+  if (typeof c.phone === "string" && c.phone.trim() && !phones.includes(c.phone.trim())) phones.unshift(c.phone.trim());
+  if (c.phone && typeof c.phone === "string" && c.phone.includes(",") && phones.length === 1) {
+    const parts = c.phone.split(",").map((s: string) => s.trim()).filter(Boolean);
+    if (parts.length > 1) { phones.splice(0, 1, ...parts); }
+  }
+  const emails: string[] = [];
+  if (Array.isArray(c.emails)) emails.push(...c.emails.filter((s: any) => typeof s === "string" && s.trim()));
+  else if (Array.isArray(c.email)) emails.push(...c.email.filter((s: any) => typeof s === "string" && s.trim()));
+  if (typeof c.email === "string" && c.email.trim() && !emails.includes(c.email.trim())) emails.unshift(c.email.trim());
+  if (c.email && typeof c.email === "string" && c.email.includes(",") && emails.length === 1) {
+    const parts = c.email.split(",").map((s: string) => s.trim()).filter(Boolean);
+    if (parts.length > 1) { emails.splice(0, 1, ...parts); }
+  }
+  return { address: c.address ?? "", linkedin: c.linkedin ?? "", phones, emails };
+}
+
 export default function ResumeForm({ onBack, initialData }: Props) {
   const [template, setTemplate] = useState<ResumeTemplateKey>(initialData?.template_key ?? "col1_nophoto");
   const [fullName, setFullName] = useState(initialData?.full_name ?? "");
-  const [contact, setContact] = useState(initialData?.contact ?? { phone: "", email: "", address: "", linkedin: "" });
+  const [contact, setContact] = useState(() => normalizeContact(initialData?.contact));
   const [summary, setSummary] = useState(initialData?.summary ?? "");
   const [photoPath, setPhotoPath] = useState<string>(initialData?.photo_path ?? initialData?.photoPath ?? "");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -63,6 +84,22 @@ export default function ResumeForm({ onBack, initialData }: Props) {
     setPhotoPath("");
     setPhotoPreview(null);
   };
+
+  const addPhone = () => setContact({ ...contact, phones: [...contact.phones, ""] });
+  const updatePhone = (i: number, v: string) => {
+    const next = [...contact.phones];
+    next[i] = v;
+    setContact({ ...contact, phones: next });
+  };
+  const removePhone = (i: number) => setContact({ ...contact, phones: contact.phones.filter((_, idx) => idx !== i) });
+
+  const addEmail = () => setContact({ ...contact, emails: [...contact.emails, ""] });
+  const updateEmail = (i: number, v: string) => {
+    const next = [...contact.emails];
+    next[i] = v;
+    setContact({ ...contact, emails: next });
+  };
+  const removeEmail = (i: number) => setContact({ ...contact, emails: contact.emails.filter((_, idx) => idx !== i) });
 
   const addEducation = () => setEducation([...education, { school: "", degree: "", year: "" }]);
   const updateEducation = (i: number, patch: Partial<{ school: string; degree: string; year: string }>) => {
@@ -115,7 +152,14 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   const buildData = (): ResumeFormData => ({
     template_key: template,
     full_name: fullName.trim(),
-    contact: { phone: contact.phone.trim(), email: contact.email.trim(), address: contact.address.trim(), linkedin: contact.linkedin.trim() },
+    contact: {
+      address: contact.address.trim(),
+      linkedin: contact.linkedin.trim(),
+      phones: contact.phones.map((s) => s.trim()).filter(Boolean),
+      emails: contact.emails.map((s) => s.trim()).filter(Boolean),
+      phone: contact.phones.map((s) => s.trim()).filter(Boolean)[0] ?? "",
+      email: contact.emails.map((s) => s.trim()).filter(Boolean)[0] ?? "",
+    },
     summary: summary.trim(),
     education: education.filter((e) => e.school || e.degree || e.year),
     experience: experience
@@ -200,14 +244,6 @@ export default function ResumeForm({ onBack, initialData }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><Phone className="w-3 h-3" /> Phone</span>
-            <input value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} placeholder="09xx xxx xxxx" className="bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-1.5 text-sm text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><Mail className="w-3 h-3" /> Email</span>
-            <input value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} placeholder="juan@email.com" className="bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-1.5 text-sm text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-          </label>
-          <label className="flex flex-col gap-1">
             <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><MapPin className="w-3 h-3" /> Address</span>
             <input value={contact.address} onChange={(e) => setContact({ ...contact, address: e.target.value })} placeholder="Bulacan, PH" className="bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-1.5 text-sm text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
           </label>
@@ -215,6 +251,33 @@ export default function ResumeForm({ onBack, initialData }: Props) {
             <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><Link2 className="w-3 h-3" /> LinkedIn</span>
             <input value={contact.linkedin} onChange={(e) => setContact({ ...contact, linkedin: e.target.value })} placeholder="linkedin.com/in/..." className="bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-1.5 text-sm text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
           </label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><Phone className="w-3 h-3" /> Phone Numbers</span>
+              <button onClick={addPhone} className="px-1.5 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+            </div>
+            {contact.phones.length === 0 ? <p className="text-xs font-mono text-[#444]">No phone numbers — click Add.</p> : contact.phones.map((p, i) => (
+              <div key={i} className="flex gap-1">
+                <input value={p} onChange={(e) => updatePhone(i, e.target.value)} placeholder="09xx xxx xxxx" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+                <button onClick={() => removePhone(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><Mail className="w-3 h-3" /> Emails</span>
+              <button onClick={addEmail} className="px-1.5 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+            </div>
+            {contact.emails.length === 0 ? <p className="text-xs font-mono text-[#444]">No emails — click Add.</p> : contact.emails.map((e, i) => (
+              <div key={i} className="flex gap-1">
+                <input value={e} onChange={(ev) => updateEmail(i, ev.target.value)} placeholder="juan@email.com" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+                <button onClick={() => removeEmail(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            ))}
+          </div>
         </div>
 
         <label className="flex flex-col gap-1">

@@ -41,11 +41,13 @@
   "full_name": "",
 
   "contact": {
-    "_note": "Only fill fields that exist in the source. Leave others as empty strings.",
-    "phone": "",
-    "email": "",
+    "_note": "Only fill fields that exist in the source. Leave others as empty strings. Use phones/emails arrays for multiple numbers — one string per entry. Keep phone/email single for backward compat (first of arrays).",
     "address": "",
-    "linkedin": ""
+    "linkedin": "",
+    "phones": [""],
+    "emails": [""],
+    "phone": "",
+    "email": ""
   },
 
   "summary": "",

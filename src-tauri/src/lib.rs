@@ -1763,10 +1763,32 @@ struct ResumeGenerateRequest {
 
 #[derive(Debug, Deserialize)]
 struct ContactInfo {
+    #[serde(default)]
     phone: Option<String>,
+    #[serde(default)]
+    phones: Option<Vec<String>>,
+    #[serde(default)]
     email: Option<String>,
+    #[serde(default)]
+    emails: Option<Vec<String>>,
     address: Option<String>,
     linkedin: Option<String>,
+}
+impl ContactInfo {
+    fn all_phones(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        if let Some(p) = &self.phone { let t = p.trim().to_string(); if !t.is_empty() && seen.insert(t.clone()) { out.push(t); } }
+        if let Some(ps) = &self.phones { for p in ps { let t = p.trim().to_string(); if !t.is_empty() && seen.insert(t.clone()) { out.push(t); } } }
+        out
+    }
+    fn all_emails(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        if let Some(e) = &self.email { let t = e.trim().to_string(); if !t.is_empty() && seen.insert(t.clone()) { out.push(t); } }
+        if let Some(es) = &self.emails { for e in es { let t = e.trim().to_string(); if !t.is_empty() && seen.insert(t.clone()) { out.push(t); } } }
+        out
+    }
 }
 
 #[derive(Debug, Deserialize)]

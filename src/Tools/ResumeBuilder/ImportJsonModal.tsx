@@ -34,6 +34,12 @@ function validate(clean: any): string[] {
   if (clean.experience && !Array.isArray(clean.experience)) errors.push("experience must be array");
   if (clean.skills && !Array.isArray(clean.skills)) errors.push("skills must be array");
   if (clean.certifications && !Array.isArray(clean.certifications)) errors.push("certifications must be array");
+  if (clean.contact) {
+    if (clean.contact.phones && !Array.isArray(clean.contact.phones)) errors.push("contact.phones must be array");
+    if (clean.contact.emails && !Array.isArray(clean.contact.emails)) errors.push("contact.emails must be array");
+    if (clean.contact.phone && typeof clean.contact.phone !== "string" && !Array.isArray(clean.contact.phone)) errors.push("contact.phone must be string");
+    if (clean.contact.email && typeof clean.contact.email !== "string" && !Array.isArray(clean.contact.email)) errors.push("contact.email must be string");
+  }
   return errors;
 }
 
