@@ -171,7 +171,7 @@ export function ImportJsonModal({ open, onClose, onImport }: ImportJsonModalProp
         </button></Tooltip>
       </div>
 
-      <Tooltip content={TOOLTIPS.resumeImportDropzone} className="flex-1"><div className="relative flex flex-col items-center justify-center p-8 text-center bg-[#111110] min-h-[220px]">
+      <Tooltip content={TOOLTIPS.resumeImportDropzone} className="flex-1 flex flex-col w-full"><div className="relative flex flex-col items-center justify-center p-8 text-center bg-[#111110] flex-1 w-full min-h-[220px]">
         {isDragging && (
           <div className="absolute inset-0 z-10 bg-[#c8881a]/10 border-2 border-dashed border-[#c8881a] flex items-center justify-center pointer-events-none">
             <p className="text-sm font-mono text-[#c8881a]">Drop JSON here</p>

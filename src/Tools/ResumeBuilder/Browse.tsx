@@ -59,11 +59,11 @@ export default function BrowseResumes({ onBack, onSelect }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {onBack && <Tooltip content={TOOLTIPS.resumeBack}><button onClick={onBack} className="self-start text-xs font-mono text-[#888] hover:text-[#c8881a]">← Back to Resume Builder</button></Tooltip>}
+      {onBack && <Tooltip content={TOOLTIPS.resumeBack} className="self-start"><button onClick={onBack} className="self-start text-xs font-mono text-[#888] hover:text-[#c8881a]">← Back to Resume Builder</button></Tooltip>}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide">Browse Resumes</h3>
         <div className="flex items-center gap-2">
-          <Tooltip content={TOOLTIPS.resumeSearch}><div className="flex items-center gap-1 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1">
+          <Tooltip content={TOOLTIPS.resumeSearch} className="flex"><div className="flex items-center gap-1 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1">
             <Search className="w-3 h-3 text-[#555]" />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name" className="bg-transparent text-xs font-mono text-[#e8e4da] placeholder-[#555] focus:outline-none" />
           </div></Tooltip>

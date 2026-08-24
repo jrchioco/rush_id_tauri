@@ -214,7 +214,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   return (
     <div className="flex flex-col gap-5">
       {onBack && (
-        <Tooltip content={TOOLTIPS.resumeBack}><button onClick={onBack} className="self-start text-xs font-mono text-[#888] hover:text-[#c8881a]">← Back to Resume Builder</button></Tooltip>
+        <Tooltip content={TOOLTIPS.resumeBack} className="self-start"><button onClick={onBack} className="self-start text-xs font-mono text-[#888] hover:text-[#c8881a]">← Back to Resume Builder</button></Tooltip>
       )}
 
       <div>
@@ -226,9 +226,9 @@ export default function ResumeForm({ onBack, initialData }: Props) {
         <p className="text-xs font-mono text-[#888] tracking-widest uppercase mb-2">Template</p>
         <div className="grid grid-cols-4 gap-3">
           {TEMPLATES.map((t) => (
-            <Tooltip key={t.key} content={TOOLTIPS.resumeTemplateSelect}><button
+            <Tooltip key={t.key} content={TOOLTIPS.resumeTemplateSelect} className="w-full"><button
               onClick={() => setTemplate(t.key)}
-              className={`p-3 rounded-xl border text-left transition-colors ${template === t.key ? "bg-[#c8881a]/10 border-[#c8881a] text-[#c8881a]" : "bg-[#0c0c0b] border-[#2a2a28] text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da]"}`}
+              className={`w-full p-3 rounded-xl border text-left transition-colors ${template === t.key ? "bg-[#c8881a]/10 border-[#c8881a] text-[#c8881a]" : "bg-[#0c0c0b] border-[#2a2a28] text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da]"}`}
             >
               <p className="text-xs font-bold tracking-wide">{t.label}</p>
               <p className="text-[10px] font-mono mt-0.5">{t.desc}</p>

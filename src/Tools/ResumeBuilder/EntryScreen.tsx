@@ -64,7 +64,7 @@ export default function ResumeBuilderEntry() {
         {CARDS.map(({ key, label, desc, icon: Icon }) => {
           const tip = key === "fill" ? TOOLTIPS.resumeFillForm : key === "import" ? TOOLTIPS.resumeImportJson : key === "generate" ? TOOLTIPS.resumeGenerateTemplate : TOOLTIPS.resumeBrowse;
           return (
-          <Tooltip key={key} content={tip}><button
+          <Tooltip key={key} content={tip} className="w-full flex flex-col"><button
             onClick={async () => {
               if (key === "fill") { setEditData(null); setView("form"); }
               else if (key === "browse") setView("browse");
@@ -78,7 +78,7 @@ export default function ResumeBuilderEntry() {
               }
               else if (key === "import") setImportModalOpen(true);
             }}
-            className="text-left p-5 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group"
+            className="w-full text-left p-5 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group"
           >
             <div className="w-10 h-10 rounded-lg bg-[#1a1a18] border border-[#2a2a28] group-hover:border-[#c8881a]/30 flex items-center justify-center mb-3">
               <Icon className="w-5 h-5 text-[#555] group-hover:text-[#c8881a] transition-colors" />

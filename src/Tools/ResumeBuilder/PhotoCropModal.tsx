@@ -166,7 +166,7 @@ export function PhotoCropModal({ open, onClose, onConfirm, imageSrc: initialImag
             </div>
           </>
         ) : (
-          <Tooltip content={TOOLTIPS.resumePhotoDropzone} className="flex-1 flex"><div onClick={() => fileInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#111110] cursor-pointer hover:bg-[#1a1a18] transition-colors">
+          <Tooltip content={TOOLTIPS.resumePhotoDropzone} className="flex-1 flex flex-col w-full"><div onClick={() => fileInputRef.current?.click()} className="w-full h-full flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#111110] cursor-pointer hover:bg-[#1a1a18] transition-colors">
             <Upload className="w-6 h-6 text-[#444] mb-2" />
             <p className="text-xs font-mono text-[#888]">Drop image, click to browse, or paste (Ctrl+V)</p>
             <p className="text-[10px] font-mono text-[#555] mt-1">PNG, JPG, WEBP — 35×45mm crop</p>
