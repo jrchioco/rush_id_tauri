@@ -1871,26 +1871,26 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
         let header_border = ParagraphBorder::new(ParagraphBorderPosition::Bottom).val(BorderType::Single).size(18).color(INK);
         let name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
         let mut text_cell = TableCell::new().clear_all_border().add_paragraph(name_para);
-        let email_opt = data.contact.as_ref().and_then(|c| c.email.clone()).filter(|e| !e.trim().is_empty()).map(|e| e.trim().to_string());
-        let mut contact_lines: Vec<String> = Vec::new();
         if let Some(contact) = &data.contact {
-            if let Some(a) = &contact.address { if !a.trim().is_empty() { contact_lines.push(a.trim().to_string()); } }
-            if let Some(p) = &contact.phone { if !p.trim().is_empty() { contact_lines.push(p.trim().to_string()); } }
-            if let Some(e) = &contact.email { if !e.trim().is_empty() { contact_lines.push(e.trim().to_string()); } }
+            if let Some(a) = &contact.address { if !a.trim().is_empty() {
+                text_cell = text_cell.add_paragraph(Paragraph::new().add_run(Run::new().add_text(format!("📍  {}", a.trim())).size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)));
+            } }
+            let phones = contact.all_phones();
+            if !phones.is_empty() {
+                let mut para = Paragraph::new().add_run(Run::new().add_text("☎  ").size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE));
+                for (idx, p) in phones.iter().enumerate() { if idx > 0 { para = para.add_run(Run::new().add_text(", ").size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)); } para = para.add_run(Run::new().add_text(p.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)); }
+                text_cell = text_cell.add_paragraph(para);
+            }
+            let emails = contact.all_emails();
+            if !emails.is_empty() {
+                let mut para = Paragraph::new().add_run(Run::new().add_text("✉  ").size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE));
+                for (idx, e) in emails.iter().enumerate() { if idx > 0 { para = para.add_run(Run::new().add_text(", ").size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)); } para = para.add_hyperlink(Hyperlink::new(format!("mailto:{}", e), HyperlinkType::External).add_run(Run::new().add_text(e.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"))); }
+                text_cell = text_cell.add_paragraph(para);
+            }
         }
-        for line in contact_lines.iter() {
-            let is_email = email_opt.as_ref().map(|e| e == line).unwrap_or(false);
-            let para = if is_email {
-                let hyperlink = Hyperlink::new(format!("mailto:{}", line), HyperlinkType::External).add_run(Run::new().add_text(line.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"));
-                Paragraph::new().add_hyperlink(hyperlink)
-            } else {
-                Paragraph::new().add_run(Run::new().add_text(line.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE))
-            };
-            text_cell = text_cell.add_paragraph(para);
-        }
-        text_cell = text_cell.width(7000, WidthType::Dxa).vertical_align(VAlignType::Top);
-        let mut photo_cell = TableCell::new().clear_all_border().add_paragraph(Paragraph::new().align(AlignmentType::Right).add_run(Run::new().add_image(pic)));
-        photo_cell = photo_cell.width(3286, WidthType::Dxa).vertical_align(VAlignType::Top);
+        text_cell = text_cell.width(7000, WidthType::Dxa).vertical_align(VAlignType::Center);
+        let mut photo_cell = TableCell::new().clear_all_border().add_paragraph(Paragraph::new().align(AlignmentType::Center).add_run(Run::new().add_image(pic)));
+        photo_cell = photo_cell.width(3286, WidthType::Dxa).vertical_align(VAlignType::Center);
         let header_table = Table::new(vec![TableRow::new(vec![text_cell, photo_cell])]).set_grid(vec![7000, 3286]).clear_all_border().align(TableAlignmentType::Left).indent(0);
         doc = doc.add_table(header_table);
         let mut underline_para = Paragraph::new().add_run(Run::new().add_text("").size(2));
@@ -1901,31 +1901,30 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     } else {
         let header_border = ParagraphBorder::new(ParagraphBorderPosition::Bottom).val(BorderType::Single).size(18).color(INK);
         if template_key.starts_with("col1") {
-            let mut contact_lines: Vec<String> = Vec::new();
-            if let Some(contact) = &data.contact {
-                if let Some(a) = &contact.address { if !a.trim().is_empty() { contact_lines.push(a.trim().to_string()); } }
-                if let Some(p) = &contact.phone { if !p.trim().is_empty() { contact_lines.push(p.trim().to_string()); } }
-                if let Some(e) = &contact.email { if !e.trim().is_empty() { contact_lines.push(e.trim().to_string()); } }
-            }
-            if !contact_lines.is_empty() {
-                let email_opt = data.contact.as_ref().and_then(|c| c.email.clone()).filter(|e| !e.trim().is_empty()).map(|e| e.trim().to_string());
+            let has_contact = data.contact.as_ref().map(|c| c.address.as_ref().map(|a| !a.trim().is_empty()).unwrap_or(false) || !c.all_phones().is_empty() || !c.all_emails().is_empty()).unwrap_or(false);
+            if has_contact {
                 let name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
                 doc = doc.add_paragraph(name_para);
-                for (idx, line) in contact_lines.iter().enumerate() {
-                    let is_last = idx == contact_lines.len() - 1;
-                    let is_email = email_opt.as_ref().map(|e| e == line).unwrap_or(false);
-                    let mut para = if is_email {
-                        let hyperlink = Hyperlink::new(format!("mailto:{}", line), HyperlinkType::External).add_run(Run::new().add_text(line.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"));
-                        Paragraph::new().add_hyperlink(hyperlink)
-                    } else {
-                        Paragraph::new().add_run(Run::new().add_text(line.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE))
-                    };
-                    if is_last {
-                        para.property = para.property.clear_all_borders();
-                        para.property = para.property.set_border(header_border.clone());
+                let mut contact_paras: Vec<Paragraph> = Vec::new();
+                if let Some(contact) = &data.contact {
+                    if let Some(a) = &contact.address { if !a.trim().is_empty() {
+                        contact_paras.push(Paragraph::new().add_run(Run::new().add_text(format!("📍  {}", a.trim())).size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)));
+                    } }
+                    let phones = contact.all_phones();
+                    if !phones.is_empty() {
+                        let mut para = Paragraph::new().add_run(Run::new().add_text("☎  ").size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE));
+                        for (idx, p) in phones.iter().enumerate() { if idx > 0 { para = para.add_run(Run::new().add_text(", ").size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)); } para = para.add_run(Run::new().add_text(p.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)); }
+                        contact_paras.push(para);
                     }
-                    doc = doc.add_paragraph(para);
+                    let emails = contact.all_emails();
+                    if !emails.is_empty() {
+                        let mut para = Paragraph::new().add_run(Run::new().add_text("✉  ").size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE));
+                        for (idx, e) in emails.iter().enumerate() { if idx > 0 { para = para.add_run(Run::new().add_text(", ").size(21).fonts(RunFonts::new().ascii("Calibri")).color(MUTED_SUBTITLE)); } para = para.add_hyperlink(Hyperlink::new(format!("mailto:{}", e), HyperlinkType::External).add_run(Run::new().add_text(e.clone()).size(21).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"))); }
+                        contact_paras.push(para);
+                    }
                 }
+                let len = contact_paras.len();
+                for (idx, mut para) in contact_paras.into_iter().enumerate() { if idx == len - 1 { para.property = para.property.clear_all_borders(); para.property = para.property.set_border(header_border.clone()); } doc = doc.add_paragraph(para); }
             } else {
                 let mut name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
                 name_para.property = name_para.property.clear_all_borders();
@@ -1945,31 +1944,34 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
         let mut left_paras: Vec<docx_rs::Paragraph> = Vec::new();
         let mut right_paras: Vec<docx_rs::Paragraph> = Vec::new();
         // Photo at top of sidebar for col2_photo
+        // Photo at top of sidebar for col2_photo — centered
         if template_key == "col2_photo" {
             if let Some(ref buf) = photo_buf {
                 let pic = Pic::new(buf).size(mm_to_emu(35.0), mm_to_emu(45.0));
-                left_paras.push(Paragraph::new().add_run(Run::new().add_image(pic)));
+                left_paras.push(Paragraph::new().align(AlignmentType::Center).add_run(Run::new().add_image(pic)));
                 left_paras.push(Paragraph::new());
             }
         }
-        // Sidebar: Contact + Education + Skills + Certifications
         left_paras.push(resume_heading("Contact"));
         if let Some(contact) = &data.contact {
-            let email_opt = contact.email.clone().filter(|e| !e.trim().is_empty()).map(|e| e.trim().to_string());
-            let mut lines: Vec<String> = Vec::new();
-            if let Some(p) = &contact.phone { if !p.is_empty() { lines.push(p.clone()); } }
-            if let Some(e) = &contact.email { if !e.is_empty() { lines.push(e.clone()); } }
-            if let Some(a) = &contact.address { if !a.is_empty() { lines.push(a.clone()); } }
-            if let Some(l) = &contact.linkedin { if !l.is_empty() { lines.push(l.clone()); } }
-            for l in lines {
-                let is_email = email_opt.as_ref().map(|e| e == &l).unwrap_or(false);
-                if is_email {
-                    let hyperlink = Hyperlink::new(format!("mailto:{}", l), HyperlinkType::External).add_run(Run::new().add_text(l.clone()).size(22).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"));
-                    left_paras.push(Paragraph::new().add_hyperlink(hyperlink));
-                } else {
-                    left_paras.push(resume_body(&l));
-                }
+            if let Some(a) = &contact.address { if !a.trim().is_empty() {
+                left_paras.push(Paragraph::new().add_run(Run::new().add_text(format!("📍  {}", a.trim())).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")));
+            } }
+            let phones = contact.all_phones();
+            if !phones.is_empty() {
+                let mut para = Paragraph::new().add_run(Run::new().add_text("☎  ").size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"));
+                for (idx, p) in phones.iter().enumerate() { if idx > 0 { para = para.add_run(Run::new().add_text(", ").size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")); } para = para.add_run(Run::new().add_text(p.clone()).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")); }
+                left_paras.push(para);
             }
+            let emails = contact.all_emails();
+            if !emails.is_empty() {
+                let mut para = Paragraph::new().add_run(Run::new().add_text("✉  ").size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"));
+                for (idx, e) in emails.iter().enumerate() { if idx > 0 { para = para.add_run(Run::new().add_text(", ").size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")); } para = para.add_hyperlink(Hyperlink::new(format!("mailto:{}", e), HyperlinkType::External).add_run(Run::new().add_text(e.clone()).size(22).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"))); }
+                left_paras.push(para);
+            }
+            if let Some(l) = &contact.linkedin { if !l.trim().is_empty() {
+                left_paras.push(Paragraph::new().add_run(Run::new().add_text(format!("🔗  {}", l.trim())).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")));
+            } }
         }
         left_paras.push(Paragraph::new().add_run(Run::new().add_text("").size(2)));
         if let Some(edus) = &data.education {
