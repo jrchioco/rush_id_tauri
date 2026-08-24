@@ -2017,18 +2017,24 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
         if left_paras.is_empty() { left_paras.push(resume_body("")); }
         if right_paras.is_empty() { right_paras.push(resume_body("")); }
         let left_cell = {
-            let mut c = TableCell::new().clear_all_border();
+            let mut c = TableCell::new()
+                .clear_all_border()
+                .set_border(TableCellBorder::new(TableCellBorderPosition::Right).border_type(BorderType::Single).size(4).color("E5E7EB"));
             for p in left_paras { c = c.add_paragraph(p); }
-            c.width(3200, WidthType::Dxa).vertical_align(VAlignType::Top)
+            c.width(3560, WidthType::Dxa).vertical_align(VAlignType::Top)
         };
+        let spacer_cell = TableCell::new()
+            .clear_all_border()
+            .width(180, WidthType::Dxa)
+            .vertical_align(VAlignType::Top);
         let right_cell = {
             let mut c = TableCell::new().clear_all_border();
             for p in right_paras { c = c.add_paragraph(p); }
-            c.width(6300, WidthType::Dxa).vertical_align(VAlignType::Top)
+            c.width(6546, WidthType::Dxa).vertical_align(VAlignType::Top)
         };
-        let table = Table::new(vec![TableRow::new(vec![left_cell, right_cell])])
-            .set_grid(vec![3200, 6300])
-            .align(TableAlignmentType::Center)
+        let table = Table::new(vec![TableRow::new(vec![left_cell, spacer_cell, right_cell])])
+            .set_grid(vec![3560, 180, 6546])
+            .align(TableAlignmentType::Left)
             .clear_all_border()
             .indent(0);
         doc = doc.add_table(table);
