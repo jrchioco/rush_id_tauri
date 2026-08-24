@@ -2,6 +2,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Upload, User, Mail, Phone, MapPin, Link2, Plus, Trash2, Save } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { Tooltip } from "../../components/Tooltip";
+import { TOOLTIPS } from "../../lib/tooltips";
 import { PhotoCropModal } from "./PhotoCropModal";
 
 export type ResumeTemplateKey = "col1_nophoto" | "col1_photo" | "col2_nophoto" | "col2_photo";
@@ -212,7 +214,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   return (
     <div className="flex flex-col gap-5">
       {onBack && (
-        <button onClick={onBack} className="self-start text-xs font-mono text-[#888] hover:text-[#c8881a]">← Back to Resume Builder</button>
+        <Tooltip content={TOOLTIPS.resumeBack}><button onClick={onBack} className="self-start text-xs font-mono text-[#888] hover:text-[#c8881a]">← Back to Resume Builder</button></Tooltip>
       )}
 
       <div>
@@ -224,14 +226,13 @@ export default function ResumeForm({ onBack, initialData }: Props) {
         <p className="text-xs font-mono text-[#888] tracking-widest uppercase mb-2">Template</p>
         <div className="grid grid-cols-4 gap-3">
           {TEMPLATES.map((t) => (
-            <button
-              key={t.key}
+            <Tooltip key={t.key} content={TOOLTIPS.resumeTemplateSelect}><button
               onClick={() => setTemplate(t.key)}
               className={`p-3 rounded-xl border text-left transition-colors ${template === t.key ? "bg-[#c8881a]/10 border-[#c8881a] text-[#c8881a]" : "bg-[#0c0c0b] border-[#2a2a28] text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da]"}`}
             >
               <p className="text-xs font-bold tracking-wide">{t.label}</p>
               <p className="text-[10px] font-mono mt-0.5">{t.desc}</p>
-            </button>
+            </button></Tooltip>
           ))}
         </div>
       </div>
@@ -257,24 +258,24 @@ export default function ResumeForm({ onBack, initialData }: Props) {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><Phone className="w-3 h-3" /> Phone Numbers</span>
-              <button onClick={addPhone} className="px-1.5 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+              <Tooltip content={TOOLTIPS.resumeAddPhone}><button onClick={addPhone} className="px-1.5 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button></Tooltip>
             </div>
             {contact.phones.length === 0 ? <p className="text-xs font-mono text-[#444]">No phone numbers — click Add.</p> : contact.phones.map((p, i) => (
               <div key={i} className="flex gap-1">
                 <input value={p} onChange={(e) => updatePhone(i, e.target.value)} placeholder="09xx xxx xxxx" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-                <button onClick={() => removePhone(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                <Tooltip content={TOOLTIPS.resumeRemovePhone}><button onClick={() => removePhone(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
               </div>
             ))}
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><Mail className="w-3 h-3" /> Emails</span>
-              <button onClick={addEmail} className="px-1.5 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+              <Tooltip content={TOOLTIPS.resumeAddEmail}><button onClick={addEmail} className="px-1.5 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button></Tooltip>
             </div>
             {contact.emails.length === 0 ? <p className="text-xs font-mono text-[#444]">No emails — click Add.</p> : contact.emails.map((e, i) => (
               <div key={i} className="flex gap-1">
                 <input value={e} onChange={(ev) => updateEmail(i, ev.target.value)} placeholder="juan@email.com" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-                <button onClick={() => removeEmail(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                <Tooltip content={TOOLTIPS.resumeRemoveEmail}><button onClick={() => removeEmail(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
               </div>
             ))}
           </div>
@@ -288,11 +289,11 @@ export default function ResumeForm({ onBack, initialData }: Props) {
         {isPhoto && (
           <div className="flex items-center gap-3">
             {photoPreview && <img src={photoPreview} alt="Photo preview" className="w-10 h-14 object-cover rounded border border-[#2a2a28]" />}
-            <button onClick={() => setPhotoModalOpen(true)} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5">
+            <Tooltip content={TOOLTIPS.resumeUploadPhoto}><button onClick={() => setPhotoModalOpen(true)} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5">
               <Upload className="w-3.5 h-3.5" /> {photoPath ? "Change Photo" : "Upload Photo (35×45mm)"}
-            </button>
+            </button></Tooltip>
             {photoPath && <span className="text-xs font-mono text-[#555] truncate max-w-[260px]">{photoPath}</span>}
-            {photoPath && <button onClick={handlePhotoClear} className="p-1 rounded text-[#555] hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>}
+            {photoPath && <Tooltip content={TOOLTIPS.resumeClearPhoto}><button onClick={handlePhotoClear} className="p-1 rounded text-[#555] hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button></Tooltip>}
           </div>
         )}
       </div>
@@ -300,7 +301,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
       <div className="p-4 rounded-xl bg-[#0c0c0b] border border-[#2a2a28]">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono text-[#888] tracking-widest uppercase">Education</span>
-          <button onClick={addEducation} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+          <Tooltip content={TOOLTIPS.resumeAddEducation}><button onClick={addEducation} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button></Tooltip>
         </div>
         {education.length === 0 ? <p className="text-xs font-mono text-[#444]">No education entries — click Add.</p> : education.map((ed, i) => (
           <div key={i} className="grid grid-cols-3 gap-2 mb-2 p-2 rounded-lg bg-[#111110] border border-[#2a2a28]">
@@ -308,7 +309,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
             <input value={ed.degree} onChange={(e) => updateEducation(i, { degree: e.target.value })} placeholder="Degree" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
             <div className="flex gap-1">
               <input value={ed.year} onChange={(e) => updateEducation(i, { year: e.target.value })} placeholder="Year" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-              <button onClick={() => removeEducation(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              <Tooltip content={TOOLTIPS.resumeRemoveEducation}><button onClick={() => removeEducation(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
             </div>
           </div>
         ))}
@@ -317,7 +318,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
       <div className="p-4 rounded-xl bg-[#0c0c0b] border border-[#2a2a28]">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono text-[#888] tracking-widest uppercase">Experience</span>
-          <button onClick={addExperience} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add Role</button>
+          <Tooltip content={TOOLTIPS.resumeAddExperience}><button onClick={addExperience} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add Role</button></Tooltip>
         </div>
         {experience.length === 0 ? <p className="text-xs font-mono text-[#444]">No experience entries — click Add Role.</p> : experience.map((ex, ei) => (
           <div key={ei} className="mb-3 p-3 rounded-lg bg-[#111110] border border-[#2a2a28]">
@@ -327,17 +328,17 @@ export default function ResumeForm({ onBack, initialData }: Props) {
               <input value={ex.start_date} onChange={(e) => updateExperience(ei, { start_date: e.target.value })} placeholder="Start date" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
               <div className="flex gap-1">
                 <input value={ex.end_date} onChange={(e) => updateExperience(ei, { end_date: e.target.value })} placeholder="End date" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-                <button onClick={() => removeExperience(ei)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                <Tooltip content={TOOLTIPS.resumeRemoveExperience}><button onClick={() => removeExperience(ei)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
               </div>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-[10px] font-mono text-[#555] tracking-widest uppercase">Bullets</span>
-              <button onClick={() => addBullet(ei)} className="px-2 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30">+ Bullet</button>
+              <Tooltip content={TOOLTIPS.resumeAddBullet}><button onClick={() => addBullet(ei)} className="px-2 py-0.5 rounded bg-[#1a1a18] border border-[#2a2a28] text-[10px] font-mono text-[#888] hover:border-[#c8881a]/30">+ Bullet</button></Tooltip>
             </div>
             {ex.bullets.map((b, bi) => (
               <div key={bi} className="flex gap-1 mt-1">
                 <input value={b} onChange={(e) => updateBullet(ei, bi, e.target.value)} placeholder="Bullet point" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-                <button onClick={() => removeBullet(ei, bi)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                <Tooltip content={TOOLTIPS.resumeRemoveBullet}><button onClick={() => removeBullet(ei, bi)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
               </div>
             ))}
           </div>
@@ -350,13 +351,13 @@ export default function ResumeForm({ onBack, initialData }: Props) {
         </div>
         <div className="flex gap-2">
           <input value={skillsDraft} onChange={(e) => setSkillsDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkillFromDraft(); } }} placeholder="Add skill, comma separated — press Enter" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-1.5 text-sm text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-          <button onClick={addSkillFromDraft} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:border-[#c8881a]/30 text-xs font-mono">Add</button>
+          <Tooltip content={TOOLTIPS.resumeAddSkill}><button onClick={addSkillFromDraft} className="px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:border-[#c8881a]/30 text-xs font-mono">Add</button></Tooltip>
         </div>
         {skills.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {skills.map((s, i) => (
               <span key={i} className="px-2 py-1 rounded-full bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] flex items-center gap-1">
-                {s} <button onClick={() => removeSkill(i)} className="text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                {s} <Tooltip content={TOOLTIPS.resumeRemoveSkill}><button onClick={() => removeSkill(i)} className="text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
               </span>
             ))}
           </div>
@@ -366,7 +367,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
       <div className="p-4 rounded-xl bg-[#0c0c0b] border border-[#2a2a28]">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono text-[#888] tracking-widest uppercase">Certifications</span>
-          <button onClick={addCert} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+          <Tooltip content={TOOLTIPS.resumeAddCert}><button onClick={addCert} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button></Tooltip>
         </div>
         {certifications.length === 0 ? <p className="text-xs font-mono text-[#444]">No certifications — click Add.</p> : certifications.map((c, i) => (
           <div key={i} className="grid grid-cols-3 gap-2 mb-2 p-2 rounded-lg bg-[#111110] border border-[#2a2a28]">
@@ -374,19 +375,19 @@ export default function ResumeForm({ onBack, initialData }: Props) {
             <input value={c.issuer} onChange={(e) => updateCert(i, { issuer: e.target.value })} placeholder="Issuer" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
             <div className="flex gap-1">
               <input value={c.year} onChange={(e) => updateCert(i, { year: e.target.value })} placeholder="Year" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
-              <button onClick={() => removeCert(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              <Tooltip content={TOOLTIPS.resumeRemoveCert}><button onClick={() => removeCert(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
             </div>
           </div>
         ))}
       </div>
 
       <div className="flex gap-3 self-end">
-        <button onClick={handleSaveJson} className="px-4 py-2 rounded-lg border border-[#c8881a] text-[#c8881a] font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 flex items-center gap-2">
+        <Tooltip content={TOOLTIPS.resumeSaveJson}><button onClick={handleSaveJson} className="px-4 py-2 rounded-lg border border-[#c8881a] text-[#c8881a] font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 flex items-center gap-2">
           <Save className="w-4 h-4" /> Save as JSON
-        </button>
-        <button onClick={handleGenerateResume} className="px-4 py-2 rounded-lg bg-[#c8881a] text-[#0c0c0b] font-bold text-sm tracking-wide hover:bg-[#e8a030] flex items-center gap-2">
+        </button></Tooltip>
+        <Tooltip content={fullName.trim() ? TOOLTIPS.resumeGenerate : TOOLTIPS.resumeGenerateDisabled}><button onClick={handleGenerateResume} className="px-4 py-2 rounded-lg bg-[#c8881a] text-[#0c0c0b] font-bold text-sm tracking-wide hover:bg-[#e8a030] flex items-center gap-2">
           <Save className="w-4 h-4" /> Generate Resume
-        </button>
+        </button></Tooltip>
       </div>
 
       <PhotoCropModal open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} onConfirm={handlePhotoConfirm} />
