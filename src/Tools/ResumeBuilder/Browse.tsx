@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
+import { Tooltip } from "../../components/Tooltip";
+import { TOOLTIPS } from "../../lib/tooltips";
 import { FileText, Trash2, Search } from "lucide-react";
 
 interface ResumeSummary {
@@ -57,14 +59,14 @@ export default function BrowseResumes({ onBack, onSelect }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {onBack && <button onClick={onBack} className="self-start text-xs font-mono text-[#888] hover:text-[#c8881a]">← Back to Resume Builder</button>}
+      {onBack && <Tooltip content={TOOLTIPS.resumeBack}><button onClick={onBack} className="self-start text-xs font-mono text-[#888] hover:text-[#c8881a]">← Back to Resume Builder</button></Tooltip>}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide">Browse Resumes</h3>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1">
+          <Tooltip content={TOOLTIPS.resumeSearch}><div className="flex items-center gap-1 bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1">
             <Search className="w-3 h-3 text-[#555]" />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name" className="bg-transparent text-xs font-mono text-[#e8e4da] placeholder-[#555] focus:outline-none" />
-          </div>
+          </div></Tooltip>
           <span className="text-xs font-mono text-[#555]">{filtered.length}/{items.length}</span>
         </div>
       </div>
@@ -86,8 +88,8 @@ export default function BrowseResumes({ onBack, onSelect }: Props) {
                 {r.pdf_path && <span className="text-[9px] font-mono bg-[#c8881a]/10 border border-[#c8881a]/30 text-[#c8881a] px-1.5 py-0.5 rounded">PDF</span>}
               </div>
               <div className="flex gap-2 mt-3">
-                <button onClick={() => onSelect?.(r.id)} className="flex-1 px-2 py-1 rounded bg-[#c8881a] text-[#0c0c0b] text-xs font-mono font-bold hover:bg-[#e8a030]">Edit</button>
-                <button onClick={() => handleDelete(r.id)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                <Tooltip content={TOOLTIPS.resumeBrowseEdit} className="flex-1"><button onClick={() => onSelect?.(r.id)} className="w-full px-2 py-1 rounded bg-[#c8881a] text-[#0c0c0b] text-xs font-mono font-bold hover:bg-[#e8a030]">Edit</button></Tooltip>
+                <Tooltip content={TOOLTIPS.resumeBrowseDelete}><button onClick={() => handleDelete(r.id)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button></Tooltip>
               </div>
             </div>
           ))}

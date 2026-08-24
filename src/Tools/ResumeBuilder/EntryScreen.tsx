@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import ResumeForm, { ResumeFormData } from "./Form";
 import BrowseResumes from "./Browse";
 import { ImportJsonModal } from "./ImportJsonModal";
+import { Tooltip } from "../../components/Tooltip";
+import { TOOLTIPS } from "../../lib/tooltips";
 import { invoke } from "@tauri-apps/api/core";
 
 const CARDS = [
@@ -59,9 +61,10 @@ export default function ResumeBuilderEntry() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {CARDS.map(({ key, label, desc, icon: Icon }) => (
-          <button
-            key={key}
+        {CARDS.map(({ key, label, desc, icon: Icon }) => {
+          const tip = key === "fill" ? TOOLTIPS.resumeFillForm : key === "import" ? TOOLTIPS.resumeImportJson : key === "generate" ? TOOLTIPS.resumeGenerateTemplate : TOOLTIPS.resumeBrowse;
+          return (
+          <Tooltip key={key} content={tip}><button
             onClick={async () => {
               if (key === "fill") { setEditData(null); setView("form"); }
               else if (key === "browse") setView("browse");
@@ -82,8 +85,8 @@ export default function ResumeBuilderEntry() {
             </div>
             <p className="text-sm font-bold text-[#e8e4da] tracking-wide">{label}</p>
             <p className="text-xs font-mono text-[#555] mt-1">{desc}</p>
-          </button>
-        ))}
+          </button></Tooltip>
+        );})}
       </div>
 
       <div className="mt-6 p-3 rounded-lg bg-[#0c0c0b] border border-[#2a2a28]">
