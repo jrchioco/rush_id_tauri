@@ -78,7 +78,7 @@ export default function ResumeBuilderEntry() {
               }
               else if (key === "import") setImportModalOpen(true);
             }}
-            className="w-full p-6 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group flex flex-col items-center text-center min-h-[132px] justify-center"
+            className="w-full p-7 rounded-xl border border-[#2a2a28] bg-[#0c0c0b] hover:border-[#c8881a]/30 hover:bg-[#1a1a18] transition-colors group flex flex-col items-center text-center min-h-[158px] justify-center"
           >
             <div className="w-12 h-12 rounded-lg bg-[#1a1a18] border border-[#2a2a28] group-hover:border-[#c8881a]/30 flex items-center justify-center mb-4">
               <Icon className="w-6 h-6 text-[#555] group-hover:text-[#c8881a] transition-colors" />
