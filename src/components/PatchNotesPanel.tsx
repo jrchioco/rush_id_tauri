@@ -49,7 +49,7 @@ export function PatchNotesPanel({ open, onClose }: PatchNotesPanelProps) {
         )}
       </div>
 
-      <div className="flex justify-end px-6 py-4 border-t border-[#2a2a28]">
+      <div className="flex justify-end px-6 py-4 border-t border-[#2a2a28] flex-shrink-0">
         <button
           onClick={onClose}
           className="px-6 py-2 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors"
