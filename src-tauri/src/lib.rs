@@ -1648,37 +1648,6 @@ struct ResumeSummary {
     pdf_path: Option<String>,
 }
 
-// Helper to build docx Document from Resume data — shared between generate_resume_docx and generate_resume
-fn build_resume_docx(data: &ResumeGenerateRequest, template_key: &str) -> docx_rs::Docx {
-    use docx_rs::*;
-    let full_name = if data.full_name.trim().is_empty() { "Resume".to_string() } else { data.full_name.clone() };
-    let mut doc = Docx::new();
-    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(38).fonts(RunFonts::new().ascii("Calibri")).color("1F2937")));
-    if let Some(contact) = &data.contact {
-        let mut contact_line = String::new();
-        if let Some(p) = &contact.phone { if !p.is_empty() { contact_line.push_str(p); contact_line.push_str("  |  "); } }
-        if let Some(e) = &contact.email { if !e.is_empty() { contact_line.push_str(e); contact_line.push_str("  |  "); } }
-        if let Some(a) = &contact.address { if !a.is_empty() { contact_line.push_str(a); contact_line.push_str("  |  "); } }
-        if let Some(l) = &contact.linkedin { if !l.is_empty() { contact_line.push_str(l); } }
-        let contact_line = contact_line.trim().trim_end_matches('|').trim().to_string();
-        if !contact_line.is_empty() {
-            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(contact_line).size(20).fonts(RunFonts::new().ascii("Calibri")).color("555555")));
-        }
-    }
-    if template_key.ends_with("_photo") {
-        if let Some(p) = &data.photo_path {
-            if !p.is_empty() && std::path::Path::new(p).exists() {
-                if let Ok(buf) = std::fs::read(p) {
-                    let pic = Pic::new(&buf).size(133 * 9525, 170 * 9525);
-                    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_image(pic)));
-                }
-            }
-        }
-    }
-    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text("").size(2)));
-    doc
-}
-
 #[tauri::command]
 fn create_resume(app_handle: tauri::AppHandle, data_json: String, template_key: String, full_name: String) -> Result<i64, String> {
     let path = activity_db_path(&app_handle);
@@ -1750,7 +1719,6 @@ fn delete_resume(app_handle: tauri::AppHandle, id: i64) -> Result<(), String> {
 #[derive(Debug, Deserialize)]
 struct ResumeGenerateRequest {
     full_name: String,
-    template_key: String,
     contact: Option<ContactInfo>,
     summary: Option<String>,
     education: Option<Vec<EducationEntry>>,
@@ -2157,7 +2125,7 @@ fn generate_resume(app_handle: tauri::AppHandle, data_json: String, template_key
         let db_path = activity_db_path(&app_handle);
         if let Ok(conn) = Connection::open(&db_path) {
             let now = Utc::now().to_rfc3339();
-            let data: ResumeGenerateRequest = serde_json::from_str(&data_json).unwrap_or(ResumeGenerateRequest { full_name: "Resume".to_string(), template_key: template_key.clone(), contact: None, summary: None, education: None, experience: None, skills: None, certifications: None, photo_path: None });
+            let data: ResumeGenerateRequest = serde_json::from_str(&data_json).unwrap_or(ResumeGenerateRequest { full_name: "Resume".to_string(), contact: None, summary: None, education: None, experience: None, skills: None, certifications: None, photo_path: None });
             let full_name = if data.full_name.trim().is_empty() { "Resume".to_string() } else { data.full_name.clone() };
             let _ = conn.execute("UPDATE resumes SET pdf_path = ?1, updated_at = ?2 WHERE full_name = ?3 AND template_key = ?4", rusqlite::params![pdf, now, full_name, template_key]);
         }
