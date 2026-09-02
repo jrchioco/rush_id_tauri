@@ -64,8 +64,8 @@ export default function ResumeBuilderEntry() {
           <p className="text-xs font-mono text-[#555] mt-0.5">J3FF house style — A4, Calibri, navy accent. 4 layout variants.</p>
         </div>
         <Tooltip content={TOOLTIPS.resumeHowTo} className="shrink-0">
-          <button onClick={() => setHowToOpen(true)} className="shrink-0 px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5 transition-colors">
-            <HelpCircle className="w-3.5 h-3.5" /> How To
+          <button onClick={() => setHowToOpen(true)} className="shrink-0 px-4 py-2 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-sm font-mono flex items-center gap-2 transition-colors">
+            <HelpCircle className="w-4 h-4" /> How To
           </button>
         </Tooltip>
       </div>
