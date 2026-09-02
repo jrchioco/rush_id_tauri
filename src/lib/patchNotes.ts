@@ -1,7 +1,14 @@
+interface GroupedNote {
+  heading: string;
+  subheading?: string;
+  bullets: string[];
+}
+
 interface PatchNote {
   title: string;
   date: string;
   notes: string[];
+  groups?: GroupedNote[];
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
@@ -9,18 +16,38 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
     title: "What's New in v1.21.0",
     date: "2026-08-25",
     notes: [
-      "Batch Image Converter is here — find it under the new Tools group in Overview. Drag in any mix of PNG, JPEG, and WebP, see them as a thumbnail grid, pick what to convert, and turn everything into one format in a single click.",
-      "Thumbnails load instantly with a fallback if a preview fails, so even big WebP files show up. Use the Density slider to resize tiles, and Select All / Deselect All plus per-tile checks and the × to keep the batch tidy.",
-      "Converting creates a timestamped batch-convert folder where you choose to save. Original names are kept and copies get -1, -2 so nothing is overwritten. One bad file is skipped and the rest still convert.",
-      "While it runs you see Converting 3/20 and Effie gets busy; when it finishes she cheers if everything worked or looks worried if something failed. Finished files auto-uncheck, failed ones stay checked so you can retry. The batch folder pops open and an Open Folder button stays handy.",
-      "Resume Builder is also under Tools — pick from 4 layouts: 1-column and 2-column, each with or without a 35×45mm passport photo. Fill in name, contact (add multiple phones and emails — duplicates are ignored), summary, education, experience with bullets, skills, and certifications.",
-      "Everything saves to your local database so you can browse past resumes, search by name, and jump back to edit. Generate Resume saves both a Word file and a PDF in one click — the PDF needs LibreOffice, otherwise you still get the Word file.",
-      "Adding a photo is easy — Upload Photo opens a cropper where you can drag & drop, click to browse, or paste (Ctrl+V). Crop to the exact passport box, tweak zoom and rotation with Alt+wheel, and see a small preview before you save.",
-      "Import is flexible too — the Import JSON popup lets you drop a JSON file, browse, or paste the text straight from your chat (including a Paste from clipboard button). The app strips any instruction fields and checks the data before loading it.",
-      "Need AI help? Generate JSON copies a fill-in-the-blanks template to your clipboard — paste it into your LLM, get the filled JSON back, and import it. No API keys or cloud calls needed.",
-      "The Word files use a clean A4 look with Calibri and a navy accent — one-column has stacked contact details up top with a subtle underline, two-column has a tidy sidebar with a divider and centered photo when you choose a photo layout.",
-      "Every button in Batch Converter and Resume Builder now has a hover tip that stays on its own button, wraps instead of spilling off the screen, and doesn’t get stuck when you scroll or remove an item.",
-      "Template and entry cards are centered with their icons and text in the middle, a bit taller for breathing room, and easy to read.",
+      "Find Batch Image Converter under Tools in Overview. Drag in mixed images, preview them as a grid, and convert the selection to one format.",
+      "Save to a chosen timestamped folder. Names stay intact, duplicates are numbered, Effie shows progress and keeps failures ready to retry.",
+      "Build resumes under Tools with four layouts. Choose one or two columns, with or without a photo, then fill in your details.",
+      "Resumes save locally so you can browse, search, and edit anytime. Generate Word and PDF together with one click using LibreOffice.",
+      "Add a 35 by 45 mm photo with a cropper. Drag, browse, or paste an image, adjust zoom and rotation, then preview before saving.",
+      "Import JSON by dropping a file, browsing, or pasting text. Or copy a template, fill it with any AI, and import the result.",
+      "Exports use a clean A4 design with Calibri and a navy accent. Buttons now show tidy tooltips and cards feel more balanced and readable.",
+    ],
+    groups: [
+      {
+        heading: "Batch Image Converter",
+        subheading: "Overview › Tools",
+        bullets: [
+          "Find Batch Image Converter under Tools in Overview. Drag in mixed images, preview them as a grid, and convert the selection to one format.",
+          "Save to a chosen timestamped folder. Names stay intact, duplicates are numbered, Effie shows progress and keeps failures ready to retry.",
+        ],
+      },
+      {
+        heading: "Resume Builder",
+        subheading: "Overview › Tools",
+        bullets: [
+          "Build resumes under Tools with four layouts. Choose one or two columns, with or without a photo, then fill in your details.",
+          "Resumes save locally so you can browse, search, and edit anytime. Generate Word and PDF together with one click using LibreOffice.",
+          "Add a 35 by 45 mm photo with a cropper. Drag, browse, or paste an image, adjust zoom and rotation, then preview before saving.",
+          "Import JSON by dropping a file, browsing, or pasting text. Or copy a template, fill it with any AI, and import the result.",
+        ],
+      },
+      {
+        heading: "Polish",
+        subheading: "Everywhere",
+        bullets: ["Exports use a clean A4 design with Calibri and a navy accent. Buttons now show tidy tooltips and cards feel more balanced and readable."],
+      },
     ],
   },
   "1.20.2": {

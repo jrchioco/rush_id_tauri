@@ -30,14 +30,34 @@ export function PatchNotesModal({ open, onClose }: PatchNotesModalProps) {
                 <span className="text-sm font-bold text-[#e8e4da]">v{version}</span>
                 <span className="text-xs text-[#555] font-mono">({entry.date})</span>
               </div>
-              <ul className="space-y-1 ml-1">
-                {entry.notes.map((note, i) => (
-                  <li key={i} className="text-xs text-[#888] font-mono flex items-start gap-2">
-                    <span className="text-[#c8881a] mt-0.5">•</span>
-                    <span>{note}</span>
-                  </li>
-                ))}
-              </ul>
+              {entry.groups ? (
+                <div className="space-y-4 mt-2">
+                  {entry.groups.map((group, gi) => (
+                    <div key={gi}>
+                      <h3 className="text-xs font-bold text-[#e8e4da] tracking-wide flex items-center gap-2 mb-1.5">
+                        {group.heading} <span className="text-[10px] text-[#555] font-mono font-normal">{group.subheading}</span>
+                      </h3>
+                      <ul className="space-y-1 ml-1 border-l border-[#2a2a28] pl-3">
+                        {group.bullets.map((note, i) => (
+                          <li key={i} className="text-xs text-[#888] font-mono flex items-start gap-2">
+                            <span className="text-[#c8881a] mt-0.5">•</span>
+                            <span>{note}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ul className="space-y-1 ml-1">
+                  {entry.notes.map((note, i) => (
+                    <li key={i} className="text-xs text-[#888] font-mono flex items-start gap-2">
+                      <span className="text-[#c8881a] mt-0.5">•</span>
+                      <span>{note}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
         </div>
