@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { FileText, Upload, Download, LayoutGrid } from "lucide-react";
+import { FileText, Upload, Download, LayoutGrid, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import ResumeForm, { ResumeFormData } from "./Form";
 import BrowseResumes from "./Browse";
 import { ImportJsonModal } from "./ImportJsonModal";
+import { HowToModal } from "./HowToModal";
 import { Tooltip } from "../../components/Tooltip";
 import { TOOLTIPS } from "../../lib/tooltips";
 import { invoke } from "@tauri-apps/api/core";
@@ -39,6 +40,7 @@ export default function ResumeBuilderEntry() {
   const [view, setView] = useState<"entry" | "form" | "browse">("entry");
   const [editData, setEditData] = useState<ResumeFormData | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [howToOpen, setHowToOpen] = useState(false);
   const handleSelectResume = async (id: number) => {
     try {
       const r = await invoke<{ data_json: string }>("get_resume", { id });
@@ -53,11 +55,19 @@ export default function ResumeBuilderEntry() {
   if (view === "browse") return <BrowseResumes onBack={() => setView("entry")} onSelect={handleSelectResume} />;
   return (
     <div className="flex flex-col h-full min-h-[520px]">
-      <div className="mb-6">
-        <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[#c8881a]" /> Resume Builder
-        </h3>
-        <p className="text-xs font-mono text-[#555] mt-0.5">J3FF house style — A4, Calibri, navy accent. 4 layout variants.</p>
+      {/* VARIANT A — header ghost */}
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#c8881a]" /> Resume Builder
+          </h3>
+          <p className="text-xs font-mono text-[#555] mt-0.5">J3FF house style — A4, Calibri, navy accent. 4 layout variants.</p>
+        </div>
+        <Tooltip content={TOOLTIPS.resumeHowTo} className="shrink-0">
+          <button onClick={() => setHowToOpen(true)} className="shrink-0 px-3 py-1.5 rounded-lg border border-[#2a2a28] bg-[#1a1a18] text-[#888] hover:text-[#e8e4da] hover:border-[#c8881a]/30 text-xs font-mono flex items-center gap-1.5 transition-colors">
+            <HelpCircle className="w-3.5 h-3.5" /> How To
+          </button>
+        </Tooltip>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -89,11 +99,21 @@ export default function ResumeBuilderEntry() {
         );})}
       </div>
 
-      <div className="mt-6 p-3 rounded-lg bg-[#0c0c0b] border border-[#2a2a28]">
+      {/* VARIANT B — centered below cards, above Engine */}
+      <div className="flex justify-center mt-6">
+        <Tooltip content={TOOLTIPS.resumeHowTo}>
+          <button onClick={() => setHowToOpen(true)} className="px-5 py-2.5 rounded-xl border border-[#c8881a]/30 bg-[#c8881a]/10 text-[#c8881a] hover:bg-[#c8881a]/20 hover:border-[#c8881a]/50 text-sm font-mono font-bold tracking-wide flex items-center gap-2 transition-colors shadow-sm">
+            <HelpCircle className="w-4 h-4" /> How To — English | Tagalog
+          </button>
+        </Tooltip>
+      </div>
+
+      <div className="mt-4 p-3 rounded-lg bg-[#0c0c0b] border border-[#2a2a28]">
         <p className="text-xs font-mono text-[#444]">Engine: <span className="text-[#888]">docx-rs</span> (native Rust) · Storage: <span className="text-[#888]">resumes</span> in <span className="text-[#888]">activity.db</span> · No LLM calls in-app (portable JSON contract).</p>
       </div>
 
       <ImportJsonModal open={importModalOpen} onClose={() => setImportModalOpen(false)} onImport={(data) => { setEditData(data); setView("form"); }} />
+      <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} />
     </div>
   );
 }
