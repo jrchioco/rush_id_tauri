@@ -55,7 +55,6 @@ export default function ResumeBuilderEntry() {
   if (view === "browse") return <BrowseResumes onBack={() => setView("entry")} onSelect={handleSelectResume} />;
   return (
     <div className="flex flex-col h-full min-h-[520px]">
-      {/* VARIANT A — header ghost */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide flex items-center gap-2">
@@ -99,16 +98,7 @@ export default function ResumeBuilderEntry() {
         );})}
       </div>
 
-      {/* VARIANT B — centered below cards, above Engine */}
-      <div className="flex justify-center mt-6">
-        <Tooltip content={TOOLTIPS.resumeHowTo}>
-          <button onClick={() => setHowToOpen(true)} className="px-5 py-2.5 rounded-xl border border-[#c8881a]/30 bg-[#c8881a]/10 text-[#c8881a] hover:bg-[#c8881a]/20 hover:border-[#c8881a]/50 text-sm font-mono font-bold tracking-wide flex items-center gap-2 transition-colors shadow-sm">
-            <HelpCircle className="w-4 h-4" /> How To — English | Tagalog
-          </button>
-        </Tooltip>
-      </div>
-
-      <div className="mt-4 p-3 rounded-lg bg-[#0c0c0b] border border-[#2a2a28]">
+      <div className="mt-6 p-3 rounded-lg bg-[#0c0c0b] border border-[#2a2a28]">
         <p className="text-xs font-mono text-[#444]">Engine: <span className="text-[#888]">docx-rs</span> (native Rust) · Storage: <span className="text-[#888]">resumes</span> in <span className="text-[#888]">activity.db</span> · No LLM calls in-app (portable JSON contract).</p>
       </div>
 
