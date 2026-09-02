@@ -98,6 +98,7 @@ export const TOOLTIPS = {
   resumeImportBrowse: "Browse via system dialog — pick a JSON file",
   resumeImportPaste: "Paste JSON from clipboard — auto-validates",
   resumeImportDropzone: "Drop a .json file here — must match resume template shape",
+  resumeHowTo: "How resume flow works — template, AI fill, import, generate",
 } as const;
 
 export type TooltipKey = keyof typeof TOOLTIPS;
