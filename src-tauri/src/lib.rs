@@ -3096,6 +3096,108 @@ fn convert_images_batch(
     })
 }
 
+// ---- PDF → image rendering (PDFium, Phase 1 bare harness) ----
+
+/// Candidate directories holding the bundled PDFium shared library.
+/// In dev, `resource_dir()` already resolves to `src-tauri/`, so the first
+/// candidate covers both dev and production bundle layouts.
+fn pdfium_lib_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    let res = resource_dir(app);
+    #[cfg(target_os = "windows")]
+    dirs.push(res.join("binaries/pdfium-win-x64"));
+    #[cfg(target_os = "linux")]
+    dirs.push(res.join("binaries/pdfium-linux-x64"));
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    dirs.push(res.join("binaries"));
+    // Fallback: library sitting next to the executable.
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            #[cfg(target_os = "windows")]
+            dirs.push(parent.join("binaries/pdfium-win-x64"));
+            #[cfg(target_os = "linux")]
+            dirs.push(parent.join("binaries/pdfium-linux-x64"));
+            dirs.push(parent.to_path_buf());
+        }
+    }
+    dirs
+}
+
+fn load_pdfium(app: &tauri::AppHandle) -> Result<pdfium_render::prelude::Pdfium, String> {
+    use pdfium_render::prelude::*;
+    let mut last_err = String::from("no candidate directories");
+    for dir in pdfium_lib_dirs(app) {
+        let lib_path = Pdfium::pdfium_platform_library_name_at_path(&dir);
+        match Pdfium::bind_to_library(&lib_path) {
+            Ok(bindings) => return Ok(Pdfium::new(bindings)),
+            Err(e) => {
+                last_err = format!("{}: {:?}", lib_path.to_string_lossy(), e);
+            }
+        }
+    }
+    // Final fallback: system-provided library, if any.
+    match Pdfium::bind_to_system_library() {
+        Ok(bindings) => Ok(Pdfium::new(bindings)),
+        Err(e) => Err(format!(
+            "Could not load bundled PDFium ({}) nor system library ({:?})",
+            last_err, e
+        )),
+    }
+}
+
+/// Phase 1 test harness: render every page of a PDF to PNG at the requested
+/// DPI (default 200) and dump them under `data_dir/tmp/pdf-test-<ts>/`.
+/// Returns the absolute paths of the rendered page images.
+#[tauri::command]
+fn pdf_test_render(
+    app_handle: tauri::AppHandle,
+    pdf_path: String,
+    dpi: Option<u32>,
+) -> Result<Vec<String>, String> {
+    use pdfium_render::prelude::*;
+    let dpi = dpi.unwrap_or(200).clamp(72, 600);
+    let scale = dpi as f32 / 72.0;
+
+    if !Path::new(&pdf_path).exists() {
+        return Err(format!("PDF not found: {}", pdf_path));
+    }
+
+    let pdfium = load_pdfium(&app_handle)?;
+    let document = pdfium
+        .load_pdf_from_file(&pdf_path, None)
+        .map_err(|e| format!("Failed to open PDF (wrong password or corrupt file?): {:?}", e))?;
+    let page_count = document.pages().len() as usize;
+    if page_count == 0 {
+        return Err("PDF has no pages".to_string());
+    }
+
+    let ts = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
+    let out_dir = data_dir(&app_handle)
+        .join("tmp")
+        .join(format!("pdf-test-{}", ts));
+    fs::create_dir_all(&out_dir)
+        .map_err(|e| format!("Failed to create output dir: {}", e))?;
+
+    let mut rendered = Vec::with_capacity(page_count);
+    for i in 0..page_count {
+        let page = document
+            .pages()
+            .get(i as u16)
+            .map_err(|e| format!("Failed to load page {}: {:?}", i + 1, e))?;
+        let config = PdfRenderConfig::new().scale_page_by_factor(scale);
+        let bitmap = page
+            .render_with_config(&config)
+            .map_err(|e| format!("Failed to render page {}: {:?}", i + 1, e))?;
+        let image = bitmap.as_image();
+        let out_path = out_dir.join(format!("page-{:03}.png", i + 1));
+        image
+            .save(&out_path)
+            .map_err(|e| format!("Failed to save page {}: {}", i + 1, e))?;
+        rendered.push(out_path.to_string_lossy().to_string());
+    }
+    Ok(rendered)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     cleanup_temp_pdfs();
@@ -3158,6 +3260,7 @@ pub fn run() {
                 add_pricing_tier,
                 delete_pricing_tier,
                 convert_images_batch,
+                pdf_test_render,
                 create_resume,
                 update_resume,
                 get_resume,

@@ -30,7 +30,9 @@
     "resources": {
       "SVGs/*": "SVGs/",
       "default-pricing.json": ".",
-      "resources/resume-template.json": "resources/resume-template.json"
+      "resources/resume-template.json": "resources/resume-template.json",
+      "binaries/pdfium-win-x64/pdfium.dll": "binaries/pdfium-win-x64/pdfium.dll",
+      "binaries/pdfium-linux-x64/libpdfium.so": "binaries/pdfium-linux-x64/libpdfium.so"
     },
     "icon": [
       "icons/32x32.png",
