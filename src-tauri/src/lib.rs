@@ -9,6 +9,8 @@ use std::process::Command;
 use tauri::{Emitter, Manager};
 use image::ImageEncoder;
 
+mod pdf_render;
+
 #[derive(Debug, Deserialize, Serialize, Default)]
 struct ApiKeys {
     poof: Vec<String>,
@@ -3096,54 +3098,7 @@ fn convert_images_batch(
     })
 }
 
-// ---- PDF → image rendering (PDFium, Phase 1 bare harness) ----
-
-/// Candidate directories holding the bundled PDFium shared library.
-/// In dev, `resource_dir()` already resolves to `src-tauri/`, so the first
-/// candidate covers both dev and production bundle layouts.
-fn pdfium_lib_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
-    let mut dirs = Vec::new();
-    let res = resource_dir(app);
-    #[cfg(target_os = "windows")]
-    dirs.push(res.join("binaries/pdfium-win-x64"));
-    #[cfg(target_os = "linux")]
-    dirs.push(res.join("binaries/pdfium-linux-x64"));
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-    dirs.push(res.join("binaries"));
-    // Fallback: library sitting next to the executable.
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            #[cfg(target_os = "windows")]
-            dirs.push(parent.join("binaries/pdfium-win-x64"));
-            #[cfg(target_os = "linux")]
-            dirs.push(parent.join("binaries/pdfium-linux-x64"));
-            dirs.push(parent.to_path_buf());
-        }
-    }
-    dirs
-}
-
-fn load_pdfium(app: &tauri::AppHandle) -> Result<pdfium_render::prelude::Pdfium, String> {
-    use pdfium_render::prelude::*;
-    let mut last_err = String::from("no candidate directories");
-    for dir in pdfium_lib_dirs(app) {
-        let lib_path = Pdfium::pdfium_platform_library_name_at_path(&dir);
-        match Pdfium::bind_to_library(&lib_path) {
-            Ok(bindings) => return Ok(Pdfium::new(bindings)),
-            Err(e) => {
-                last_err = format!("{}: {:?}", lib_path.to_string_lossy(), e);
-            }
-        }
-    }
-    // Final fallback: system-provided library, if any.
-    match Pdfium::bind_to_system_library() {
-        Ok(bindings) => Ok(Pdfium::new(bindings)),
-        Err(e) => Err(format!(
-            "Could not load bundled PDFium ({}) nor system library ({:?})",
-            last_err, e
-        )),
-    }
-}
+// ---- PDF → image rendering (PDFium; see pdf_render.rs) ----
 
 #[derive(Debug, Serialize)]
 struct RenderedPdfPage {
@@ -3157,13 +3112,15 @@ struct RenderedPdfPage {
 struct RenderedPdf {
     pages: Vec<RenderedPdfPage>,
     total: usize,
+    capped: bool,
 }
 
 /// Render every page of a PDF to PNG at the requested DPI (default 200) and
-/// dump them under `data_dir/tmp/pdf-<stem>-<ts>/`. Each page becomes one
-/// Batch Converter tile downstream. Password-protected files without a
-/// (correct) password fail with a `PDF_PASSWORD_REQUIRED` /
-/// `PDF_PASSWORD_INCORRECT` sentinel so the frontend can prompt.
+/// dump them under `data_dir/tmp/pdf-<stem>-<ts>/`. Pages render in parallel
+/// on a capped pool; oversized pages are fitted to `MAX_RENDER_EDGE_PX` and
+/// reported via `capped`. Password-protected files without a (correct)
+/// password fail with a `PDF_PASSWORD_REQUIRED` / `PDF_PASSWORD_INCORRECT`
+/// sentinel so the frontend can prompt.
 #[tauri::command]
 fn render_pdf_pages(
     app_handle: tauri::AppHandle,
@@ -3171,33 +3128,16 @@ fn render_pdf_pages(
     dpi: Option<u32>,
     password: Option<String>,
 ) -> Result<RenderedPdf, String> {
-    use pdfium_render::prelude::*;
     let dpi = dpi.unwrap_or(200).clamp(72, 600);
-    let scale = dpi as f32 / 72.0;
+    let base_scale = dpi as f32 / 72.0;
 
     if !Path::new(&pdf_path).exists() {
         return Err(format!("PDF not found: {}", pdf_path));
     }
 
-    let pdfium = load_pdfium(&app_handle)?;
-    let document = pdfium
-        .load_pdf_from_file(&pdf_path, password.as_deref())
-        .map_err(|e| {
-            let dbg = format!("{:?}", e);
-            if dbg.contains("Password") {
-                if password.is_some() {
-                    format!("PDF_PASSWORD_INCORRECT: wrong password for {}", pdf_path)
-                } else {
-                    format!("PDF_PASSWORD_REQUIRED: {} is password-protected", pdf_path)
-                }
-            } else {
-                format!("Failed to open PDF (corrupt or unsupported?): {}", dbg)
-            }
-        })?;
-    let page_count = document.pages().len() as usize;
-    if page_count == 0 {
-        return Err("PDF has no pages".to_string());
-    }
+    let pdfium = pdf_render::load(&app_handle)?;
+    let pdf_bytes =
+        fs::read(&pdf_path).map_err(|e| format!("Failed to read PDF: {}", e))?;
 
     let stem = Path::new(&pdf_path)
         .file_stem()
@@ -3214,32 +3154,41 @@ fn render_pdf_pages(
     fs::create_dir_all(&out_dir)
         .map_err(|e| format!("Failed to create output dir: {}", e))?;
 
-    let mut pages = Vec::with_capacity(page_count);
-    for i in 0..page_count {
-        let page = document
-            .pages()
-            .get(i as u16)
-            .map_err(|e| format!("Failed to load page {}: {:?}", i + 1, e))?;
-        let config = PdfRenderConfig::new().scale_page_by_factor(scale);
-        let bitmap = page
-            .render_with_config(&config)
-            .map_err(|e| format!("Failed to render page {}: {:?}", i + 1, e))?;
-        let image = bitmap.as_image();
-        let (width, height) = (image.width(), image.height());
-        let out_path = out_dir.join(format!("page-{:03}.png", i + 1));
-        image
+    let rendered = pdf_render::render_pages(
+        &pdfium,
+        &pdf_bytes,
+        password.as_deref(),
+        &pdf_path,
+        base_scale,
+        &|done, total| {
+            app_handle
+                .emit(
+                    "pdf_render_progress",
+                    serde_json::json!({ "done": done, "total": total, "file": stem }),
+                )
+                .ok();
+        },
+    )?;
+    let total = rendered.len();
+    let mut capped = false;
+    let mut pages = Vec::with_capacity(total);
+    for r in rendered {
+        let out_path = out_dir.join(format!("page-{:03}.png", r.index + 1));
+        r.image
             .save(&out_path)
-            .map_err(|e| format!("Failed to save page {}: {}", i + 1, e))?;
+            .map_err(|e| format!("Failed to save page {}: {}", r.index + 1, e))?;
+        capped |= r.capped;
         pages.push(RenderedPdfPage {
             path: out_path.to_string_lossy().to_string(),
-            page: i + 1,
-            width,
-            height,
+            page: r.index + 1,
+            width: r.width,
+            height: r.height,
         });
     }
     Ok(RenderedPdf {
-        total: page_count,
+        total,
         pages,
+        capped,
     })
 }
 
@@ -3250,6 +3199,7 @@ pub fn run() {
         .setup(|app| {
             init_activity_db(&app.handle())?;
             seed_services_from_svg(&app.handle());
+            pdf_render::cleanup_tmps(&app.handle());
             Ok(())
         })
         .plugin(tauri_plugin_dialog::init())
