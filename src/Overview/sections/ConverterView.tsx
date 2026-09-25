@@ -20,6 +20,10 @@ export interface ConverterItem {
   error?: string;
   /** Origin path for expanded tiles (e.g. source PDF) — dedup + re-import tracking. */
   source?: string;
+  /** Render DPI + pixel dimensions (PDF-sourced tiles). */
+  dpi?: number;
+  width?: number;
+  height?: number;
 }
 
 /** Tile descriptor produced by a wrapper's `expandPaths` (ids assigned by the core). */
@@ -27,11 +31,20 @@ export interface NewTile {
   path: string;
   filename: string;
   source?: string;
+  dpi?: number;
+  width?: number;
+  height?: number;
+  /**
+   * When set, existing tiles with `source === replaceSource` are removed as
+   * the new tiles append (e.g. PDF re-rendered at a different DPI).
+   */
+  replaceSource?: string;
 }
 
 export interface ExpandHelpers {
   onStatus: (msg: string | null) => void;
-  hasSource: (source: string) => boolean;
+  /** DPI the given source was previously expanded at, if still in the grid. */
+  sourceDpi: (source: string) => number | undefined;
 }
 
 export interface ConverterViewProps {
@@ -142,7 +155,11 @@ function Tile({ item, tileSize, onToggle, onRemove }: {
 
       <div className="px-2 py-1.5 bg-[#0c0c0b] border-t border-[#2a2a28]">
         <p className="text-[10px] font-mono text-[#888] truncate" title={item.filename}>{item.filename}</p>
-        <p className="text-[9px] font-mono text-[#444] truncate" title={item.path}>{item.path}</p>
+        {item.dpi !== undefined && item.width !== undefined && item.height !== undefined ? (
+          <p className="text-[9px] font-mono text-[#c8881a] truncate" title={item.path}>{item.dpi} DPI · {item.width}×{item.height}</p>
+        ) : (
+          <p className="text-[9px] font-mono text-[#444] truncate" title={item.path}>{item.path}</p>
+        )}
       </div>
     </div>
   );
@@ -203,16 +220,17 @@ export default function ConverterView({
       try {
         const tiles = await expandPaths(valid, dpi, {
           onStatus: setImporting,
-          hasSource: (source) => itemsRef.current.some((it) => it.source === source),
+          sourceDpi: (source) => itemsRef.current.find((it) => it.source === source)?.dpi,
         });
         const known = new Set(itemsRef.current.map((p) => p.path));
         const fresh = tiles.filter((t) => !known.has(t.path));
-        if (fresh.length === 0) {
+        const replaced = new Set(tiles.map((t) => t.replaceSource).filter((s) => s !== undefined));
+        if (fresh.length === 0 && replaced.size === 0) {
           toast.info("All dropped files already in batch");
           return;
         }
         setItems((prev) => [
-          ...prev,
+          ...prev.filter((it) => it.source === undefined || !replaced.has(it.source)),
           ...fresh.map((t) => ({
             id: `${t.path}::${Date.now()}::${Math.random().toString(36).slice(2, 6)}`,
             path: t.path,
@@ -220,6 +238,9 @@ export default function ConverterView({
             checked: true as const,
             status: "pending" as const,
             source: t.source,
+            dpi: t.dpi,
+            width: t.width,
+            height: t.height,
           })),
         ]);
       } catch (e) {

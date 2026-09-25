@@ -3149,6 +3149,8 @@ fn load_pdfium(app: &tauri::AppHandle) -> Result<pdfium_render::prelude::Pdfium,
 struct RenderedPdfPage {
     path: String,
     page: usize,
+    width: u32,
+    height: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -3223,6 +3225,7 @@ fn render_pdf_pages(
             .render_with_config(&config)
             .map_err(|e| format!("Failed to render page {}: {:?}", i + 1, e))?;
         let image = bitmap.as_image();
+        let (width, height) = (image.width(), image.height());
         let out_path = out_dir.join(format!("page-{:03}.png", i + 1));
         image
             .save(&out_path)
@@ -3230,6 +3233,8 @@ fn render_pdf_pages(
         pages.push(RenderedPdfPage {
             path: out_path.to_string_lossy().to_string(),
             page: i + 1,
+            width,
+            height,
         });
     }
     Ok(RenderedPdf {

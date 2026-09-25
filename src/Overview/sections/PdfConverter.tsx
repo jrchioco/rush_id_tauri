@@ -11,7 +11,7 @@ import { TOOLTIPS } from "../../lib/tooltips";
 import { setEffieMood } from "../../components/CompanionWidget/moodStore";
 
 interface RenderedPdf {
-  pages: { path: string; page: number }[];
+  pages: { path: string; page: number; width: number; height: number }[];
   total: number;
 }
 
@@ -23,14 +23,16 @@ function filenameFromPath(path: string): string {
 
 export default function PdfConverter() {
   const expandPaths = useCallback(
-    async (paths: string[], dpi: DpiChoice, { onStatus, hasSource }: ExpandHelpers): Promise<NewTile[]> => {
+    async (paths: string[], dpi: DpiChoice, { onStatus, sourceDpi }: ExpandHelpers): Promise<NewTile[]> => {
       const out: NewTile[] = [];
       for (const pdf of paths) {
-        if (hasSource(pdf)) {
+        const prevDpi = sourceDpi(pdf);
+        if (prevDpi === dpi) {
           toast.info(`${filenameFromPath(pdf)} already in batch`);
           continue;
         }
         const stem = filenameFromPath(pdf).replace(/\.pdf$/i, "");
+        const replacing = prevDpi !== undefined;
         onStatus(`Rendering ${stem} @ ${dpi} DPI…`);
         try {
           const result = await invoke<RenderedPdf>("render_pdf_pages", {
@@ -42,10 +44,22 @@ export default function PdfConverter() {
             toast.warning(`${stem}: ${result.total} pages — large import, may be slow on low-end PCs`);
           }
           for (const p of result.pages) {
-            out.push({ path: p.path, filename: `${stem} p.${p.page}/${result.total}`, source: pdf });
+            out.push({
+              path: p.path,
+              filename: `${stem} p.${p.page}/${result.total}`,
+              source: pdf,
+              dpi,
+              width: p.width,
+              height: p.height,
+              ...(replacing ? { replaceSource: pdf } : {}),
+            });
           }
           setEffieMood("success");
-          toast.success(`${stem}: ${result.total} page(s) → tiles @ ${dpi} DPI`);
+          toast.success(
+            replacing
+              ? `${stem}: re-rendered @ ${dpi} DPI (replaced ${prevDpi} DPI tiles)`
+              : `${stem}: ${result.total} page(s) → tiles @ ${dpi} DPI`
+          );
         } catch (e) {
           const msg = String(e);
           setEffieMood("error");
