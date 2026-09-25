@@ -3145,15 +3145,30 @@ fn load_pdfium(app: &tauri::AppHandle) -> Result<pdfium_render::prelude::Pdfium,
     }
 }
 
-/// Phase 1 test harness: render every page of a PDF to PNG at the requested
-/// DPI (default 200) and dump them under `data_dir/tmp/pdf-test-<ts>/`.
-/// Returns the absolute paths of the rendered page images.
+#[derive(Debug, Serialize)]
+struct RenderedPdfPage {
+    path: String,
+    page: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct RenderedPdf {
+    pages: Vec<RenderedPdfPage>,
+    total: usize,
+}
+
+/// Render every page of a PDF to PNG at the requested DPI (default 200) and
+/// dump them under `data_dir/tmp/pdf-<stem>-<ts>/`. Each page becomes one
+/// Batch Converter tile downstream. Password-protected files without a
+/// (correct) password fail with a `PDF_PASSWORD_REQUIRED` /
+/// `PDF_PASSWORD_INCORRECT` sentinel so the frontend can prompt.
 #[tauri::command]
-fn pdf_test_render(
+fn render_pdf_pages(
     app_handle: tauri::AppHandle,
     pdf_path: String,
     dpi: Option<u32>,
-) -> Result<Vec<String>, String> {
+    password: Option<String>,
+) -> Result<RenderedPdf, String> {
     use pdfium_render::prelude::*;
     let dpi = dpi.unwrap_or(200).clamp(72, 600);
     let scale = dpi as f32 / 72.0;
@@ -3164,21 +3179,40 @@ fn pdf_test_render(
 
     let pdfium = load_pdfium(&app_handle)?;
     let document = pdfium
-        .load_pdf_from_file(&pdf_path, None)
-        .map_err(|e| format!("Failed to open PDF (wrong password or corrupt file?): {:?}", e))?;
+        .load_pdf_from_file(&pdf_path, password.as_deref())
+        .map_err(|e| {
+            let dbg = format!("{:?}", e);
+            if dbg.contains("Password") {
+                if password.is_some() {
+                    format!("PDF_PASSWORD_INCORRECT: wrong password for {}", pdf_path)
+                } else {
+                    format!("PDF_PASSWORD_REQUIRED: {} is password-protected", pdf_path)
+                }
+            } else {
+                format!("Failed to open PDF (corrupt or unsupported?): {}", dbg)
+            }
+        })?;
     let page_count = document.pages().len() as usize;
     if page_count == 0 {
         return Err("PDF has no pages".to_string());
     }
 
+    let stem = Path::new(&pdf_path)
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect::<String>();
+    let stem = if stem.is_empty() { "doc".to_string() } else { stem };
     let ts = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let out_dir = data_dir(&app_handle)
         .join("tmp")
-        .join(format!("pdf-test-{}", ts));
+        .join(format!("pdf-{}-{}", stem, ts));
     fs::create_dir_all(&out_dir)
         .map_err(|e| format!("Failed to create output dir: {}", e))?;
 
-    let mut rendered = Vec::with_capacity(page_count);
+    let mut pages = Vec::with_capacity(page_count);
     for i in 0..page_count {
         let page = document
             .pages()
@@ -3193,9 +3227,15 @@ fn pdf_test_render(
         image
             .save(&out_path)
             .map_err(|e| format!("Failed to save page {}: {}", i + 1, e))?;
-        rendered.push(out_path.to_string_lossy().to_string());
+        pages.push(RenderedPdfPage {
+            path: out_path.to_string_lossy().to_string(),
+            page: i + 1,
+        });
     }
-    Ok(rendered)
+    Ok(RenderedPdf {
+        total: page_count,
+        pages,
+    })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -3260,7 +3300,7 @@ pub fn run() {
                 add_pricing_tier,
                 delete_pricing_tier,
                 convert_images_batch,
-                pdf_test_render,
+                render_pdf_pages,
                 create_resume,
                 update_resume,
                 get_resume,

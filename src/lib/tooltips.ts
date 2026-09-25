@@ -39,13 +39,14 @@ export const TOOLTIPS = {
   converterSelectAll: "Check all tiles for next Convert",
   converterDeselectAll: "Uncheck all tiles",
   converterDensity: "Adjust tile size — changes grid density",
-  converterBrowse: "Browse via system dialog — pick PNG/JPEG/WebP files",
+  converterBrowse: "Browse via system dialog — pick PNG/JPEG/WebP/PDF files",
+  converterDpi: "PDF render resolution — 150 fast, 200 balanced, 300 print-sharp (higher is slower)",
   converterConvert: "Convert checked images to target format in a timestamped folder",
   converterConvertDisabled: "Select at least one image to convert",
   converterOpenFolder: "Reveal batch folder in file manager",
   converterTileCheck: "Include in next Convert — unchecked tiles are skipped",
   converterTileRemove: "Remove from batch (does not delete original file)",
-  converterDropzone: "Drop PNG, JPEG, or WebP here — mixed formats allowed, one target for all",
+  converterDropzone: "Drop PNG, JPEG, WebP, or PDF here — PDFs expand to one tile per page",
 
   // Retouch Window
   closeRetouch: "Close without saving",

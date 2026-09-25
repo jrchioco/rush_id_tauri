@@ -17,9 +17,19 @@ interface BatchItem {
   checked: boolean;
   status: "pending" | "success" | "error";
   error?: string;
+  /** Origin PDF path for PDF-sourced tiles (dedup + re-import tracking). */
+  source?: string;
 }
 
+interface RenderedPdf {
+  pages: { path: string; page: number }[];
+  total: number;
+}
+
+type DpiChoice = 150 | 200 | 300;
+
 const VALID_EXTS = ["png", "jpg", "jpeg", "webp"];
+const PAGE_GUARD_THRESHOLD = 50;
 
 function filenameFromPath(path: string): string {
   return path.split(/[/\\]/).pop() || path;
@@ -28,6 +38,10 @@ function filenameFromPath(path: string): string {
 function isValidImage(path: string): boolean {
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
   return VALID_EXTS.includes(ext);
+}
+
+function isPdf(path: string): boolean {
+  return (path.split(".").pop()?.toLowerCase() ?? "") === "pdf";
 }
 
 function Tile({ item, tileSize, onToggle, onRemove }: {
@@ -136,8 +150,10 @@ interface BatchSummary {
 export default function BatchConverter() {
   const [items, setItems] = useState<BatchItem[]>([]);
   const [target, setTarget] = useState<TargetFormat>("png");
+  const [dpi, setDpi] = useState<DpiChoice>(200);
   const [tileSize, setTileSize] = useState(140);
   const [converting, setConverting] = useState(false);
+  const [importing, setImporting] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [lastBatchDir, setLastBatchDir] = useState<string | null>(null);
   const [lastSummary, setLastSummary] = useState<BatchSummary | null>(null);
@@ -146,32 +162,89 @@ export default function BatchConverter() {
   const checkedCount = items.filter((i) => i.checked).length;
   const allChecked = items.length > 0 && checkedCount === items.length;
 
+  // Latest-value ref so the async PDF importer can dedup against fresh state.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  const importPdfs = useCallback(async (pdfPaths: string[]) => {
+    for (const pdf of pdfPaths) {
+      if (itemsRef.current.some((it) => it.source === pdf)) {
+        toast.info(`${filenameFromPath(pdf)} already in batch`);
+        continue;
+      }
+      const stem = filenameFromPath(pdf).replace(/\.pdf$/i, "");
+      setImporting(`Rendering ${stem} @ ${dpi} DPI…`);
+      try {
+        const result = await invoke<RenderedPdf>("render_pdf_pages", {
+          pdfPath: pdf,
+          dpi,
+          password: null,
+        });
+        if (result.total > PAGE_GUARD_THRESHOLD) {
+          toast.warning(`${stem}: ${result.total} pages — large import, may be slow on low-end PCs`);
+        }
+        setItems((prev) => {
+          const existing = new Set(prev.map((p) => p.path));
+          const next: BatchItem[] = [];
+          for (const p of result.pages) {
+            if (existing.has(p.path)) continue;
+            next.push({
+              id: `${p.path}::${Date.now()}::${Math.random().toString(36).slice(2, 6)}`,
+              path: p.path,
+              filename: `${stem} p.${p.page}/${result.total}`,
+              checked: true,
+              status: "pending",
+              source: pdf,
+            });
+          }
+          return [...prev, ...next];
+        });
+        setEffieMood("success");
+        toast.success(`${stem}: ${result.total} page(s) → tiles @ ${dpi} DPI`);
+      } catch (e) {
+        const msg = String(e);
+        setEffieMood("error");
+        if (msg.includes("PDF_PASSWORD_REQUIRED")) {
+          toast.error(`${stem} is password-protected — password prompt lands in Phase 3`);
+        } else {
+          toast.error(`${stem}: ${msg}`);
+        }
+      } finally {
+        setImporting(null);
+      }
+    }
+  }, [dpi]);
+
   const addPaths = useCallback((paths: string[]) => {
+    const pdfs = paths.filter(isPdf);
     const valid = paths.filter(isValidImage);
-    if (valid.length === 0) {
-      if (paths.length > 0) toast.error("No supported images (PNG, JPEG, WebP)");
+    if (valid.length === 0 && pdfs.length === 0) {
+      if (paths.length > 0) toast.error("No supported files (PNG, JPEG, WebP, PDF)");
       return;
     }
-    if (valid.length < paths.length) {
-      toast.warning(`${paths.length - valid.length} file(s) ignored — unsupported format`);
+    if (valid.length + pdfs.length < paths.length) {
+      toast.warning(`${paths.length - valid.length - pdfs.length} file(s) ignored — unsupported format`);
     }
-    setItems((prev) => {
-      const existing = new Set(prev.map((p) => p.path));
-      const next: BatchItem[] = [];
-      for (const p of valid) {
-        if (existing.has(p)) continue;
-        next.push({
-          id: `${p}::${Date.now()}::${Math.random().toString(36).slice(2, 6)}`,
-          path: p,
-          filename: filenameFromPath(p),
-          checked: true,
-          status: "pending",
-        });
-      }
-      if (next.length === 0) toast.info("All dropped files already in batch");
-      return [...prev, ...next];
-    });
-  }, []);
+    if (valid.length > 0) {
+      setItems((prev) => {
+        const existing = new Set(prev.map((p) => p.path));
+        const next: BatchItem[] = [];
+        for (const p of valid) {
+          if (existing.has(p)) continue;
+          next.push({
+            id: `${p}::${Date.now()}::${Math.random().toString(36).slice(2, 6)}`,
+            path: p,
+            filename: filenameFromPath(p),
+            checked: true,
+            status: "pending",
+          });
+        }
+        if (next.length === 0 && pdfs.length === 0) toast.info("All dropped files already in batch");
+        return [...prev, ...next];
+      });
+    }
+    if (pdfs.length > 0) void importPdfs(pdfs);
+  }, [importPdfs]);
 
   useTauriDragDrop(addPaths);
 
@@ -193,7 +266,7 @@ export default function BatchConverter() {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const selected = await open({
         multiple: true,
-        filters: [{ name: "Images", extensions: ["png", "jpeg", "jpg", "webp"] }],
+        filters: [{ name: "Images & PDFs", extensions: ["png", "jpeg", "jpg", "webp", "pdf"] }],
       });
       if (!selected) return;
       const paths = Array.isArray(selected) ? selected : [selected as string];
@@ -298,7 +371,7 @@ export default function BatchConverter() {
           <h3 className="text-sm font-bold text-[#e8e4da] tracking-wide flex items-center gap-2">
             <Images className="w-4 h-4 text-[#c8881a]" /> Batch Image Converter
           </h3>
-          <p className="text-xs font-mono text-[#555] mt-0.5">Drag in WebP, JPEG, or PNG — convert all checked to one target format.</p>
+          <p className="text-xs font-mono text-[#555] mt-0.5">Drag in WebP, JPEG, PNG, or PDF — convert all checked to one target format.</p>
         </div>
         <Tooltip content={TOOLTIPS.converterBrowse}>
           <button
@@ -308,7 +381,7 @@ export default function BatchConverter() {
             <FolderOpen className="w-3.5 h-3.5" /> Browse
           </button>
         </Tooltip>
-        <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.webp" multiple className="hidden" onChange={handleFileInput} />
+        <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.webp,.pdf" multiple className="hidden" onChange={handleFileInput} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-3 p-3 rounded-lg bg-[#0c0c0b] border border-[#2a2a28]">
@@ -332,6 +405,25 @@ export default function BatchConverter() {
                 </Tooltip>
               );
             })}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-[#555] tracking-widest uppercase">PDF DPI</span>
+          <div className="flex rounded-lg border border-[#2a2a28] overflow-hidden">
+            {([150, 200, 300] as DpiChoice[]).map((d) => (
+              <Tooltip key={d} content={TOOLTIPS.converterDpi}>
+                <button
+                  onClick={() => setDpi(d)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-mono font-bold tracking-wide transition-colors",
+                    dpi === d ? "bg-[#c8881a] text-[#0c0c0b]" : "bg-[#111110] text-[#888] hover:text-[#e8e4da]"
+                  )}
+                >
+                  {d}
+                </button>
+              </Tooltip>
+            ))}
           </div>
         </div>
 
@@ -377,8 +469,8 @@ export default function BatchConverter() {
               <div className="w-12 h-12 rounded-xl bg-[#1a1a18] border border-[#2a2a28] flex items-center justify-center mb-3">
                 <Images className="w-6 h-6 text-[#444]" />
               </div>
-              <p className="text-sm font-mono text-[#555]">Drop images here</p>
-              <p className="text-xs font-mono text-[#444] mt-1">PNG, JPEG, WebP — mixed formats allowed</p>
+              <p className="text-sm font-mono text-[#555]">Drop images or PDFs here</p>
+              <p className="text-xs font-mono text-[#444] mt-1">PNG, JPEG, WebP — PDFs expand to one tile per page</p>
               <p className="text-xs font-mono text-[#444] mt-3">or <button onClick={handleBrowse} className="text-[#c8881a] hover:underline">browse</button> via dialog</p>
               </div>
             </Tooltip>
@@ -422,7 +514,9 @@ export default function BatchConverter() {
             </Tooltip>
           )}
         </div>
-        {converting && progress ? (
+        {importing ? (
+          <p className="text-xs font-mono text-[#c8881a]">{importing}</p>
+        ) : converting && progress ? (
           <p className="text-xs font-mono text-[#c8881a]">Converting {progress.done}/{progress.total} — {target.toUpperCase()} @ ~90 quality</p>
         ) : lastSummary ? (
           <p className="text-xs font-mono">

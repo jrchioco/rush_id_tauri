@@ -1,7 +1,7 @@
 //! Phase 1 test harness: render every page of a PDF to PNG via bundled PDFium.
 //!
 //! Usage (from repo root):
-//!   cargo run --example pdf_render -- /path/to/file.pdf [dpi]
+//!   cargo run --example pdf_render -- /path/to/file.pdf [dpi] [password]
 //!
 //! Binds to the vendored `src-tauri/binaries/pdfium-linux-x64/libpdfium.so`
 //! (or `pdfium-win-x64/pdfium.dll` on Windows) — the same binaries the
@@ -18,6 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|s| s.parse().expect("dpi must be a number"))
         .unwrap_or(200)
         .clamp(72, 600);
+    let password: Option<String> = std::env::args().nth(3);
     let scale = dpi as f32 / 72.0;
 
     #[cfg(target_os = "windows")]
@@ -30,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ))?;
     let pdfium = Pdfium::new(bindings);
 
-    let document = pdfium.load_pdf_from_file(&pdf_path, None)?;
+    let document = pdfium.load_pdf_from_file(&pdf_path, password.as_deref())?;
     let page_count = document.pages().len();
     println!("pages: {} @ {} dpi", page_count, dpi);
 
