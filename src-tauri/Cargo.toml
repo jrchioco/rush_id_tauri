@@ -32,5 +32,3 @@ lopdf = "0.41"
 rusqlite = { version = "0.31", features = ["bundled"] }
 chrono = "0.4"
 pdfium-render = { version = "0.8", features = ["image", "sync"] }
-rayon = "1"
-num_cpus = "1"

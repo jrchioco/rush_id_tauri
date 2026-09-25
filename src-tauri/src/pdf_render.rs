@@ -1,16 +1,17 @@
 //! PDF → image rendering via bundled PDFium.
 //!
-//! Phase 3: pages render on a capped, auto-scaling rayon pool
-//! (`num_cpus - 2`, min 1) so branch tills running POS software aren't
-//! starved. `Pdfium`/`PdfDocument` are `Send + Sync` (crate guarantees +
-//! `thread_safe` bindings), so sharing `&PdfDocument` across threads is safe.
+//! All Pdfium work is serialized behind a process-global mutex. Concurrent
+//! use was proven unsafe in testing: racing page loads corrupt Pdfium's
+//! process-global state, permanently breaking later renders in the session
+//! (a failed parallel run poisoned every subsequent open). The crate only
+//! guards init/destroy, so we guard everything. Sequential Letter rendering
+//! is well under a second per page — no user-visible cost.
 //! Oversized pages are fitted to `MAX_RENDER_EDGE_PX` to avoid OOM on huge
 //! formats at high DPI.
 
 use pdfium_render::prelude::*;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, MutexGuard};
 
 use super::{data_dir, resource_dir};
 
@@ -27,16 +28,10 @@ pub struct RenderedPageImage {
     pub capped: bool,
 }
 
-fn pool() -> &'static rayon::ThreadPool {
-    static POOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
-    POOL.get_or_init(|| {
-        let threads = num_cpus::get().saturating_sub(2).max(1);
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(threads)
-            .thread_name(|i| format!("pdf-render-{}", i))
-            .build()
-            .expect("failed to build pdf render pool")
-    })
+static PDFIUM_LOCK: Mutex<()> = Mutex::new(());
+
+fn lock_pdfium() -> MutexGuard<'static, ()> {
+    PDFIUM_LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// Candidate directories holding the bundled PDFium shared library.
@@ -65,6 +60,8 @@ fn lib_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
 }
 
 pub fn load(app: &tauri::AppHandle) -> Result<Pdfium, String> {
+    // FPDF_InitLibrary touches process-global state: serialize with rendering.
+    let _guard = lock_pdfium();
     let mut last_err = String::from("no candidate directories");
     for dir in lib_dirs(app) {
         let lib_path = Pdfium::pdfium_platform_library_name_at_path(&dir);
@@ -101,67 +98,50 @@ fn map_open_error(e: pdfium_render::prelude::PdfiumError, pdf_desc: &str, had_pa
     }
 }
 
-/// Render every page in parallel. Each thread opens its own document from the
-/// shared bytes (page handles can't cross threads), so only `&Pdfium`,
-/// `&[u8]` and the password — all `Sync` — are shared. `progress(done,
-/// total)` fires once per finished page (order not guaranteed); the returned
-/// vec is always sorted by page index.
+/// Render every page sequentially under the global Pdfium lock.
+/// `progress(done, total)` fires once per finished page; the returned vec is
+/// in page order. A corrupt input fails as a clean `Err` — the lock is always
+/// released, so later renders in the session are unaffected.
 pub fn render_pages(
     pdfium: &Pdfium,
     pdf_bytes: &[u8],
     password: Option<&str>,
     pdf_desc: &str,
     base_scale: f32,
-    progress: &(dyn Fn(usize, usize) + Sync),
+    progress: &dyn Fn(usize, usize),
 ) -> Result<Vec<RenderedPageImage>, String> {
-    use rayon::prelude::*;
-    let total = pdfium
+    let _guard = lock_pdfium();
+    let document = pdfium
         .load_pdf_from_byte_slice(pdf_bytes, password)
-        .map_err(|e| map_open_error(e, pdf_desc, password.is_some()))
-        .and_then(|doc| {
-            let n = doc.pages().len() as usize;
-            if n == 0 {
-                Err("PDF has no pages".to_string())
-            } else {
-                Ok(n)
-            }
-        })?;
-    let done = AtomicUsize::new(0);
-    let mut pages: Vec<RenderedPageImage> = pool().install(|| {
-        let out: Result<Vec<RenderedPageImage>, String> = (0..total)
-            .into_par_iter()
-            .map(|i| {
-                // Per-thread document: cheap xref parse, no shared page state.
-                let doc = pdfium
-                    .load_pdf_from_byte_slice(pdf_bytes, password)
-                    .map_err(|e| format!("Failed to open PDF in worker: {:?}", e))?;
-                let page = doc
-                    .pages()
-                    .get(i as u16)
-                    .map_err(|e| format!("Failed to load page {}: {:?}", i + 1, e))?;
-                let longest_pt = page.width().value.max(page.height().value);
-                let scale = (MAX_RENDER_EDGE_PX / longest_pt).min(base_scale);
-                let capped = scale < base_scale;
-                let config = PdfRenderConfig::new().scale_page_by_factor(scale);
-                let bitmap = page
-                    .render_with_config(&config)
-                    .map_err(|e| format!("Failed to render page {}: {:?}", i + 1, e))?;
-                let image = bitmap.as_image();
-                let (width, height) = (image.width(), image.height());
-                let n = done.fetch_add(1, Ordering::SeqCst) + 1;
-                progress(n, total);
-                Ok(RenderedPageImage {
-                    index: i,
-                    image,
-                    width,
-                    height,
-                    capped,
-                })
-            })
-            .collect();
-        out
-    })?;
-    pages.sort_by_key(|p| p.index);
+        .map_err(|e| map_open_error(e, pdf_desc, password.is_some()))?;
+    let total = document.pages().len() as usize;
+    if total == 0 {
+        return Err("PDF has no pages".to_string());
+    }
+    let mut pages = Vec::with_capacity(total);
+    for i in 0..total {
+        let page = document
+            .pages()
+            .get(i as u16)
+            .map_err(|e| format!("Failed to load page {}: {:?}", i + 1, e))?;
+        let longest_pt = page.width().value.max(page.height().value);
+        let scale = (MAX_RENDER_EDGE_PX / longest_pt).min(base_scale);
+        let capped = scale < base_scale;
+        let config = PdfRenderConfig::new().scale_page_by_factor(scale);
+        let bitmap = page
+            .render_with_config(&config)
+            .map_err(|e| format!("Failed to render page {}: {:?}", i + 1, e))?;
+        let image = bitmap.as_image();
+        let (width, height) = (image.width(), image.height());
+        progress(i + 1, total);
+        pages.push(RenderedPageImage {
+            index: i,
+            image,
+            width,
+            height,
+            capped,
+        });
+    }
     Ok(pages)
 }
 
@@ -299,8 +279,24 @@ mod tests {
     }
 
     #[test]
-    fn pool_scales_with_cpu_count() {
-        let expect = num_cpus::get().saturating_sub(2).max(1);
-        assert_eq!(pool().current_num_threads(), expect);
+    fn concurrent_renders_serialize_safely() {
+        // Hammer the global lock from several threads at once: every render
+        // must succeed (this is the workload that corrupted Pdfium state
+        // when pages rendered concurrently).
+        let bytes = minimal_pdf(3);
+        let handles: Vec<_> = (0..4)
+            .map(|_| {
+                let bytes = bytes.clone();
+                std::thread::spawn(move || {
+                    let pdfium = test_pdfium();
+                    render_pages(&pdfium, &bytes, None, "test.pdf", 150.0 / 72.0, &|_, _| {})
+                        .expect("concurrent render must succeed")
+                        .len()
+                })
+            })
+            .collect();
+        for h in handles {
+            assert_eq!(h.join().expect("worker survived"), 3);
+        }
     }
 }
