@@ -21,6 +21,11 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
       "Re-drop a PDF at a different DPI to re-render it on the spot. Same DPI is skipped so you never get duplicates.",
       "Password-protected PDFs ask for the password instead of failing. Wrong guesses just ask again, and skipping never blocks the rest.",
       "Big files are handled gracefully — large imports warn but proceed, oversized pages are fitted safely, and corrupt files report cleanly without breaking anything else.",
+      "Two new strip sizes in Other: 3×2 and 3×1.5. Pick one and get the full batch workflow — crop, background removal, and batch print at a flat ₱30 per sheet.",
+      "The size picker now sorts smallest-first in a four-column grid that fits on one screen.",
+      "Resume Builder gains a Personal Details section — birthdate, age, gender, civil status, nationality, height, weight, and religion in two neat columns.",
+      "New Character References section right above the signature line, printed side by side.",
+      "Resumes look sharper: real indented bullets, two-column skills, a right-sized owner name, and breathing room above the signature.",
     ],
     groups: [
       {
@@ -32,6 +37,23 @@ export const PATCH_NOTES: Record<string, PatchNote> = {
           "Re-drop a PDF at a different DPI to re-render it on the spot. Same DPI is skipped so you never get duplicates.",
           "Password-protected PDFs ask for the password instead of failing. Wrong guesses just ask again, and skipping never blocks the rest.",
           "Big files are handled gracefully — large imports warn but proceed, oversized pages are fitted safely, and corrupt files report cleanly without breaking anything else.",
+        ],
+      },
+      {
+        heading: "Strip Photo Sizes",
+        subheading: "Other Tab",
+        bullets: [
+          "Two new strip sizes in Other: 3×2 and 3×1.5. Pick one and get the full batch workflow — crop, background removal, and batch print at a flat ₱30 per sheet.",
+          "The size picker now sorts smallest-first in a four-column grid that fits on one screen.",
+        ],
+      },
+      {
+        heading: "Resume Builder",
+        subheading: "Overview › Tools",
+        bullets: [
+          "Resume Builder gains a Personal Details section — birthdate, age, gender, civil status, nationality, height, weight, and religion in two neat columns.",
+          "New Character References section right above the signature line, printed side by side.",
+          "Resumes look sharper: real indented bullets, two-column skills, a right-sized owner name, and breathing room above the signature.",
         ],
       },
     ],

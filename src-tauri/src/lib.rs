@@ -1849,6 +1849,11 @@ fn section_heading(text: &str) -> docx_rs::Paragraph {
     p.line_spacing(LineSpacing::new().before(220).after(100))
 }
 
+fn resume_name_run(full_name: &str) -> docx_rs::Run {
+    use docx_rs::{Run, RunFonts};
+    Run::new().add_text(full_name.to_uppercase()).bold().size(40).fonts(RunFonts::new().ascii("Calibri")).color(INK)
+}
+
 fn resume_heading(text: &str) -> docx_rs::Paragraph {
     section_heading(text)
 }
@@ -1982,7 +1987,7 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
         let buf = photo_buf.clone().unwrap();
         let pic = Pic::new(&buf).size(mm_to_emu(35.0), mm_to_emu(45.0));
         let header_border = ParagraphBorder::new(ParagraphBorderPosition::Bottom).val(BorderType::Single).size(18).color(INK);
-        let name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+        let name_para = Paragraph::new().add_run(resume_name_run(&full_name));
         let mut text_cell = TableCell::new().clear_all_border().add_paragraph(name_para);
         if let Some(contact) = &data.contact {
             if let Some(a) = &contact.address { if !a.trim().is_empty() {
@@ -2016,7 +2021,7 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
         if template_key.starts_with("col1") {
             let has_contact = data.contact.as_ref().map(|c| c.address.as_ref().map(|a| !a.trim().is_empty()).unwrap_or(false) || !c.all_phones().is_empty() || !c.all_emails().is_empty() || c.linkedin.as_ref().map(|l| !l.trim().is_empty()).unwrap_or(false)).unwrap_or(false);
             if has_contact {
-                let name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+                let name_para = Paragraph::new().add_run(resume_name_run(&full_name));
                 doc = doc.add_paragraph(name_para);
                 let mut contact_paras: Vec<Paragraph> = Vec::new();
                 if let Some(contact) = &data.contact {
@@ -2039,13 +2044,13 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
                 let len = contact_paras.len();
                 for (idx, mut para) in contact_paras.into_iter().enumerate() { if idx == len - 1 { para.property = para.property.clear_all_borders(); para.property = para.property.set_border(header_border.clone()); } doc = doc.add_paragraph(para); }
             } else {
-                let mut name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+                let mut name_para = Paragraph::new().add_run(resume_name_run(&full_name));
                 name_para.property = name_para.property.clear_all_borders();
                 name_para.property = name_para.property.set_border(header_border);
                 doc = doc.add_paragraph(name_para);
             }
         } else {
-            let mut name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
+            let mut name_para = Paragraph::new().add_run(resume_name_run(&full_name));
             name_para.property = name_para.property.clear_all_borders();
             name_para.property = name_para.property.set_border(header_border);
             doc = doc.add_paragraph(name_para);
