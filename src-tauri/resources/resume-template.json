@@ -41,13 +41,21 @@
   "full_name": "",
 
   "contact": {
-    "_note": "Only fill fields that exist in the source. Leave others as empty strings. Use phones/emails arrays for multiple numbers — one string per entry. Keep phone/email single for backward compat (first of arrays).",
+    "_note": "Only fill fields that exist in the source. Leave others as empty strings. Use phones/emails arrays for multiple numbers — one string per entry. Keep phone/email single for backward compat (first of arrays). The age/birthdate/height/weight/gender/civil_status/religion/nationality keys feed the Personal Details section.",
     "address": "",
     "linkedin": "",
     "phones": [""],
     "emails": [""],
     "phone": "",
-    "email": ""
+    "email": "",
+    "age": "",
+    "birthdate": "",
+    "height": "",
+    "weight": "",
+    "gender": "",
+    "civil_status": "",
+    "religion": "",
+    "nationality": ""
   },
 
   "summary": "",

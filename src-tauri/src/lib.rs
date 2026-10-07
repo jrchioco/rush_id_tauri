@@ -1743,6 +1743,22 @@ struct ContactInfo {
     emails: Option<Vec<String>>,
     address: Option<String>,
     linkedin: Option<String>,
+    #[serde(default)]
+    age: Option<String>,
+    #[serde(default)]
+    birthdate: Option<String>,
+    #[serde(default)]
+    height: Option<String>,
+    #[serde(default)]
+    weight: Option<String>,
+    #[serde(default)]
+    gender: Option<String>,
+    #[serde(default)]
+    civil_status: Option<String>,
+    #[serde(default)]
+    religion: Option<String>,
+    #[serde(default)]
+    nationality: Option<String>,
 }
 impl ContactInfo {
     fn all_phones(&self) -> Vec<String> {
@@ -1757,6 +1773,27 @@ impl ContactInfo {
         let mut seen = std::collections::HashSet::new();
         if let Some(e) = &self.email { let t = e.trim().to_string(); if !t.is_empty() && seen.insert(t.clone()) { out.push(t); } }
         if let Some(es) = &self.emails { for e in es { let t = e.trim().to_string(); if !t.is_empty() && seen.insert(t.clone()) { out.push(t); } } }
+        out
+    }
+    /// Non-blank Personal Details pairs in display order.
+    fn personal_details(&self) -> Vec<(&'static str, String)> {
+        let mut out = Vec::new();
+        let mut push = |label: &'static str, v: &Option<String>| {
+            if let Some(s) = v {
+                let t = s.trim().to_string();
+                if !t.is_empty() {
+                    out.push((label, t));
+                }
+            }
+        };
+        push("Birthdate", &self.birthdate);
+        push("Age", &self.age);
+        push("Gender", &self.gender);
+        push("Civil Status", &self.civil_status);
+        push("Nationality", &self.nationality);
+        push("Height", &self.height);
+        push("Weight", &self.weight);
+        push("Religion", &self.religion);
         out
     }
 }
@@ -1871,7 +1908,7 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     } else {
         let header_border = ParagraphBorder::new(ParagraphBorderPosition::Bottom).val(BorderType::Single).size(18).color(INK);
         if template_key.starts_with("col1") {
-            let has_contact = data.contact.as_ref().map(|c| c.address.as_ref().map(|a| !a.trim().is_empty()).unwrap_or(false) || !c.all_phones().is_empty() || !c.all_emails().is_empty()).unwrap_or(false);
+            let has_contact = data.contact.as_ref().map(|c| c.address.as_ref().map(|a| !a.trim().is_empty()).unwrap_or(false) || !c.all_phones().is_empty() || !c.all_emails().is_empty() || c.linkedin.as_ref().map(|l| !l.trim().is_empty()).unwrap_or(false)).unwrap_or(false);
             if has_contact {
                 let name_para = Paragraph::new().add_run(Run::new().add_text(full_name.to_uppercase()).bold().size(56).fonts(RunFonts::new().ascii("Calibri")).color(INK));
                 doc = doc.add_paragraph(name_para);
@@ -1943,6 +1980,15 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
                 left_paras.push(Paragraph::new().add_run(Run::new().add_text(format!("🔗  {}", l.trim())).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")));
             } }
         }
+        if let Some(contact) = &data.contact {
+            let details = contact.personal_details();
+            if !details.is_empty() {
+                left_paras.push(resume_heading("Personal Details"));
+                for (label, value) in &details {
+                    left_paras.push(resume_body(&format!("{}: {}", label, value)));
+                }
+            }
+        }
         left_paras.push(Paragraph::new().add_run(Run::new().add_text("").size(2)));
         if let Some(edus) = &data.education {
             if !edus.is_empty() {
@@ -2013,6 +2059,15 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             if !summary.trim().is_empty() {
                 doc = doc.add_paragraph(resume_heading("Summary"));
                 doc = doc.add_paragraph(resume_body(summary));
+            }
+        }
+        if let Some(contact) = &data.contact {
+            let details = contact.personal_details();
+            if !details.is_empty() {
+                doc = doc.add_paragraph(resume_heading("Personal Details"));
+                for (label, value) in &details {
+                    doc = doc.add_paragraph(resume_body(&format!("{}: {}", label, value)));
+                }
             }
         }
         if let Some(edus) = &data.education {
