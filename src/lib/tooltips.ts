@@ -92,6 +92,8 @@ export const TOOLTIPS = {
   resumeRemoveSkill: "Remove this skill",
   resumeAddCert: "Add certification entry",
   resumeRemoveCert: "Remove this certification",
+  resumeAddRef: "Add character reference",
+  resumeRemoveRef: "Remove this reference",
   resumeSaveJson: "Save resume data as JSON — importable template",
   resumeGenerate: "Generate DOCX + PDF — pick save location (PDF needs LibreOffice)",
   resumeGenerateDisabled: "Enter full name to generate",

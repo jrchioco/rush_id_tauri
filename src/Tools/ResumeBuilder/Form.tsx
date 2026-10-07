@@ -36,6 +36,7 @@ export interface ResumeFormData {
   experience: { company: string; role: string; start_date: string; end_date: string; bullets: string[] }[];
   skills: string[];
   certifications: { name: string; issuer: string; year: string }[];
+  references: { name: string; detail: string; contact: string }[];
   photo_path?: string;
   /** legacy alias for backward compat with old saved JSON */
   photoPath?: string;
@@ -94,6 +95,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   const [skills, setSkills] = useState<string[]>(initialData?.skills ?? []);
   const [skillsDraft, setSkillsDraft] = useState("");
   const [certifications, setCertifications] = useState<{ name: string; issuer: string; year: string }[]>(initialData?.certifications ?? []);
+  const [references, setReferences] = useState<{ name: string; detail: string; contact: string }[]>(initialData?.references ?? []);
 
   const isPhoto = template.endsWith("_photo");
 
@@ -177,6 +179,14 @@ export default function ResumeForm({ onBack, initialData }: Props) {
   };
   const removeCert = (i: number) => setCertifications(certifications.filter((_, idx) => idx !== i));
 
+  const addRef = () => setReferences([...references, { name: "", detail: "", contact: "" }]);
+  const updateRef = (i: number, patch: Partial<{ name: string; detail: string; contact: string }>) => {
+    const next = [...references];
+    next[i] = { ...next[i], ...patch };
+    setReferences(next);
+  };
+  const removeRef = (i: number) => setReferences(references.filter((_, idx) => idx !== i));
+
   const buildData = (): ResumeFormData => ({
     template_key: template,
     full_name: fullName.trim(),
@@ -196,6 +206,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
       .map((e) => ({ ...e, bullets: e.bullets.filter((b) => b.trim()) })),
     skills: skills.filter((s) => s.trim()),
     certifications: certifications.filter((c) => c.name || c.issuer || c.year),
+    references: references.filter((r) => r.name || r.detail || r.contact),
     photo_path: isPhoto ? photoPath : undefined,
   });
 
@@ -431,6 +442,23 @@ export default function ResumeForm({ onBack, initialData }: Props) {
             <div className="flex gap-1">
               <input value={c.year} onChange={(e) => updateCert(i, { year: e.target.value })} placeholder="Year" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
               <Tooltip content={TOOLTIPS.resumeRemoveCert}><button onClick={() => removeCert(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 rounded-xl bg-[#0c0c0b] border border-[#2a2a28]">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-mono text-[#888] tracking-widest uppercase">Character References</span>
+          <Tooltip content={TOOLTIPS.resumeAddRef}><button onClick={addRef} className="px-2 py-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-xs font-mono text-[#888] hover:border-[#c8881a]/30 hover:text-[#e8e4da] flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button></Tooltip>
+        </div>
+        {references.length === 0 ? <p className="text-xs font-mono text-[#444]">No references — click Add.</p> : references.map((r, i) => (
+          <div key={i} className="grid grid-cols-3 gap-2 mb-2 p-2 rounded-lg bg-[#111110] border border-[#2a2a28]">
+            <input value={r.name} onChange={(e) => updateRef(i, { name: e.target.value })} placeholder="Full name" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+            <input value={r.detail} onChange={(e) => updateRef(i, { detail: e.target.value })} placeholder="Position, Company" className="bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+            <div className="flex gap-1">
+              <input value={r.contact} onChange={(e) => updateRef(i, { contact: e.target.value })} placeholder="Contact number" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
+              <Tooltip content={TOOLTIPS.resumeRemoveRef}><button onClick={() => removeRef(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
             </div>
           </div>
         ))}
