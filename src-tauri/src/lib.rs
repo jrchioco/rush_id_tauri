@@ -1871,9 +1871,7 @@ fn last_bullet(mut p: docx_rs::Paragraph) -> docx_rs::Paragraph {
     p
 }
 
-/// A block of 2-column body content. The `Table` variant lands in Phase 2
-/// (real 2-up tables); it exists now so all push sites convert in one pass.
-#[allow(dead_code)]
+/// A block of 2-column body content: a lone paragraph or a borderless table.
 enum BodyBlock {
     Para(docx_rs::Paragraph),
     Table(docx_rs::Table),
@@ -1889,37 +1887,40 @@ fn body_bold_run(text: &str) -> docx_rs::Run {
     Run::new().add_text(text).bold().size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")
 }
 
-/// One paragraph holding two columns separated by a tab stop. Either side may
-/// be empty (no tab emitted when the right side is empty).
-fn two_up_row(left: Vec<docx_rs::Run>, right: Vec<docx_rs::Run>, tab_pos: usize) -> docx_rs::Paragraph {
-    use docx_rs::{Paragraph, Run, Tab};
-    let mut p = Paragraph::new().tabs(&[Tab::new().pos(tab_pos)]);
-    for r in left {
-        p = p.add_run(r);
-    }
-    if !right.is_empty() {
-        p = p.add_run(Run::new().add_tab());
-        for r in right {
-            p = p.add_run(r);
+/// Borderless 2-up table with a narrow gutter column. Each entry becomes one
+/// cell; an odd trailing entry leaves a genuinely empty cell. Widths in dxa.
+fn two_col_table(cells: Vec<Vec<docx_rs::Paragraph>>, col_width: usize) -> docx_rs::Table {
+    const GUTTER: usize = 360;
+    let mut rows = Vec::new();
+    let mut it = cells.into_iter();
+    loop {
+        let left = match it.next() {
+            Some(c) => c,
+            None => break,
+        };
+        let right = it.next().unwrap_or_default();
+        let mut row_cells = Vec::new();
+        for (idx, cell_paras) in [left, right].into_iter().enumerate() {
+            if idx == 1 {
+                row_cells.push(
+                    docx_rs::TableCell::new()
+                        .clear_all_border()
+                        .width(GUTTER, docx_rs::WidthType::Dxa),
+                );
+            }
+            let mut cell = docx_rs::TableCell::new()
+                .clear_all_border()
+                .width(col_width, docx_rs::WidthType::Dxa);
+            for p in cell_paras {
+                cell = cell.add_paragraph(p);
+            }
+            row_cells.push(cell);
         }
+        rows.push(docx_rs::TableRow::new(row_cells));
     }
-    p
-}
-
-/// Personal Details pairs laid 2-up. Blanks are filtered before pairing so
-/// there are never holes; an odd item takes the left column alone.
-fn personal_detail_rows(details: &[(&str, String)], tab_pos: usize) -> Vec<docx_rs::Paragraph> {
-    details
-        .chunks(2)
-        .map(|pair| {
-            let left = vec![body_run(&format!("{}: {}", pair[0].0, pair[0].1))];
-            let right = pair
-                .get(1)
-                .map(|(l, v)| vec![body_run(&format!("{}: {}", l, v))])
-                .unwrap_or_default();
-            two_up_row(left, right, tab_pos)
-        })
-        .collect()
+    docx_rs::Table::new(rows)
+        .set_grid(vec![col_width, GUTTER, col_width])
+        .clear_all_border()
 }
 
 /// Referees with at least one non-blank field.
@@ -1931,41 +1932,18 @@ fn live_references(refs: &[ReferenceEntry]) -> Vec<&ReferenceEntry> {
 
 /// One referee pair laid 2-up as three aligned rows (names / details /
 /// contacts). Blank values keep their row so both columns stay aligned.
-fn reference_rows(left: &ReferenceEntry, right: Option<&ReferenceEntry>, tab_pos: usize) -> Vec<docx_rs::Paragraph> {
-    let name = |r: &ReferenceEntry| {
-        if r.name.trim().is_empty() {
-            vec![]
-        } else {
-            vec![body_bold_run(r.name.trim())]
-        }
-    };
-    let detail = |r: &ReferenceEntry| {
-        if r.detail.trim().is_empty() {
-            vec![]
-        } else {
-            vec![body_run(r.detail.trim())]
-        }
-    };
-    let contact = |r: &ReferenceEntry| {
-        if r.contact.trim().is_empty() {
-            vec![]
-        } else {
-            vec![body_run(r.contact.trim())]
-        }
-    };
-    let right_runs = |f: &dyn Fn(&ReferenceEntry) -> Vec<docx_rs::Run>| {
-        right.map(f).unwrap_or_default()
-    };
+/// One referee's stacked lines (name bold, detail, contact), blanks omitted.
+/// Used as a single table cell; callers pair cells 2-up.
+fn reference_cell(r: &ReferenceEntry) -> Vec<docx_rs::Paragraph> {
     let mut out = Vec::new();
-    for (lf, rf) in [
-        (name(left), right_runs(&name)),
-        (detail(left), right_runs(&detail)),
-        (contact(left), right_runs(&contact)),
-    ] {
-        if lf.is_empty() && rf.is_empty() {
-            continue;
-        }
-        out.push(two_up_row(lf, rf, tab_pos));
+    if !r.name.trim().is_empty() {
+        out.push(docx_rs::Paragraph::new().add_run(body_bold_run(r.name.trim())));
+    }
+    if !r.detail.trim().is_empty() {
+        out.push(docx_rs::Paragraph::new().add_run(body_run(r.detail.trim())));
+    }
+    if !r.contact.trim().is_empty() {
+        out.push(docx_rs::Paragraph::new().add_run(body_run(r.contact.trim())));
     }
     out
 }
@@ -2112,9 +2090,11 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             let details = contact.personal_details();
             if !details.is_empty() {
                 left_paras.push(BodyBlock::Para(resume_heading("Personal Details")));
-                for row in personal_detail_rows(&details, 1700) {
-                    left_paras.push(BodyBlock::Para(row));
-                }
+                let cells: Vec<Vec<_>> = details
+                    .iter()
+                    .map(|(l, v)| vec![resume_body(&format!("{}: {}", l, v))])
+                    .collect();
+                left_paras.push(BodyBlock::Table(two_col_table(cells, 1600)));
             }
         }
         left_paras.push(BodyBlock::Para(Paragraph::new().add_run(Run::new().add_text("").size(2))));
@@ -2128,11 +2108,11 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             let live: Vec<&str> = skills.iter().map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
             if !live.is_empty() {
                 left_paras.push(BodyBlock::Para(resume_heading("Skills")));
-                for pair in live.chunks(2) {
-                    let left = vec![body_run(&format!("● {}", pair[0]))];
-                    let right = pair.get(1).map(|s| vec![body_run(&format!("● {}", s))]).unwrap_or_default();
-                    left_paras.push(BodyBlock::Para(two_up_row(left, right, 1700)));
-                }
+                let cells: Vec<Vec<_>> = live
+                    .iter()
+                    .map(|s| vec![resume_body(&format!("● {}", s))])
+                    .collect();
+                left_paras.push(BodyBlock::Table(two_col_table(cells, 1600)));
             }
         }
         if let Some(certs) = &data.certifications {
@@ -2167,11 +2147,8 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             let live = live_references(refs);
             if !live.is_empty() {
                 right_paras.push(BodyBlock::Para(resume_heading("Character References")));
-                for pair in live.chunks(2) {
-                    for row in reference_rows(pair[0], pair.get(1).copied(), 3200) {
-                        right_paras.push(BodyBlock::Para(row));
-                    }
-                }
+                let cells: Vec<Vec<_>> = live.iter().map(|r| reference_cell(r)).collect();
+                right_paras.push(BodyBlock::Table(two_col_table(cells, 3093)));
             }
         }
         if left_paras.is_empty() { left_paras.push(BodyBlock::Para(resume_body(""))); }
@@ -2219,9 +2196,11 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             let details = contact.personal_details();
             if !details.is_empty() {
                 doc = doc.add_paragraph(resume_heading("Personal Details"));
-                for row in personal_detail_rows(&details, 5100) {
-                    doc = doc.add_paragraph(row);
-                }
+                let cells: Vec<Vec<_>> = details
+                    .iter()
+                    .map(|(l, v)| vec![resume_body(&format!("{}: {}", l, v))])
+                    .collect();
+                doc = doc.add_table(two_col_table(cells, 4963));
             }
         }
         if let Some(edus) = &data.education {
@@ -2252,11 +2231,11 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             let live: Vec<&str> = skills.iter().map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
             if !live.is_empty() {
                 doc = doc.add_paragraph(resume_heading("Skills"));
-                for pair in live.chunks(2) {
-                    let left = vec![body_run(&format!("● {}", pair[0]))];
-                    let right = pair.get(1).map(|s| vec![body_run(&format!("● {}", s))]).unwrap_or_default();
-                    doc = doc.add_paragraph(two_up_row(left, right, 5100));
-                }
+                let cells: Vec<Vec<_>> = live
+                    .iter()
+                    .map(|s| vec![resume_body(&format!("● {}", s))])
+                    .collect();
+                doc = doc.add_table(two_col_table(cells, 4963));
             }
         }
         if let Some(certs) = &data.certifications {
@@ -2272,11 +2251,8 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             let live = live_references(refs);
             if !live.is_empty() {
                 doc = doc.add_paragraph(resume_heading("Character References"));
-                for pair in live.chunks(2) {
-                    for row in reference_rows(pair[0], pair.get(1).copied(), 5100) {
-                        doc = doc.add_paragraph(row);
-                    }
-                }
+                let cells: Vec<Vec<_>> = live.iter().map(|r| reference_cell(r)).collect();
+                doc = doc.add_table(two_col_table(cells, 4963));
             }
         }
     }
