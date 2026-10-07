@@ -20,7 +20,9 @@
     "passport2": 60,
     "wallet2pcs": 15,
     "wallet3pcs": 20,
-    "wallet9pcs": 35
+    "wallet9pcs": 35,
+    "3x1.5": 30,
+    "3x2": 30
   },
   "tiers": {
     "3r": { "2pcs": 20, "4pcs": 30 },

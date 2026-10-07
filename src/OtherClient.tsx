@@ -11,7 +11,7 @@ import { OtherSlotCard, type FitMode, type OtherSlotState } from "./OtherSlotCar
 import { Tooltip } from "./components/Tooltip";
 import { TOOLTIPS } from "./lib/tooltips";
 
-type OtherSize = "wallet" | "3r" | "4r" | "5r" | "6r" | "8r";
+type OtherSize = "wallet" | "3r" | "4r" | "5r" | "6r" | "8r" | "3x2" | "3x1.5";
 type OtherLayout = "2pcs" | "3pcs" | "4pcs" | "5pcs" | "6pcs" | "8pcs" | "9pcs" | "10pcs" | "12pcs" | "18pcs" | "27pcs";
 
 interface OtherSizeInfo {
@@ -28,6 +28,8 @@ const OTHER_SIZES: Record<OtherSize, OtherSizeInfo> = {
   "5r": { label: "5R", inches: '5×7"', widthMm: 127, heightMm: 178 },
   "6r": { label: "6R", inches: '6×8"', widthMm: 152, heightMm: 203 },
   "8r": { label: "8R", inches: '8×10"', widthMm: 203, heightMm: 254 },
+  "3x2": { label: "3×2", inches: '3×2"', widthMm: 76.2, heightMm: 50.8 },
+  "3x1.5": { label: "3×1.5", inches: '3×1.5"', widthMm: 76.2, heightMm: 38.1 },
 };
 
 const LAYOUTS: OtherLayout[] = ["4pcs", "6pcs", "8pcs", "10pcs", "12pcs"];
@@ -40,7 +42,11 @@ function getAspect(size: OtherSize): number {
 }
 
 function hasSvg(size: OtherSize): boolean {
-  return size === "wallet" || size === "3r" || size === "4r" || size === "5r" || size === "8r";
+  return size === "wallet" || size === "3r" || size === "4r" || size === "5r" || size === "8r" || size === "3x2" || size === "3x1.5";
+}
+
+function isStripSize(size: OtherSize): boolean {
+  return size === "3x2" || size === "3x1.5";
 }
 
 function getCanvasWidth(size: OtherSize, quality: "high" | "flash"): number {
@@ -486,6 +492,33 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
                 </div>
               </button>
             ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (isStripSize(selectedSize)) {
+    const stripInfo = OTHER_SIZES[selectedSize];
+    return (
+      <main className="max-w-6xl mx-auto p-6 flex flex-col items-center justify-center min-h-[calc(100vh-60px)]">
+        <div className="space-y-6 w-full max-w-2xl">
+          <div className="flex items-center gap-3 justify-center">
+            <Tooltip content={TOOLTIPS.backToSizes}>
+              <button
+                onClick={handleBackToSizes}
+                className="w-7 h-7 rounded-lg bg-[#111110] border border-[#2a2a28] flex items-center justify-center text-[#555] hover:text-[#c8881a] hover:border-[#c8881a]/50 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase">
+              {stripInfo.label} — {stripInfo.inches}
+            </h2>
+          </div>
+          <div className="rounded-xl border-2 border-dashed border-[#2a2a28] bg-[#0c0c0b] p-12 text-center">
+            <p className="text-sm font-mono text-[#555]">Batch workflow coming in Phase 3</p>
+            <p className="text-xs font-mono text-[#444] mt-2">Crop, background removal, and batch print for {stripInfo.label} strips</p>
           </div>
         </div>
       </main>

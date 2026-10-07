@@ -1312,7 +1312,7 @@ fn get_template_breakdown(app_handle: tauri::AppHandle, days: u32) -> Result<Vec
             "passport2" => "Passport",
             k if k.starts_with("polaroid") => "Polaroid",
             k if k.starts_with("wallet") => "Wallet",
-            "3r" | "4r" | "5r" | "8r" => "Other",
+            "3r" | "4r" | "5r" | "8r" | "3x2" | "3x1.5" => "Other",
             _ => continue,
         };
         let entry = groups.entry(key).or_insert((0.0, 0));

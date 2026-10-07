@@ -12,7 +12,7 @@ function categoryFor(templateKey: string): string | null {
   if (["2x2", "dev_2x2", "multi_2x2"].includes(k)) return "Rush ID 2x2";
   if (["mixed", "dev_mixed", "multi_mixed"].includes(k)) return "Rush ID Mixed";
   if (["passport1", "passport2"].includes(k)) return "Passport";
-  if (["3r", "4r", "5r", "8r"].includes(k)) return "Other";
+  if (["3r", "4r", "5r", "8r", "3x2", "3x1.5"].includes(k)) return "Other";
   if (k.startsWith("polaroid")) return "Polaroid";
   if (k.startsWith("wallet")) return "Wallet";
   return null;
