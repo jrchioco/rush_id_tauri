@@ -1859,10 +1859,10 @@ fn resume_body(text: &str) -> docx_rs::Paragraph {
 }
 
 fn resume_bullet(text: &str) -> docx_rs::Paragraph {
-    use docx_rs::{Paragraph, Run, RunFonts, SpecialIndentType};
+    use docx_rs::{NumberingId, IndentLevel, Paragraph, Run, RunFonts};
     Paragraph::new()
-        .add_run(Run::new().add_text(format!("•\t{}", text)).size(21).fonts(RunFonts::new().ascii("Calibri")).color("222222"))
-        .indent(Some(360), Some(SpecialIndentType::Hanging(360)), None, None)
+        .add_run(Run::new().add_text(text).size(20).fonts(RunFonts::new().ascii("Calibri")).color("222222"))
+        .numbering(NumberingId::new(1), IndentLevel::new(0))
 }
 
 fn last_bullet(mut p: docx_rs::Paragraph) -> docx_rs::Paragraph {
@@ -1969,7 +1969,25 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     // 1-col generation (Phase 4a) — formalized from Mayari generate.js style
     use docx_rs::*;
     let margins = PageMargin::new().top(720).bottom(720).left(720).right(720);
-    let mut doc = Docx::new().page_size(11906, 16838).page_margin(margins);
+    let mut doc = Docx::new()
+        .page_size(11906, 16838)
+        .page_margin(margins)
+        .numberings(
+            Numberings::new()
+                .add_abstract_numbering(
+                    AbstractNumbering::new(1).add_level(
+                        Level::new(
+                            0,
+                            Start::new(1),
+                            NumberFormat::new("bullet"),
+                            LevelText::new("●"),
+                            LevelJc::new("left"),
+                        )
+                        .indent(Some(720), Some(SpecialIndentType::Hanging(360)), None, None),
+                    ),
+                )
+                .add_numbering(Numbering::new(1, 1)),
+        );
 
     let has_photo = template_key.ends_with("_photo") && data.photo_path.as_ref().map(|p| !p.is_empty() && Path::new(p).exists()).unwrap_or(false);
     let photo_buf: Option<Vec<u8>> = if has_photo { data.photo_path.as_ref().and_then(|p| fs::read(p).ok()) } else { None };
@@ -2240,7 +2258,7 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     }
 
     // Certification + signature block (both templates, bottom of page)
-    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text("I hereby certify that the above information is true and correct to the best of my knowledge and belief.").size(20).italic().fonts(RunFonts::new().ascii("Calibri")).color("222222")));
+    doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text("I hereby certify that the above information is true and correct to the best of my knowledge and belief.").size(20).italic().fonts(RunFonts::new().ascii("Calibri")).color("222222")).line_spacing(LineSpacing::new().before(160)));
     doc = doc.add_paragraph(Paragraph::new());
     doc = doc.add_paragraph(Paragraph::new());
     doc = doc.add_paragraph(Paragraph::new().align(AlignmentType::Right).add_run(Run::new().add_text("_____________________________").size(21).fonts(RunFonts::new().ascii("Calibri"))));
@@ -3447,4 +3465,50 @@ pub fn run() {
          ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod resume_bullet_tests {
+    use super::*;
+    use std::io::{Cursor, Read};
+
+    #[test]
+    fn bullets_emit_numbering_definitions() {
+        use docx_rs::*;
+        let doc = Docx::new()
+            .numberings(
+                Numberings::new()
+                    .add_abstract_numbering(
+                        AbstractNumbering::new(1).add_level(
+                            Level::new(
+                                0,
+                                Start::new(1),
+                                NumberFormat::new("bullet"),
+                                LevelText::new("●"),
+                                LevelJc::new("left"),
+                            )
+                            .indent(Some(720), Some(SpecialIndentType::Hanging(360)), None, None),
+                        ),
+                    )
+                    .add_numbering(Numbering::new(1, 1)),
+            )
+            .add_paragraph(resume_bullet("Test bullet"));
+        let mut buf = Cursor::new(Vec::new());
+        doc.build().pack(&mut buf).expect("pack docx");
+        buf.set_position(0);
+        let mut zip = zip::ZipArchive::new(buf).expect("open docx zip");
+        let mut numbering = String::new();
+        zip.by_name("word/numbering.xml")
+            .expect("numbering.xml present")
+            .read_to_string(&mut numbering)
+            .expect("read numbering.xml");
+        assert!(numbering.contains("●"), "bullet glyph defined");
+        let mut document = String::new();
+        zip.by_name("word/document.xml")
+            .expect("document.xml present")
+            .read_to_string(&mut document)
+            .expect("read document.xml");
+        assert!(document.contains("<w:numPr"), "bullet paragraph uses numbering");
+        assert!(!document.contains("•"), "no legacy fake-bullet glyph");
+    }
 }
