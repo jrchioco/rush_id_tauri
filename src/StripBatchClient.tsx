@@ -1,8 +1,11 @@
 import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
+import { invoke } from "./components/CompanionWidget/effieInvoke";
+import { setEffieMood } from "./components/CompanionWidget/moodStore";
 import Cropper, { Area } from "react-easy-crop";
-import { Upload, X, TriangleAlert } from "lucide-react";
+import { Upload, X, TriangleAlert, Scissors, RotateCw } from "lucide-react";
 import { toast } from "sonner";
-import { cn, fmt } from "./lib/utils";
+import { cn, fmt, compositeOnColor } from "./lib/utils";
+import { cropImage } from "./lib/cropImage";
 import { loadCropperImage } from "./lib/loadCropperImage";
 import { beginBrowse } from "./components/CompanionWidget/browseStore";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
@@ -11,7 +14,9 @@ import { useTauriDragDrop } from "./lib/hooks/useTauriDragDrop";
 import { useIsMounted } from "./lib/hooks/useIsMounted";
 import { useApiLogs } from "./lib/hooks/useApiLogs";
 import { RotationSidebar } from "./components/RotationSidebar";
+import { ColorPicker } from "./components/ColorPicker";
 import { LogsPanel } from "./components/LogsPanel";
+import { RetouchButton, RetouchWindow } from "./components/RetouchWindow";
 import { Tooltip } from "./components/Tooltip";
 import { TOOLTIPS } from "./lib/tooltips";
 import type { LogEntry } from "./types";
@@ -63,12 +68,17 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
   const [testMode, setTestMode] = useState(false);
   const [countDraft, setCountDraft] = useState("5");
   const [invalidCountDraft, setInvalidCountDraft] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [retouchOpen, setRetouchOpen] = useState(false);
+  const [retouchSlotIndex, setRetouchSlotIndex] = useState(0);
+  const [retouchImageData, setRetouchImageData] = useState("");
 
   const isMounted = useIsMounted();
 
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const countInputRef = useRef<HTMLInputElement | null>(null);
   const pendingShrinkRef = useRef<number | null>(null);
+  const compositeIdRefs = useRef<Map<number, number>>(new Map());
   const cropperWheelRef = useCallback((node: HTMLElement | null) => {
     if (!node) return;
     const handler = (e: WheelEvent) => {
@@ -86,6 +96,7 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
   const displayTemplates = stripTemplates.length > 0 ? stripTemplates : templates;
 
   const noApiKeys = keyCount === 0;
+  const effectiveTestMode = testMode || noApiKeys;
 
   useImperativeHandle(ref, () => ({
     hasUnsavedWork: () => slots.some((s) => s.step !== "empty"),
@@ -233,6 +244,101 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
     return () => document.removeEventListener("paste", handlePaste);
   }, []);
 
+  async function handleProcessAll() {
+    const current = slotsRef.current;
+    const pending = current
+      .map((s, i) => ({ s, i }))
+      .filter(({ s }) => s.step === "crop" && s.croppedAreaPixels);
+    if (pending.length === 0) return;
+    setBusy(true);
+    setEffieMood("working");
+    log(`Processing ${pending.length} slot(s)${effectiveTestMode ? " (test mode — no API calls)" : ""}...`);
+    try {
+      const bgColors = pending.map(({ i }) => current[i].bgColor);
+      const crops = await Promise.all(
+        pending.map(({ s }) => cropImage(s.originalImage!, s.croppedAreaPixels!, s.rotation || 0)),
+      );
+      const results = effectiveTestMode
+        ? crops
+        : await Promise.all(crops.map((b64) => invoke<string>("remove_bg", { imageBase64: b64 })));
+      const colorResults = await Promise.all(
+        results.map((b64, j) => compositeOnColor(b64, bgColors[j])),
+      );
+      if (!isMounted()) return;
+      setSlots((prev) => {
+        const next = [...prev];
+        for (let j = 0; j < pending.length; j++) {
+          const idx = pending[j].i;
+          next[idx] = {
+            ...next[idx],
+            rawBase64: results[j],
+            resultPath: colorResults[j],
+            step: "done",
+          };
+        }
+        return next;
+      });
+      setEffieMood("success");
+      log(`✓ Batch ${effectiveTestMode ? "cropped" : "processing complete"}`);
+    } catch (e) {
+      log(`Batch error: ${e}`);
+      setEffieMood("error");
+      toast.error(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function bumpCompositeId(i: number): number {
+    const next = (compositeIdRefs.current.get(i) ?? 0) + 1;
+    compositeIdRefs.current.set(i, next);
+    return next;
+  }
+
+  async function slotCompositeAndApply(i: number, base64: string, color: string) {
+    const id = bumpCompositeId(i);
+    const dataUrl = await compositeOnColor(base64, color);
+    if (id !== compositeIdRefs.current.get(i)) return;
+    updateSlot(i, { resultPath: dataUrl });
+  }
+
+  function handleSlotColorChange(i: number, color: string) {
+    const slot = slotsRef.current[i];
+    if (!slot.rawBase64) return;
+    if (color === slot.bgColor) return;
+    updateSlot(i, { bgColor: color });
+    slotCompositeAndApply(i, slot.rawBase64, color).catch((e) => {
+      log(`Error: ${e}`);
+      toast.error(String(e));
+    });
+  }
+
+  function handleRetouchOpen(i: number) {
+    const slot = slotsRef.current[i];
+    if (!slot.rawBase64) return;
+    setRetouchSlotIndex(i);
+    setRetouchImageData("data:image/png;base64," + slot.rawBase64);
+    setRetouchOpen(true);
+  }
+
+  async function handleRetouchSave(newDataUrl: string) {
+    const newRaw = newDataUrl.split(",")[1];
+    if (!newRaw) return;
+    const i = retouchSlotIndex;
+    const slot = slotsRef.current[i];
+    updateSlot(i, { rawBase64: newRaw });
+    log(`Applying retouch to slot ${i + 1}...`);
+    try {
+      await slotCompositeAndApply(i, newRaw, slot.bgColor);
+      if (!isMounted()) return;
+      log(`Retouch applied to slot ${i + 1}`);
+    } catch (e) {
+      if (!isMounted()) return;
+      log(`Error: ${e}`);
+      toast.error(String(e));
+    }
+  }
+
   function handleSlotReset(i: number) {
     const fallback = displayTemplates.length > 0 ? displayTemplates[0] : null;
     setSlots((prev) => {
@@ -319,6 +425,8 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
     beginBrowse();
     fileInputRefs.current[i]?.click();
   }
+
+  const anyCrop = slots.some((s) => s.step === "crop" && s.croppedAreaPixels);
 
   const statFooter =
     keyCount > 0 ? (
@@ -412,6 +520,18 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
               </label>
             </Tooltip>
             <div className="flex gap-2">
+              {anyCrop && (
+                <Tooltip content={TOOLTIPS.processAll}>
+                  <button
+                    onClick={handleProcessAll}
+                    disabled={busy}
+                    className="px-3 py-1.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-xs tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] flex items-center gap-1.5"
+                  >
+                    {busy ? <RotateCw className="w-3 h-3 animate-spin" /> : <Scissors className="w-3 h-3" />}
+                    Process All
+                  </button>
+                </Tooltip>
+              )}
               <Tooltip content={TOOLTIPS.resetAll}>
                 <button
                   onClick={handleResetAll}
@@ -518,8 +638,14 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
                   >
                     <img src={slot.resultPath} alt="Result" className="max-h-[120px] object-contain rounded shadow-lg" />
                   </div>
+                  <RetouchButton onClick={() => handleRetouchOpen(i)} />
                 </div>
                 <div className="flex items-center gap-2">
+                  <ColorPicker
+                    value={slot.bgColor}
+                    onChange={(c) => handleSlotColorChange(i, c)}
+                    size="sm"
+                  />
                   <div className="flex-1" />
                   <span className="text-[10px] text-[#4caf78] font-mono">✓ Done</span>
                 </div>
@@ -549,6 +675,13 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
       </div>
 
       <LogsPanel title="Batch Logs" entries={logs} footer={statFooter} />
+
+      <RetouchWindow
+        isOpen={retouchOpen}
+        imageDataUrl={retouchImageData}
+        onClose={() => setRetouchOpen(false)}
+        onSave={handleRetouchSave}
+      />
     </main>
   );
 });
