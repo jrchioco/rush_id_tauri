@@ -41,6 +41,9 @@ function validate(clean: any): string[] {
     if (clean.contact.emails && !Array.isArray(clean.contact.emails)) errors.push("contact.emails must be array");
     if (clean.contact.phone && typeof clean.contact.phone !== "string" && !Array.isArray(clean.contact.phone)) errors.push("contact.phone must be string");
     if (clean.contact.email && typeof clean.contact.email !== "string" && !Array.isArray(clean.contact.email)) errors.push("contact.email must be string");
+    for (const k of ["age", "birthdate", "height", "weight", "gender", "civil_status", "religion", "nationality"]) {
+      if (clean.contact[k] !== undefined && clean.contact[k] !== null && typeof clean.contact[k] !== "string") errors.push(`contact.${k} must be string`);
+    }
   }
   return errors;
 }

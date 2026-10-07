@@ -8,10 +8,29 @@ import { PhotoCropModal } from "./PhotoCropModal";
 
 export type ResumeTemplateKey = "col1_nophoto" | "col1_photo" | "col2_nophoto" | "col2_photo";
 
+export type PersonalDetailKey = "birthdate" | "age" | "gender" | "civil_status" | "nationality" | "height" | "weight" | "religion";
+
+export interface ResumeContact {
+  address: string;
+  linkedin: string;
+  phone?: string;
+  email?: string;
+  phones?: string[];
+  emails?: string[];
+  age?: string;
+  birthdate?: string;
+  height?: string;
+  weight?: string;
+  gender?: string;
+  civil_status?: string;
+  religion?: string;
+  nationality?: string;
+}
+
 export interface ResumeFormData {
   template_key: ResumeTemplateKey;
   full_name: string;
-  contact: { address: string; linkedin: string; phone?: string; email?: string; phones?: string[]; emails?: string[] };
+  contact: ResumeContact;
   summary: string;
   education: { school: string; degree: string; year: string }[];
   experience: { company: string; role: string; start_date: string; end_date: string; bullets: string[] }[];
@@ -34,8 +53,15 @@ interface Props {
   initialData?: ResumeFormData;
 }
 
-function normalizeContact(c: any): { address: string; linkedin: string; phones: string[]; emails: string[] } {
-  if (!c) return { address: "", linkedin: "", phones: [], emails: [] };
+const PERSONAL_DETAIL_KEYS: PersonalDetailKey[] = ["birthdate", "age", "gender", "civil_status", "nationality", "height", "weight", "religion"];
+
+function strOrEmpty(v: any): string {
+  return typeof v === "string" ? v : "";
+}
+
+function normalizeContact(c: any): { address: string; linkedin: string; phones: string[]; emails: string[] } & Record<PersonalDetailKey, string> {
+  const details = Object.fromEntries(PERSONAL_DETAIL_KEYS.map((k) => [k, strOrEmpty(c?.[k])])) as Record<PersonalDetailKey, string>;
+  if (!c) return { address: "", linkedin: "", phones: [], emails: [], ...details };
   const phones: string[] = [];
   if (Array.isArray(c.phones)) phones.push(...c.phones.filter((s: any) => typeof s === "string" && s.trim()));
   else if (Array.isArray(c.phone)) phones.push(...c.phone.filter((s: any) => typeof s === "string" && s.trim()));
@@ -52,7 +78,7 @@ function normalizeContact(c: any): { address: string; linkedin: string; phones: 
     const parts = c.email.split(",").map((s: string) => s.trim()).filter(Boolean);
     if (parts.length > 1) { emails.splice(0, 1, ...parts); }
   }
-  return { address: c.address ?? "", linkedin: c.linkedin ?? "", phones, emails };
+  return { address: c.address ?? "", linkedin: c.linkedin ?? "", phones, emails, ...details };
 }
 
 export default function ResumeForm({ onBack, initialData }: Props) {
@@ -161,6 +187,7 @@ export default function ResumeForm({ onBack, initialData }: Props) {
       emails: contact.emails.map((s) => s.trim()).filter(Boolean),
       phone: contact.phones.map((s) => s.trim()).filter(Boolean)[0] ?? "",
       email: contact.emails.map((s) => s.trim()).filter(Boolean)[0] ?? "",
+      ...Object.fromEntries(PERSONAL_DETAIL_KEYS.map((k) => [k, contact[k].trim()])) as Record<PersonalDetailKey, string>,
     },
     summary: summary.trim(),
     education: education.filter((e) => e.school || e.degree || e.year),
@@ -277,6 +304,34 @@ export default function ResumeForm({ onBack, initialData }: Props) {
                 <input value={e} onChange={(ev) => updateEmail(i, ev.target.value)} placeholder="juan@email.com" className="flex-1 bg-[#1a1a18] border border-[#2a2a28] rounded px-2 py-1 text-xs text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]" />
                 <Tooltip content={TOOLTIPS.resumeRemoveEmail}><button onClick={() => removeEmail(i)} className="p-1 rounded bg-[#1a1a18] border border-[#2a2a28] text-[#555] hover:text-red-400"><Trash2 className="w-3 h-3" /></button></Tooltip>
               </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-mono text-[#555] flex items-center gap-1"><User className="w-3 h-3" /> Personal Details</span>
+          <div className="grid grid-cols-2 gap-3">
+            {(
+              [
+                { key: "birthdate", label: "Birthdate", placeholder: "Jan 1995" },
+                { key: "age", label: "Age", placeholder: "30" },
+                { key: "gender", label: "Gender", placeholder: "Male / Female" },
+                { key: "civil_status", label: "Civil Status", placeholder: "Single" },
+                { key: "nationality", label: "Nationality", placeholder: "Filipino" },
+                { key: "height", label: "Height", placeholder: `5'6"` },
+                { key: "weight", label: "Weight", placeholder: "60 kg" },
+                { key: "religion", label: "Religion", placeholder: "Roman Catholic" },
+              ] as { key: PersonalDetailKey; label: string; placeholder: string }[]
+            ).map((f) => (
+              <label key={f.key} className="flex flex-col gap-1">
+                <span className="text-[10px] font-mono text-[#555]">{f.label}</span>
+                <input
+                  value={contact[f.key]}
+                  onChange={(e) => setContact({ ...contact, [f.key]: e.target.value })}
+                  placeholder={f.placeholder}
+                  className="bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-3 py-1.5 text-sm text-[#e8e4da] placeholder-[#555] font-mono focus:outline-none focus:border-[#c8881a]"
+                />
+              </label>
             ))}
           </div>
         </div>
