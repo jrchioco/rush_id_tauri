@@ -91,5 +91,14 @@
       "issuer": "",
       "year": ""
     }
+  ],
+
+  "references": [
+    {
+      "_note": "Character references: duplicate this object per referee (usually 3). 'detail' is position and company. Delete this _note key from each duplicated entry, but keep it in this first template object.",
+      "name": "",
+      "detail": "",
+      "contact": ""
+    }
   ]
 }
