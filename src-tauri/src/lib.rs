@@ -2117,9 +2117,14 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             }
         }
         if let Some(skills) = &data.skills {
-            if !skills.is_empty() {
+            let live: Vec<&str> = skills.iter().map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+            if !live.is_empty() {
                 left_paras.push(resume_heading("Skills"));
-                for s in skills { if !s.trim().is_empty() { left_paras.push(resume_bullet(s)); } }
+                for pair in live.chunks(2) {
+                    let left = vec![body_run(&format!("● {}", pair[0]))];
+                    let right = pair.get(1).map(|s| vec![body_run(&format!("● {}", s))]).unwrap_or_default();
+                    left_paras.push(two_up_row(left, right, 1700));
+                }
             }
         }
         if let Some(certs) = &data.certifications {
@@ -2226,12 +2231,13 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             }
         }
         if let Some(skills) = &data.skills {
-            if !skills.is_empty() {
+            let live: Vec<&str> = skills.iter().map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+            if !live.is_empty() {
                 doc = doc.add_paragraph(resume_heading("Skills"));
-                for s in skills {
-                    if !s.trim().is_empty() {
-                        doc = doc.add_paragraph(resume_bullet(s));
-                    }
+                for pair in live.chunks(2) {
+                    let left = vec![body_run(&format!("● {}", pair[0]))];
+                    let right = pair.get(1).map(|s| vec![body_run(&format!("● {}", s))]).unwrap_or_default();
+                    doc = doc.add_paragraph(two_up_row(left, right, 5100));
                 }
             }
         }
