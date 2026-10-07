@@ -2,11 +2,12 @@ import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, useImper
 import { invoke } from "./components/CompanionWidget/effieInvoke";
 import { setEffieMood } from "./components/CompanionWidget/moodStore";
 import Cropper, { Area } from "react-easy-crop";
-import { Upload, X, TriangleAlert, Scissors, RotateCw } from "lucide-react";
+import { Upload, X, TriangleAlert, Scissors, RotateCw, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { cn, fmt, compositeOnColor } from "./lib/utils";
 import { cropImage } from "./lib/cropImage";
 import { loadCropperImage } from "./lib/loadCropperImage";
+import { buildSavePath, setLastSaveDir } from "./lib/savePath";
 import { beginBrowse } from "./components/CompanionWidget/browseStore";
 import { useKeyUsed } from "./lib/hooks/useKeyUsed";
 import { useTemplates } from "./lib/hooks/useTemplates";
@@ -57,9 +58,10 @@ interface StripBatchClientProps {
   sizeLabel: string;
   cropAspect: number;
   templateKey: string;
+  onPrintReminder?: () => void;
 }
 
-const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatchClientProps>(function StripBatchClient({ sizeLabel, cropAspect, templateKey }, ref) {
+const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatchClientProps>(function StripBatchClient({ sizeLabel, cropAspect, templateKey, onPrintReminder }, ref) {
   const [slotCount, setSlotCount] = useState(5);
   const [slots, setSlots] = useState<StripSlotData[]>(() =>
     Array.from({ length: slotCount }, (_, i) => freshSlot(i)),
@@ -426,7 +428,69 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
     fileInputRefs.current[i]?.click();
   }
 
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+    import("@tauri-apps/api/event").then(({ listen }) =>
+      listen<{ msg: string }>("batch_progress", (e) => {
+        logRef.current(`[export] ${e.payload.msg}`);
+      }).then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      }),
+    );
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  async function handleComposite(savePath?: string) {
+    const done = slotsRef.current.filter((s) => s.step === "done");
+    if (done.length === 0) return;
+    const missing = done.find((s) => !s.selectedTemplate);
+    if (missing) {
+      log("✗ No template selected for one or more slots");
+      return;
+    }
+    onPrintReminder?.();
+    setBusy(true);
+    log("Compositing strip PDF...");
+    try {
+      const clients = done.map((s) => ({
+        imageBase64: s.resultPath!.split(",")[1],
+        svgPath: s.selectedTemplate,
+      }));
+      const msg = await invoke<string>("composite_multi_pdf", {
+        clients,
+        savePath: savePath ?? null,
+        tab: "other",
+      });
+      if (!isMounted()) return;
+      log(`✓ ${msg}`);
+    } catch (e) {
+      if (!isMounted()) return;
+      log(`Error: ${e}`);
+      toast.error(String(e));
+    } finally {
+      if (isMounted()) setBusy(false);
+    }
+  }
+
+  async function handleSavePdf() {
+    const done = slotsRef.current.filter((s) => s.step === "done");
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    const savePath = await save({
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+      defaultPath: buildSavePath(["strips", `${done.length}slots`]),
+    });
+    if (!savePath) return;
+    setLastSaveDir(savePath);
+    await handleComposite(savePath);
+  }
+
   const anyCrop = slots.some((s) => s.step === "crop" && s.croppedAreaPixels);
+  const anyDone = slots.some((s) => s.step === "done");
 
   const statFooter =
     keyCount > 0 ? (
@@ -672,6 +736,30 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
             )}
           </div>
         ))}
+        {anyDone && (
+          <div className="flex gap-3">
+            <Tooltip content={TOOLTIPS.savePdf} className="flex-1">
+              <button
+                onClick={handleSavePdf}
+                disabled={busy}
+                className="flex-1 px-4 py-2.5 bg-transparent text-[#c8881a] border border-[#c8881a] rounded-lg font-bold text-sm tracking-wide hover:bg-[#c8881a]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {busy ? <RotateCw className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                Save PDF
+              </button>
+            </Tooltip>
+            <Tooltip content={TOOLTIPS.printAll} className="flex-1">
+              <button
+                onClick={() => handleComposite()}
+                disabled={busy}
+                className="flex-1 px-4 py-2.5 bg-[#c8881a] text-[#0c0c0b] rounded-lg font-bold text-sm tracking-wide hover:bg-[#e8a030] transition-colors disabled:bg-[#2a2a28] disabled:text-[#555] flex items-center justify-center gap-2"
+              >
+                {busy ? <RotateCw className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                {busy ? "Compositing..." : `Print All (${slots.filter((s) => s.step === "done").length} slots)`}
+              </button>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
       <LogsPanel title="Batch Logs" entries={logs} footer={statFooter} />
