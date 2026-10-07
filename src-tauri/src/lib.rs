@@ -1871,6 +1871,14 @@ fn last_bullet(mut p: docx_rs::Paragraph) -> docx_rs::Paragraph {
     p
 }
 
+/// A block of 2-column body content. The `Table` variant lands in Phase 2
+/// (real 2-up tables); it exists now so all push sites convert in one pass.
+#[allow(dead_code)]
+enum BodyBlock {
+    Para(docx_rs::Paragraph),
+    Table(docx_rs::Table),
+}
+
 fn body_run(text: &str) -> docx_rs::Run {
     use docx_rs::{Run, RunFonts};
     Run::new().add_text(text).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")
@@ -2068,89 +2076,89 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
     }
 
     if template_key.starts_with("col2") {
-        let mut left_paras: Vec<docx_rs::Paragraph> = Vec::new();
-        let mut right_paras: Vec<docx_rs::Paragraph> = Vec::new();
+        let mut left_paras: Vec<BodyBlock> = Vec::new();
+        let mut right_paras: Vec<BodyBlock> = Vec::new();
         // Photo at top of sidebar for col2_photo
         // Photo at top of sidebar for col2_photo — centered
         if template_key == "col2_photo" {
             if let Some(ref buf) = photo_buf {
                 let pic = Pic::new(buf).size(mm_to_emu(35.0), mm_to_emu(45.0));
-                left_paras.push(Paragraph::new().align(AlignmentType::Center).add_run(Run::new().add_image(pic)));
-                left_paras.push(Paragraph::new());
+                left_paras.push(BodyBlock::Para(Paragraph::new().align(AlignmentType::Center).add_run(Run::new().add_image(pic))));
+                left_paras.push(BodyBlock::Para(Paragraph::new()));
             }
         }
-        left_paras.push(resume_heading("Contact"));
+        left_paras.push(BodyBlock::Para(resume_heading("Contact")));
         if let Some(contact) = &data.contact {
             if let Some(a) = &contact.address { if !a.trim().is_empty() {
-                left_paras.push(Paragraph::new().add_run(Run::new().add_text(format!("📍  {}", a.trim())).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")));
+                left_paras.push(BodyBlock::Para(Paragraph::new().add_run(Run::new().add_text(format!("📍  {}", a.trim())).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"))));
             } }
             let phones = contact.all_phones();
             if !phones.is_empty() {
                 let mut para = Paragraph::new().add_run(Run::new().add_text("☎  ").size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"));
                 for (idx, p) in phones.iter().enumerate() { if idx > 0 { para = para.add_run(Run::new().add_text(", ").size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")); } para = para.add_run(Run::new().add_text(p.clone()).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")); }
-                left_paras.push(para);
+                left_paras.push(BodyBlock::Para(para));
             }
             let emails = contact.all_emails();
             if !emails.is_empty() {
                 let mut para = Paragraph::new().add_run(Run::new().add_text("✉  ").size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"));
                 for (idx, e) in emails.iter().enumerate() { if idx > 0 { para = para.add_run(Run::new().add_text(", ").size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")); } para = para.add_hyperlink(Hyperlink::new(format!("mailto:{}", e), HyperlinkType::External).add_run(Run::new().add_text(e.clone()).size(22).fonts(RunFonts::new().ascii("Calibri")).color(ACCENT).underline("single"))); }
-                left_paras.push(para);
+                left_paras.push(BodyBlock::Para(para));
             }
             if let Some(l) = &contact.linkedin { if !l.trim().is_empty() {
-                left_paras.push(Paragraph::new().add_run(Run::new().add_text(format!("🔗  {}", l.trim())).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222")));
+                left_paras.push(BodyBlock::Para(Paragraph::new().add_run(Run::new().add_text(format!("🔗  {}", l.trim())).size(22).fonts(RunFonts::new().ascii("Calibri")).color("222222"))));
             } }
         }
         if let Some(contact) = &data.contact {
             let details = contact.personal_details();
             if !details.is_empty() {
-                left_paras.push(resume_heading("Personal Details"));
+                left_paras.push(BodyBlock::Para(resume_heading("Personal Details")));
                 for row in personal_detail_rows(&details, 1700) {
-                    left_paras.push(row);
+                    left_paras.push(BodyBlock::Para(row));
                 }
             }
         }
-        left_paras.push(Paragraph::new().add_run(Run::new().add_text("").size(2)));
+        left_paras.push(BodyBlock::Para(Paragraph::new().add_run(Run::new().add_text("").size(2))));
         if let Some(edus) = &data.education {
             if !edus.is_empty() {
-                left_paras.push(resume_heading("Education"));
-                for e in edus { left_paras.push(resume_body(&format!("{} — {} ({})", e.school, e.degree, e.year))); }
+                left_paras.push(BodyBlock::Para(resume_heading("Education")));
+                for e in edus { left_paras.push(BodyBlock::Para(resume_body(&format!("{} — {} ({})", e.school, e.degree, e.year)))); }
             }
         }
         if let Some(skills) = &data.skills {
             let live: Vec<&str> = skills.iter().map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
             if !live.is_empty() {
-                left_paras.push(resume_heading("Skills"));
+                left_paras.push(BodyBlock::Para(resume_heading("Skills")));
                 for pair in live.chunks(2) {
                     let left = vec![body_run(&format!("● {}", pair[0]))];
                     let right = pair.get(1).map(|s| vec![body_run(&format!("● {}", s))]).unwrap_or_default();
-                    left_paras.push(two_up_row(left, right, 1700));
+                    left_paras.push(BodyBlock::Para(two_up_row(left, right, 1700)));
                 }
             }
         }
         if let Some(certs) = &data.certifications {
             if !certs.is_empty() {
-                left_paras.push(resume_heading("Certifications"));
-                for c in certs { left_paras.push(resume_body(&format!("{} — {} ({})", c.name, c.issuer, c.year))); }
+                left_paras.push(BodyBlock::Para(resume_heading("Certifications")));
+                for c in certs { left_paras.push(BodyBlock::Para(resume_body(&format!("{} — {} ({})", c.name, c.issuer, c.year)))); }
             }
         }
         // Main: Summary + Experience
         if let Some(summary) = &data.summary {
             if !summary.trim().is_empty() {
-                right_paras.push(resume_heading("Summary"));
-                right_paras.push(resume_body(summary));
+                right_paras.push(BodyBlock::Para(resume_heading("Summary")));
+                right_paras.push(BodyBlock::Para(resume_body(summary)));
             }
         }
         if let Some(exps) = &data.experience {
             if !exps.is_empty() {
-                right_paras.push(resume_heading("Experience"));
+                right_paras.push(BodyBlock::Para(resume_heading("Experience")));
                 for ex in exps {
-                    right_paras.push(Paragraph::new().add_run(Run::new().add_text(ex.role.clone()).bold().size(24).fonts(RunFonts::new().ascii("Calibri")).color(INK)));
+                    right_paras.push(BodyBlock::Para(Paragraph::new().add_run(Run::new().add_text(ex.role.clone()).bold().size(24).fonts(RunFonts::new().ascii("Calibri")).color(INK))));
                     let meta = format!("{}   |   {} – {}", ex.company, ex.start_date, ex.end_date);
-                    right_paras.push(Paragraph::new().add_run(Run::new().add_text(meta).italic().color(MUTED_META).size(21).fonts(RunFonts::new().ascii("Calibri"))));
+                    right_paras.push(BodyBlock::Para(Paragraph::new().add_run(Run::new().add_text(meta).italic().color(MUTED_META).size(21).fonts(RunFonts::new().ascii("Calibri")))));
                     let bullets: Vec<&String> = ex.bullets.iter().filter(|b| !b.trim().is_empty()).collect();
                     for (idx, b) in bullets.iter().enumerate() {
                         let p = resume_bullet(b);
-                        if idx == bullets.len() - 1 { right_paras.push(last_bullet(p)); } else { right_paras.push(p); }
+                        if idx == bullets.len() - 1 { right_paras.push(BodyBlock::Para(last_bullet(p))); } else { right_paras.push(BodyBlock::Para(p)); }
                     }
                 }
             }
@@ -2158,21 +2166,26 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
         if let Some(refs) = &data.references {
             let live = live_references(refs);
             if !live.is_empty() {
-                right_paras.push(resume_heading("Character References"));
+                right_paras.push(BodyBlock::Para(resume_heading("Character References")));
                 for pair in live.chunks(2) {
                     for row in reference_rows(pair[0], pair.get(1).copied(), 3200) {
-                        right_paras.push(row);
+                        right_paras.push(BodyBlock::Para(row));
                     }
                 }
             }
         }
-        if left_paras.is_empty() { left_paras.push(resume_body("")); }
-        if right_paras.is_empty() { right_paras.push(resume_body("")); }
+        if left_paras.is_empty() { left_paras.push(BodyBlock::Para(resume_body(""))); }
+        if right_paras.is_empty() { right_paras.push(BodyBlock::Para(resume_body(""))); }
         let left_cell = {
             let mut c = TableCell::new()
                 .clear_all_border()
                 .set_border(TableCellBorder::new(TableCellBorderPosition::Right).border_type(BorderType::Single).size(4).color("E5E7EB"));
-            for p in left_paras { c = c.add_paragraph(p); }
+            for b in left_paras {
+                match b {
+                    BodyBlock::Para(p) => { c = c.add_paragraph(p); }
+                    BodyBlock::Table(t) => { c = c.add_table(t); }
+                }
+            }
             c.width(3560, WidthType::Dxa).vertical_align(VAlignType::Top)
         };
         let spacer_cell = TableCell::new()
@@ -2181,7 +2194,12 @@ fn generate_resume_docx(app_handle: tauri::AppHandle, data_json: String, templat
             .vertical_align(VAlignType::Top);
         let right_cell = {
             let mut c = TableCell::new().clear_all_border();
-            for p in right_paras { c = c.add_paragraph(p); }
+            for b in right_paras {
+                match b {
+                    BodyBlock::Para(p) => { c = c.add_paragraph(p); }
+                    BodyBlock::Table(t) => { c = c.add_table(t); }
+                }
+            }
             c.width(6546, WidthType::Dxa).vertical_align(VAlignType::Top)
         };
         let table = Table::new(vec![TableRow::new(vec![left_cell, spacer_cell, right_cell])])
