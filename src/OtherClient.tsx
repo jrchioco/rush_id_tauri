@@ -465,7 +465,10 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
     return () => document.removeEventListener("paste", handlePaste);
   }, [handleFileSelect]);
 
-  const sizeEntries = Object.entries(OTHER_SIZES) as [OtherSize, OtherSizeInfo][];
+  // Smallest print area first so the picker reads naturally and future sizes self-sort.
+  const sizeEntries = (Object.entries(OTHER_SIZES) as [OtherSize, OtherSizeInfo][]).sort(
+    ([, a], [, b]) => a.widthMm * a.heightMm - b.widthMm * b.heightMm,
+  );
 
   if (!selectedSize) {
     return (
@@ -474,7 +477,7 @@ const OtherClient = forwardRef<{ hasUnsavedWork: () => boolean }, OtherClientPro
           <h2 className="text-xs font-semibold text-[#555] font-mono tracking-widest uppercase text-center">
             Other Sizes
           </h2>
-          <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+          <div className="grid grid-cols-4 gap-4 max-w-3xl mx-auto">
             {sizeEntries.map(([key, info]) => (
               <button
                 key={key}
