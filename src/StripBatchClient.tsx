@@ -716,7 +716,7 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
                 <div>
                   {templatesLoading ? (
                     <div className="w-full h-7 bg-[#1a1a18] border border-[#2a2a28] rounded-lg animate-pulse" />
-                  ) : (
+                  ) : displayTemplates.length > 1 ? (
                     <Tooltip content={TOOLTIPS.selectTemplate} className="w-full">
                       <select
                         value={slot.selectedTemplate}
@@ -730,6 +730,10 @@ const StripBatchClient = forwardRef<{ hasUnsavedWork: () => boolean }, StripBatc
                         ))}
                       </select>
                     </Tooltip>
+                  ) : (
+                    <div className="w-full bg-[#1a1a18] border border-[#2a2a28] rounded-lg px-2 py-1 text-xs text-[#888] font-mono truncate">
+                      Template: {displayTemplates[0]?.name ?? "—"}
+                    </div>
                   )}
                 </div>
               </div>
