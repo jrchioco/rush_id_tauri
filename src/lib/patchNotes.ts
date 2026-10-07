@@ -12,6 +12,30 @@ interface PatchNote {
 }
 
 export const PATCH_NOTES: Record<string, PatchNote> = {
+  "1.22.0": {
+    title: "What's New in v1.22.0",
+    date: "2026-09-25",
+    notes: [
+      "New PDF to Image Converter under Tools in Overview. Drop in PDFs and every page becomes its own tile, ready to convert like any image.",
+      "Pick render quality with the DPI toggle — 150 for speed, 200 balanced, 300 print-sharp. Each tile shows its actual resolution.",
+      "Re-drop a PDF at a different DPI to re-render it on the spot. Same DPI is skipped so you never get duplicates.",
+      "Password-protected PDFs ask for the password instead of failing. Wrong guesses just ask again, and skipping never blocks the rest.",
+      "Big files are handled gracefully — large imports warn but proceed, oversized pages are fitted safely, and corrupt files report cleanly without breaking anything else.",
+    ],
+    groups: [
+      {
+        heading: "PDF to Image Converter",
+        subheading: "Overview › Tools",
+        bullets: [
+          "New PDF to Image Converter under Tools in Overview. Drop in PDFs and every page becomes its own tile, ready to convert like any image.",
+          "Pick render quality with the DPI toggle — 150 for speed, 200 balanced, 300 print-sharp. Each tile shows its actual resolution.",
+          "Re-drop a PDF at a different DPI to re-render it on the spot. Same DPI is skipped so you never get duplicates.",
+          "Password-protected PDFs ask for the password instead of failing. Wrong guesses just ask again, and skipping never blocks the rest.",
+          "Big files are handled gracefully — large imports warn but proceed, oversized pages are fitted safely, and corrupt files report cleanly without breaking anything else.",
+        ],
+      },
+    ],
+  },
   "1.21.0": {
     title: "What's New in v1.21.0",
     date: "2026-08-25",
